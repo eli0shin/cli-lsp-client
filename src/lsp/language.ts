@@ -1,0 +1,22 @@
+export const LANGUAGE_EXTENSIONS: Record<string, string> = {
+  ".ts": "typescript",
+  ".tsx": "typescriptreact", 
+  ".js": "javascript",
+  ".jsx": "javascriptreact",
+  ".mjs": "javascript",
+  ".cjs": "javascript",
+  ".mts": "typescript",
+  ".cts": "typescript",
+  ".py": "python",
+  ".pyi": "python", 
+  ".go": "go",
+  ".rb": "ruby",
+  ".rake": "ruby",
+  ".gemspec": "ruby",
+  ".ru": "ruby",
+  ".ex": "elixir",
+  ".exs": "elixir",
+  ".zig": "zig",
+  ".zon": "zig",
+  ".cs": "csharp"
+};

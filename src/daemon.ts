@@ -1,6 +1,7 @@
 import net from 'net';
 import os from 'os';
 import path from 'path';
+import { lspManager } from './lsp/manager.js';
 
 function hashPath(dirPath: string): string {
   // Simple hash function to create a short unique identifier for the path
@@ -36,22 +37,22 @@ export type StatusResult = {
   memory: NodeJS.MemoryUsage;
 };
 
-export function handleRequest(request: Request): string | number | StatusResult {
+export async function handleRequest(request: Request): Promise<string | number | StatusResult | any> {
   const { command, args = [] } = request;
 
   switch (command) {
-    case 'hello':
-      return `Hello ${args[0] || 'World'}! Daemon PID: ${process.pid}`;
-
-    case 'add':
-      return args.reduce((sum, num) => sum + parseFloat(num), 0);
-
     case 'status':
       return {
         pid: process.pid,
         uptime: process.uptime(),
         memory: process.memoryUsage()
       };
+
+    case 'diagnostics':
+      if (!args[0]) {
+        throw new Error('diagnostics command requires a file path');
+      }
+      return await lspManager.getDiagnostics(args[0]);
 
     case 'stop':
       setTimeout(async () => await shutdown(), 100);
@@ -72,12 +73,12 @@ export async function startDaemon(): Promise<void> {
   server = net.createServer((socket) => {
     console.log('Client connected');
 
-    socket.on('data', (data) => {
+    socket.on('data', async (data) => {
       try {
         const request = JSON.parse(data.toString()) as Request;
         console.log('Received request:', request);
 
-        const result = handleRequest(request);
+        const result = await handleRequest(request);
 
         socket.write(JSON.stringify({
           success: true,
@@ -162,6 +163,13 @@ export async function cleanup(): Promise<void> {
 
 export async function shutdown(): Promise<void> {
   console.log('Shutting down daemon…');
+
+  // Shutdown LSP manager first
+  try {
+    await lspManager.shutdown();
+  } catch (error) {
+    console.error('Error shutting down LSP manager:', error);
+  }
 
   if (server) {
     server.close();
