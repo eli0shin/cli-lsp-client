@@ -65,14 +65,77 @@ ERROR at line 5, column 20:
 - Finds project roots using config files (tsconfig.json, etc.)
 - Servers stay running for subsequent requests
 
+## Claude Code Integration
+
+### Real-time Diagnostics Hook
+
+Get instant TypeScript/Python error feedback as you edit files in Claude Code.
+
+#### Setup
+
+1. Create the hooks directory and script:
+
+```bash
+mkdir -p hooks
+cat > hooks/get-diagnostics.sh << 'EOF'
+#!/bin/bash
+
+# Get the file path from the first argument
+FILE_PATH="$1"
+
+# Skip non-code files
+case "$FILE_PATH" in
+  *.ts|*.tsx|*.js|*.jsx|*.py)
+    # Run diagnostics
+    ./lspcli diagnostics "$FILE_PATH" 2>/dev/null
+    ;;
+esac
+EOF
+
+chmod +x hooks/get-diagnostics.sh
+```
+
+2. Configure Claude Code settings:
+
+```bash
+# Add to your Claude Code settings (⌘+,)
+cat >> ~/.claude/settings.json << 'EOF'
+{
+  "hooks": {
+    "postEdit": "bash hooks/get-diagnostics.sh"
+  }
+}
+EOF
+```
+
+#### How It Works
+
+- Automatically runs diagnostics after each file edit
+- Shows errors, warnings, and hints inline
+- Supports TypeScript, JavaScript, and Python files
+- Non-blocking - doesn't slow down your editing
+
+#### Example Output
+
+When you save a file with errors, you'll see immediate feedback:
+
+```
+Edit operation feedback:
+- [bash hooks/get-diagnostics.sh]: 
+ERROR at line 3, column 9:
+  Type 'number' is not assignable to type 'string'.
+  Source: typescript
+  Code: 2322
+```
+
 ## Examples
 
 ```bash
 # Check all TypeScript files
 find src -name "*.ts" -exec ./lspcli diagnostics {} \;
 
-# Pre-commit hook
-./lspcli diagnostics "$CURRENT_FILE"
+# Check a specific file
+./lspcli diagnostics src/main.ts
 ```
 
 ## Development
