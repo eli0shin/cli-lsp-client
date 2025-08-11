@@ -102,5 +102,10 @@ export class LSPManager {
   }
 }
 
+// Factory function for creating manager instances
+export function createLSPManager(): LSPManager {
+  return new LSPManager();
+}
+
 // Singleton instance for the daemon
 export const lspManager = new LSPManager();

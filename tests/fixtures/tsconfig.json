@@ -10,8 +10,9 @@
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true,
     "forceConsistentCasingInFileNames": true,
-    "types": ["bun-types"]
+    "noUnusedLocals": false,
+    "noUnusedParameters": false
   },
-  "include": ["src/**/*", "tests/**/*"],
-  "exclude": ["tests/fixtures/**/*", "node_modules/**/*"]
+  "include": ["**/*"],
+  "exclude": ["node_modules"]
 }

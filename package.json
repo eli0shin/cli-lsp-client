@@ -13,7 +13,9 @@
   "scripts": {
     "build": "bun build src/cli.ts --compile --outfile lspcli",
     "dev": "bun run src/cli.ts",
-    "typecheck": "bun --bun tsc --noEmit"
+    "typecheck": "bun --bun tsc --noEmit",
+    "test": "bun test tests/ && ./lspcli stop",
+    "test:watch": "bun test tests/ --watch"
   },
   "devDependencies": {
     "@types/bun": "latest",
@@ -24,6 +26,7 @@
     "typescript": "^5.0.0"
   },
   "dependencies": {
+    "pyright": "^1.1.403",
     "vscode-jsonrpc": "^8.2.1",
     "vscode-languageserver-types": "^3.17.5"
   }
