@@ -5,8 +5,11 @@
   "type": "module",
   "main": "src/cli.ts",
   "bin": {
-    "lspcli": "./src/cli.ts"
+    "lspcli": "./lspcli"
   },
+  "files": [
+    "lspcli"
+  ],
   "scripts": {
     "build": "bun build src/cli.ts --compile --outfile lspcli",
     "dev": "bun run src/cli.ts",
