@@ -1,0 +1,23 @@
+{
+  "name": "lspcli",
+  "version": "1.0.0",
+  "description": "A Bun CLI daemon application",
+  "type": "module",
+  "main": "src/cli.ts",
+  "bin": {
+    "lspcli": "./src/cli.ts"
+  },
+  "scripts": {
+    "build": "bun build src/cli.ts --compile --outfile lspcli",
+    "dev": "bun run src/cli.ts",
+    "typecheck": "bun --bun tsc --noEmit"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "@types/node": "latest",
+    "typescript": "latest"
+  },
+  "peerDependencies": {
+    "typescript": "^5.0.0"
+  }
+}

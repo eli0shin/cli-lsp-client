@@ -1,34 +1,48 @@
-#!/usr/bin/env node
+#!/usr/bin/env bun
 
-const fs = require('fs');
-const path = require('path');
-const net = require('net');
-const os = require('os');
+import path from 'path';
+import net from 'net';
+import os from 'os';
+import { spawn } from 'child_process';
 
-// Configuration
-const SOCKET_PATH = path.join(os.tmpdir(), 'my - cli - daemon.sock');
-const PID_FILE = path.join(os.tmpdir(), 'my - cli - daemon.pid');
+function hashPath(dirPath: string): string {
+  // Simple hash function to create a short unique identifier for the path
+  let hash = 0;
+  for (let i = 0; i < dirPath.length; i++) {
+    const char = dirPath.charCodeAt(i);
+    hash = ((hash << 5) - hash) + char;
+    hash = hash & hash; // Convert to 32bit integer
+  }
+  return Math.abs(hash).toString(36);
+}
 
-// Module state
-let server = null;
+function getDaemonPaths() {
+  const cwd = process.cwd();
+  const hashedCwd = hashPath(cwd);
+  
+  return {
+    socketPath: path.join(os.tmpdir(), `lspcli-${hashedCwd}.sock`),
+    pidFile: path.join(os.tmpdir(), `lspcli-${hashedCwd}.pid`)
+  };
+}
 
-// Check if daemon is already running
-async function isDaemonRunning() {
+const { socketPath: SOCKET_PATH, pidFile: PID_FILE } = getDaemonPaths();
+
+let server: net.Server | null = null;
+
+async function isDaemonRunning(): Promise<boolean> {
   try {
-    // Check if PID file exists
-    if (!fs.existsSync(PID_FILE)) {
+    const pidFileExists = await Bun.file(PID_FILE).exists();
+    if (!pidFileExists) {
       return false;
     }
 
-
-    // Read PID and check if process is still alive
-    const pid = parseInt(fs.readFileSync(PID_FILE, 'utf8'));
+    const pidContent = await Bun.file(PID_FILE).text();
+    const pid = parseInt(pidContent);
 
     try {
-      // process.kill(pid, 0) throws if process doesn't exist
       process.kill(pid, 0);
 
-      // Also verify the socket exists and is connectable
       return new Promise((resolve) => {
         const testSocket = net.createConnection(SOCKET_PATH);
         testSocket.on('connect', () => {
@@ -40,25 +54,31 @@ async function isDaemonRunning() {
         });
       });
     } catch (e) {
-      // Process doesn't exist, clean up stale files
-      cleanup();
+      await cleanup();
       return false;
     }
-
-
   } catch (e) {
     return false;
   }
 }
 
-// Handle requests from clients
-function handleRequest(request) {
+type Request = {
+  command: string;
+  args?: string[];
+};
+
+type StatusResult = {
+  pid: number;
+  uptime: number;
+  memory: NodeJS.MemoryUsage;
+};
+
+function handleRequest(request: Request): string | number | StatusResult {
   const { command, args = [] } = request;
 
   switch (command) {
     case 'hello':
       return `Hello ${args[0] || 'World'}! Daemon PID: ${process.pid}`;
-
 
     case 'add':
       return args.reduce((sum, num) => sum + parseFloat(num), 0);
@@ -71,47 +91,39 @@ function handleRequest(request) {
       };
 
     case 'stop':
-      // Allow clients to stop the daemon
-      setTimeout(() => shutdown(), 100);
+      setTimeout(async () => await shutdown(), 100);
       return 'Daemon stopping...';
 
     default:
-      throw new Error(`Unknown command: ${command} `);
-
-
+      throw new Error(`Unknown command: ${command}`);
   }
 }
 
-// Start the daemon process
-function startDaemon() {
+async function startDaemon(): Promise<void> {
   console.log('Starting daemon…');
 
-  // Clean up any existing socket file
-  cleanup();
+  await cleanup();
 
-  // Create the server
   server = net.createServer((socket) => {
     console.log('Client connected');
 
-
     socket.on('data', (data) => {
       try {
-        const request = JSON.parse(data.toString());
+        const request = JSON.parse(data.toString()) as Request;
         console.log('Received request:', request);
 
-        // Process the request
         const result = handleRequest(request);
 
-        // Send response back to client
         socket.write(JSON.stringify({
           success: true,
           result: result,
           timestamp: new Date().toISOString()
         }));
       } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
         socket.write(JSON.stringify({
           success: false,
-          error: error.message
+          error: errorMessage
         }));
       }
     });
@@ -119,23 +131,15 @@ function startDaemon() {
     socket.on('end', () => {
       console.log('Client disconnected');
     });
-
-
   });
 
-  // Listen on Unix domain socket
-  server.listen(SOCKET_PATH, () => {
+  server.listen(SOCKET_PATH, async () => {
     console.log(`Daemon listening on ${SOCKET_PATH}`);
 
+    await Bun.write(PID_FILE, process.pid.toString());
 
-    // Write PID file
-    fs.writeFileSync(PID_FILE, process.pid.toString());
-
-    // Set up graceful shutdown
-    process.on('SIGINT', () => shutdown());
-    process.on('SIGTERM', () => shutdown());
-
-
+    process.on('SIGINT', async () => await shutdown());
+    process.on('SIGTERM', async () => await shutdown());
   });
 
   server.on('error', (error) => {
@@ -144,11 +148,9 @@ function startDaemon() {
   });
 }
 
-// Send request to existing daemon
-async function sendToExistingDaemon(command, args) {
+async function sendToExistingDaemon(command: string, args: string[]): Promise<string | number | StatusResult> {
   return new Promise((resolve, reject) => {
     const client = net.createConnection(SOCKET_PATH);
-
 
     client.on('connect', () => {
       const request = JSON.stringify({ command, args });
@@ -173,81 +175,98 @@ async function sendToExistingDaemon(command, args) {
     client.on('error', (error) => {
       reject(error);
     });
-
-
   });
 }
 
-// Clean up files
-function cleanup() {
+async function cleanup(): Promise<void> {
   try {
-    if (fs.existsSync(SOCKET_PATH)) {
-      fs.unlinkSync(SOCKET_PATH);
+    const socketExists = await Bun.file(SOCKET_PATH).exists();
+    if (socketExists) {
+      await Bun.file(SOCKET_PATH).unlink();
     }
-    if (fs.existsSync(PID_FILE)) {
-      fs.unlinkSync(PID_FILE);
+    const pidExists = await Bun.file(PID_FILE).exists();
+    if (pidExists) {
+      await Bun.file(PID_FILE).unlink();
     }
   } catch (e) {
     // Ignore cleanup errors
   }
 }
 
-// Graceful shutdown
-function shutdown() {
+async function shutdown(): Promise<void> {
   console.log('Shutting down daemon…');
 
   if (server) {
     server.close();
   }
 
-  cleanup();
+  await cleanup();
   process.exit(0);
 }
 
-// Main entry point
-async function run() {
+function startDaemonInBackground(): void {
+  // For compiled Bun executable, use the process.execPath
+  const executablePath = process.execPath;
+  const args = ['daemon'];
+  
+  const child = spawn(executablePath, args, {
+    detached: true,
+    stdio: 'ignore'
+  });
+  
+  child.unref();
+}
+
+async function run(): Promise<void> {
   const args = process.argv.slice(2);
   const command = args[0] || 'hello';
   const commandArgs = args.slice(1);
 
   try {
-    const daemonRunning = await isDaemonRunning();
+    // Special case: explicit daemon mode stays running
+    if (command === 'daemon') {
+      await startDaemon();
+      return;
+    }
 
+    // For all other commands: check if daemon running, start if needed, send command, exit
+    let daemonRunning = await isDaemonRunning();
+    
+    if (!daemonRunning) {
+      // Start daemon in background
+      startDaemonInBackground();
 
-    if (daemonRunning) {
-      // Send request to existing daemon
-      const result = await sendToExistingDaemon(command, commandArgs);
-      console.log('Result:', result);
-    } else {
-      // No daemon running, start one
-      if (command === 'daemon') {
-        // Explicit daemon mode - start and keep running
-        startDaemon();
-      } else {
-        // Start daemon in background and send request
-        startDaemon();
-
-        // Wait a bit for daemon to start
+      // Wait for daemon to start
+      let attempts = 0;
+      while (attempts < 50 && !(await isDaemonRunning())) {
         await new Promise(resolve => setTimeout(resolve, 100));
+        attempts++;
+      }
 
-        try {
-          const result = await sendToExistingDaemon(command, commandArgs);
-          console.log('Result:', result);
-        } catch (error) {
-          console.error('Error communicating with daemon:', error.message);
-        }
+      if (!(await isDaemonRunning())) {
+        console.error('Failed to start daemon');
+        process.exit(1);
       }
     }
 
+    // Send command to daemon and exit
+    try {
+      const result = await sendToExistingDaemon(command, commandArgs);
+      console.log('Result:', result);
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      console.error('Error communicating with daemon:', errorMessage);
+      process.exit(1);
+    }
 
   } catch (error) {
-    console.error('Error:', error.message);
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    console.error('Error:', errorMessage);
     process.exit(1);
   }
 }
 
-// Export functions for testing or module usage
-module.exports = {
+export {
   run,
   startDaemon,
   sendToExistingDaemon,
@@ -257,7 +276,6 @@ module.exports = {
   shutdown
 };
 
-// Run the CLI if this is the main module
-if (require.main === module) {
+if (import.meta.main) {
   run();
 }
