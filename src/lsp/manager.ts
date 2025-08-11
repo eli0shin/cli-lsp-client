@@ -64,6 +64,9 @@ export class LSPManager {
         // Get diagnostics for this file
         const diagnostics = client.getDiagnostics(absolutePath);
         allDiagnostics.push(...diagnostics);
+        
+        // Close the file to ensure fresh content on next check
+        await client.closeFile(absolutePath);
 
       } catch (error) {
         console.error(`Error getting diagnostics from ${server.id}:`, error);

@@ -27,6 +27,7 @@ export interface LSPClient {
   root: string;
   diagnostics: Map<string, Diagnostic[]>;
   openFile(path: string): Promise<void>;
+  closeFile(path: string): Promise<void>;
   getDiagnostics(path: string): Diagnostic[];
   waitForDiagnostics(path: string, timeoutMs?: number): Promise<void>;
   shutdown(): Promise<void>;

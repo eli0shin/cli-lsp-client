@@ -1,15 +1,15 @@
 import path from 'path';
-import { EventEmitter } from 'events';
 import { createMessageConnection, StreamMessageReader, StreamMessageWriter } from 'vscode-jsonrpc/node';
 import type { LSPClient, Diagnostic } from './types.js';
 import type { ServerHandle } from './servers.js';
 import { LANGUAGE_EXTENSIONS } from './language.js';
 
 export async function createLSPClient(
-  serverID: string,
-  serverHandle: ServerHandle,
+  serverID: string, 
+  serverHandle: ServerHandle, 
   root: string
 ): Promise<LSPClient> {
+  console.log(`Creating LSP client for ${serverID}`);
 
   const connection = createMessageConnection(
     new StreamMessageReader(serverHandle.process.stdout),
@@ -17,23 +17,11 @@ export async function createLSPClient(
   );
 
   const diagnostics = new Map<string, Diagnostic[]>();
-  const diagnosticEvents = new EventEmitter();
 
   // Listen for diagnostics
   connection.onNotification("textDocument/publishDiagnostics", (params) => {
     const filePath = new URL(params.uri).pathname;
-
-    const exists = diagnostics.has(filePath);
     diagnostics.set(filePath, params.diagnostics);
-
-    // Skip first diagnostic event for TypeScript server
-    // TypeScript LSP sends stale diagnostics on first file open
-    if (!exists && serverID === "typescript") {
-      return;
-    }
-
-    // Emit diagnostic event for event-driven waiting
-    diagnosticEvents.emit('diagnostics', { filePath, serverID });
   });
 
   // Handle requests
@@ -78,8 +66,6 @@ export async function createLSPClient(
   await connection.sendNotification("initialized", {});
   console.log(`LSP server ${serverID} initialized`);
 
-  const openFiles = new Set<string>();
-
   return {
     serverID,
     root,
@@ -87,24 +73,17 @@ export async function createLSPClient(
 
     async openFile(filePath: string): Promise<void> {
       const absolutePath = path.isAbsolute(filePath) ? filePath : path.resolve(process.cwd(), filePath);
-
-      if (openFiles.has(absolutePath)) {
-        // Close first if already open
-        await connection.sendNotification("textDocument/didClose", {
-          textDocument: {
-            uri: `file://${absolutePath}`,
-          },
-        });
-      }
-
-      // Clear cached diagnostics to force fresh results
+      
+      
+      // Clear any existing diagnostics before opening
       diagnostics.delete(absolutePath);
-
+      
       const file = Bun.file(absolutePath);
       const text = await file.text();
       const extension = path.extname(absolutePath);
       const languageId = LANGUAGE_EXTENSIONS[extension] ?? "plaintext";
 
+      // Always use version 0 for didOpen
       await connection.sendNotification("textDocument/didOpen", {
         textDocument: {
           uri: `file://${absolutePath}`,
@@ -113,8 +92,29 @@ export async function createLSPClient(
           text,
         },
       });
+      
+      // CRITICAL: Send a dummy change notification to force diagnostics
+      // Some LSP servers (e.g., Pyright) cache diagnostics and won't re-send them
+      // when a file is reopened with the same content. This ensures fresh diagnostics.
+      await connection.sendNotification("textDocument/didChange", {
+        textDocument: {
+          uri: `file://${absolutePath}`,
+          version: 1,
+        },
+        contentChanges: [{
+          text: text,
+        }],
+      });
+    },
 
-      openFiles.add(absolutePath);
+    async closeFile(filePath: string): Promise<void> {
+      const absolutePath = path.isAbsolute(filePath) ? filePath : path.resolve(process.cwd(), filePath);
+      
+      await connection.sendNotification("textDocument/didClose", {
+        textDocument: {
+          uri: `file://${absolutePath}`,
+        },
+      });
     },
 
     getDiagnostics(filePath: string): Diagnostic[] {
@@ -124,10 +124,12 @@ export async function createLSPClient(
 
     async waitForDiagnostics(filePath: string, timeoutMs = 3000): Promise<void> {
       const absolutePath = path.isAbsolute(filePath) ? filePath : path.resolve(process.cwd(), filePath);
-
+      
       return new Promise((resolve, reject) => {
+        let checkInterval: any;
+        
         const timeout = setTimeout(() => {
-          diagnosticEvents.removeAllListeners('diagnostics');
+          if (checkInterval) clearInterval(checkInterval);
           reject(new Error(`Timeout waiting for diagnostics for ${absolutePath}`));
         }, timeoutMs);
 
@@ -138,16 +140,14 @@ export async function createLSPClient(
           return;
         }
 
-        // Event-driven waiting for diagnostic events
-        const onDiagnostics = (event: { filePath: string; serverID: string }) => {
-          if (event.filePath === absolutePath && event.serverID === serverID) {
+        // Check periodically for diagnostics
+        checkInterval = setInterval(() => {
+          if (diagnostics.has(absolutePath)) {
             clearTimeout(timeout);
-            diagnosticEvents.removeListener('diagnostics', onDiagnostics);
+            clearInterval(checkInterval);
             resolve();
           }
-        };
-
-        diagnosticEvents.on('diagnostics', onDiagnostics);
+        }, 100);
       });
     },
 

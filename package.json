@@ -14,7 +14,7 @@
     "build": "bun build src/cli.ts --compile --outfile lspcli",
     "dev": "bun run src/cli.ts",
     "typecheck": "bun --bun tsc --noEmit",
-    "test": "bun test tests/ && ./lspcli stop",
+    "test": "bun test",
     "test:watch": "bun test tests/ --watch"
   },
   "devDependencies": {

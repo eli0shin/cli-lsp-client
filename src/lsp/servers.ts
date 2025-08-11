@@ -37,7 +37,7 @@ export const BUILTIN_SERVERS: LSPServer[] = [
     extensions: [".py", ".pyi"],
     rootPatterns: ["pyproject.toml", "setup.py", "setup.cfg", "requirements.txt", "Pipfile", "pyrightconfig.json"],
     command: ["bunx", "pyright-langserver", "--stdio"],
-    env: {}
+    env: { BUN_BE_BUN: "1" }
   }
 ];
 
