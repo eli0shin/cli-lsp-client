@@ -6,50 +6,7 @@ CLI tool for getting LSP diagnostics. Uses a background daemon to keep LSP serve
 
 - Get diagnostics from LSP servers
 - Background daemon for fast repeated requests
-- Automatic daemon management
-
-## Installation
-
-```bash
-# Install dependencies and build
-bun install
-bun run build
-```
-
-The built executable `./lspcli` is ready to use.
-
-## Usage
-
-### Get Diagnostics
-
-```bash
-# Check a TypeScript file
-./lspcli diagnostics src/example.ts
-
-# Check any supported file type
-./lspcli diagnostics app.py
-./lspcli diagnostics main.go
-```
-
-Exit codes: 0 for no issues, 2 for issues found.
-
-```bash
-$ ./lspcli diagnostics error.ts
-ERROR at line 5, column 20:
-  Argument of type 'string' is not assignable to parameter of type 'number'.
-  Source: typescript
-  Code: 2345
-```
-
-### Other Commands
-
-```bash
-# Check daemon status
-./lspcli status
-
-# Stop daemon (it will auto-restart when needed)
-./lspcli stop
-```
+- Built in Claude Code hook to provide feedback on file edit tool calls
 
 ## Supported Languages
 
@@ -73,20 +30,26 @@ Get instant TypeScript/Python error feedback as you edit files in Claude Code.
 
 #### Setup
 
-Simply configure Claude Code to use the built-in hook command:
+Configure Claude Code to use the built-in hook command:
 
 ```bash
-# Add to your Claude Code settings (⌘+,)
-cat >> ~/.claude/settings.json << 'EOF'
 {
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
   "hooks": {
-    "postEdit": "./lspcli claude-code-hook"
+    "PostToolUse": [
+      {
+        "matcher": "Edit|MultiEdit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "npx -y lspcli claude-code-hook"
+          }
+        ]
+      }
+    ]
   }
 }
-EOF
 ```
-
-That's it! No shell scripts needed.
 
 #### How It Works
 
@@ -102,29 +65,64 @@ When you save a file with errors, you'll see immediate feedback:
 
 ```
 Edit operation feedback:
-- [./lspcli claude-code-hook]: 
+- [npx -y lspcli claude-code-hook]: 
 ERROR at line 3, column 9:
   Type 'number' is not assignable to type 'string'.
   Source: typescript
   Code: 2322
 ```
 
+## Usage
+
+### Get Diagnostics
+
+```bash
+# Check a TypeScript file
+npx lspcli diagnostics src/example.ts
+
+# Check any supported file type
+npx lspcli diagnostics app.py
+npx lspcli diagnostics main.go
+```
+
+Exit codes: 0 for no issues, 2 for issues found.
+
+```bash
+$ npx lspcli diagnostics error.ts
+ERROR at line 5, column 20:
+  Argument of type 'string' is not assignable to parameter of type 'number'.
+  Source: typescript
+  Code: 2345
+```
+
+### Other Commands
+
+```bash
+# Check daemon status
+npx lspcli status
+
+# Stop daemon (it will auto-restart when needed)
+npx lspcli stop
+```
+
+
 ## Examples
 
 ```bash
-# Check all TypeScript files
-find src -name "*.ts" -exec ./lspcli diagnostics {} \;
-
 # Check a specific file
-./lspcli diagnostics src/main.ts
+npx lspcli diagnostics src/main.ts
 ```
 
 ## Development
 
+### Installation
+
 ```bash
-bun run dev      # Run in development
+# Install dependencies and build
+bun install
 bun run build    # Build executable
 bun run typecheck
+bun test
 ```
 
-Add custom LSP servers in `src/lsp/servers.ts`.
+Add new LSP servers in `src/lsp/servers.ts`.

@@ -7,7 +7,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash hooks/get-diagnostics.sh"
+            "command": "npx . claude-code-hook"
           }
         ]
       }

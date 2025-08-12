@@ -72,7 +72,8 @@ async function run(): Promise<void> {
 
       // Parse the JSON to get the file path
       const hookData = JSON.parse(stdinData);
-      const filePath = hookData.file_path || hookData.filePath;
+      // Handle both PostToolUse format (tool_input.file_path) and simple format (file_path)
+      const filePath = hookData.tool_input?.file_path || hookData.file_path || hookData.filePath;
       
       if (!filePath) {
         process.exit(0); // No file path, silently exit
@@ -80,7 +81,7 @@ async function run(): Promise<void> {
 
       const result = await handleClaudeCodeHook(filePath);
       if (result.hasIssues) {
-        console.log(result.output);
+        console.error(result.output);
         process.exit(2);
       }
       process.exit(0);
