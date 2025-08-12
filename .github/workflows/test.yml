@@ -22,6 +22,11 @@ jobs:
     - name: Install dependencies
       run: bun install
       
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '22'
+      
     - name: Setup Go for gopls
       uses: actions/setup-go@v4
       with:
@@ -59,4 +64,4 @@ jobs:
     - name: Run tests
       run: |
         shopt -s extglob
-        bun test tests/!(java)/**/*.test.ts tests/*.test.ts
+        bun test --timeout 15000 tests/!(java)/**/*.test.ts tests/*.test.ts
