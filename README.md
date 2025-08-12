@@ -73,47 +73,28 @@ Get instant TypeScript/Python error feedback as you edit files in Claude Code.
 
 #### Setup
 
-1. Create the hooks directory and script:
-
-```bash
-mkdir -p hooks
-cat > hooks/get-diagnostics.sh << 'EOF'
-#!/bin/bash
-
-# Get the file path from the first argument
-FILE_PATH="$1"
-
-# Skip non-code files
-case "$FILE_PATH" in
-  *.ts|*.tsx|*.js|*.jsx|*.py)
-    # Run diagnostics
-    ./lspcli diagnostics "$FILE_PATH" 2>/dev/null
-    ;;
-esac
-EOF
-
-chmod +x hooks/get-diagnostics.sh
-```
-
-2. Configure Claude Code settings:
+Simply configure Claude Code to use the built-in hook command:
 
 ```bash
 # Add to your Claude Code settings (⌘+,)
 cat >> ~/.claude/settings.json << 'EOF'
 {
   "hooks": {
-    "postEdit": "bash hooks/get-diagnostics.sh"
+    "postEdit": "./lspcli claude-code-hook"
   }
 }
 EOF
 ```
 
+That's it! No shell scripts needed.
+
 #### How It Works
 
 - Automatically runs diagnostics after each file edit
+- Built-in file filtering for TypeScript, JavaScript, and Python files
 - Shows errors, warnings, and hints inline
-- Supports TypeScript, JavaScript, and Python files
-- Non-blocking - doesn't slow down your editing
+- Graceful error handling - never breaks your editing experience
+- Uses the same fast daemon as the regular diagnostics command
 
 #### Example Output
 
@@ -121,7 +102,7 @@ When you save a file with errors, you'll see immediate feedback:
 
 ```
 Edit operation feedback:
-- [bash hooks/get-diagnostics.sh]: 
+- [./lspcli claude-code-hook]: 
 ERROR at line 3, column 9:
   Type 'number' is not assignable to type 'string'.
   Source: typescript
