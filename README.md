@@ -18,7 +18,6 @@ CLI tool for getting LSP diagnostics. Uses a background daemon to keep LSP serve
 | CSS | `vscode-css-language-server` | ✓ (via vscode-langservers-extracted) | `.css`, `.scss`, `.sass`, `.less` |
 | YAML | `yaml-language-server` | ✓ (via bunx) | `.yaml`, `.yml` - includes schema validation |
 | Bash/Shell | `bash-language-server` | ✓ (via bunx) | `.sh`, `.bash`, `.zsh` - **requires shellcheck** (`brew install shellcheck`) |
-| Fish Shell | `fish-lsp` | ✓ (via bunx) | `.fish` - experimental diagnostics using `fish --no-execute` |
 | Go | `gopls` | ✗ | Requires manual install: `go install golang.org/x/tools/gopls@latest` |
 | Java | `jdtls` (Eclipse JDT) | ✗ | `.java` - see [Java Installation](#java-installation-guide) below |
 | Lua | `lua-language-server` | ✗ | `.lua` - requires manual install via package manager (brew, scoop) or from [releases](https://github.com/LuaLS/lua-language-server/releases) |
@@ -35,7 +34,7 @@ CLI tool for getting LSP diagnostics. Uses a background daemon to keep LSP serve
 
 ### Real-time Diagnostics Hook
 
-Get instant diagnostic feedback for TypeScript, Python, Go, JSON, CSS, YAML, Bash, Fish, Java, and Lua files as you edit in Claude Code.
+Get instant diagnostic feedback for TypeScript, Python, Go, JSON, CSS, YAML, Bash, Java, and Lua files as you edit in Claude Code.
 
 #### Setup
 

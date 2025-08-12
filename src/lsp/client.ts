@@ -110,6 +110,9 @@ export async function createLSPClient(
     async closeFile(filePath: string): Promise<void> {
       const absolutePath = path.isAbsolute(filePath) ? filePath : path.resolve(process.cwd(), filePath);
       
+      // Clear diagnostics for this file when closing
+      diagnostics.delete(absolutePath);
+      
       await connection.sendNotification("textDocument/didClose", {
         textDocument: {
           uri: `file://${absolutePath}`,

@@ -79,16 +79,6 @@ const ALL_SERVERS: LSPServer[] = [
     env: { BUN_BE_BUN: "1" }
   },
   {
-    id: "fish-lsp",
-    extensions: [".fish"],
-    rootPatterns: ["fish_variables", ".config/fish", "config.fish"],
-    command: ["bunx", "fish-lsp", "start", "--enable", "diagnostic"],
-    env: { 
-      BUN_BE_BUN: "1",
-      fish_lsp_enable_experimental_diagnostics: "true"
-    }
-  },
-  {
     id: "jdtls",
     extensions: [".java"],
     rootPatterns: ["pom.xml", "build.gradle", "build.gradle.kts", ".project", "src/main/java"],

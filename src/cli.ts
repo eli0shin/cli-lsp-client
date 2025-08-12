@@ -21,7 +21,6 @@ export async function handleClaudeCodeHook(filePath: string): Promise<{ hasIssue
     '.css', '.scss', '.sass', '.less',
     '.yaml', '.yml',
     '.sh', '.bash', '.zsh',
-    '.fish',
     '.java',
     '.lua',
     '.graphql', '.gql'
