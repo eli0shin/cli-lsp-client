@@ -1,3 +1,5 @@
+package com.example;
+
 public class SyntaxError {
     private String message;
     

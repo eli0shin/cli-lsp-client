@@ -20,6 +20,7 @@ export interface LSPServer {
   command: string[];
   env?: Record<string, string>;
   initialization?: Record<string, any>;
+  dynamicArgs?: (root: string) => string[];
 }
 
 export interface LSPClient {

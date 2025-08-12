@@ -1,3 +1,5 @@
+package com.example;
+
 public class HelloWorld {
     private static final String GREETING = "Hello, World!";
     

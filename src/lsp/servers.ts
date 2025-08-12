@@ -83,7 +83,8 @@ const ALL_SERVERS: LSPServer[] = [
     extensions: [".java"],
     rootPatterns: ["pom.xml", "build.gradle", "build.gradle.kts", ".project", "src/main/java"],
     command: ["jdtls"],
-    env: {}
+    env: {},
+    dynamicArgs: (root: string) => ["-data", `/tmp/jdtls-workspace-${Buffer.from(root).toString('base64').replace(/[/+=]/g, '_')}`]
   },
   {
     id: "lua_ls",
@@ -180,7 +181,13 @@ export async function getProjectRoot(filePath: string, server: LSPServer): Promi
 
 export async function spawnServer(server: LSPServer, root: string): Promise<ServerHandle | null> {
   try {
-    const childProcess = spawn(server.command[0], server.command.slice(1), {
+    // Build command with dynamic args if provided
+    let command = [...server.command];
+    if (server.dynamicArgs) {
+      command = [...command, ...server.dynamicArgs(root)];
+    }
+    
+    const childProcess = spawn(command[0], command.slice(1), {
       cwd: root,
       env: {
         ...process.env,
