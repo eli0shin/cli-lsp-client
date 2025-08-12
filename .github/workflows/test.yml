@@ -22,6 +22,53 @@ jobs:
     - name: Install dependencies
       run: bun install
       
+    - name: Setup Go for gopls
+      uses: actions/setup-go@v4
+      with:
+        go-version: '1.21'
+        
+    - name: Install gopls
+      run: go install golang.org/x/tools/gopls@latest
+      
+    - name: Setup Java for jdtls
+      uses: actions/setup-java@v3
+      with:
+        distribution: 'temurin'
+        java-version: '17'
+        
+    - name: Install jdtls
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y wget unzip
+        wget -O jdtls.tar.gz "https://download.eclipse.org/jdtls/snapshots/jdt-language-server-latest.tar.gz"
+        sudo mkdir -p /opt/jdtls
+        sudo tar -xzf jdtls.tar.gz -C /opt/jdtls
+        sudo tee /usr/local/bin/jdtls > /dev/null <<'EOF'
+        #!/bin/bash
+        java -Declipse.application=org.eclipse.jdt.ls.core.id1 \
+             -Dosgi.bundles.defaultStartLevel=4 \
+             -Declipse.product=org.eclipse.jdt.ls.core.product \
+             -Xms1g -Xmx2G \
+             -jar /opt/jdtls/plugins/org.eclipse.equinox.launcher_*.jar \
+             -configuration /opt/jdtls/config_linux \
+             -data "${1:-$HOME/workspace}" \
+             --add-modules=ALL-SYSTEM \
+             --add-opens java.base/java.util=ALL-UNNAMED \
+             --add-opens java.base/java.lang=ALL-UNNAMED "$@"
+        EOF
+        sudo chmod +x /usr/local/bin/jdtls
+        
+    - name: Install lua-language-server
+      run: |
+        sudo apt-get install -y lua5.4 lua5.4-dev
+        wget -O lua-language-server.tar.gz "https://github.com/LuaLS/lua-language-server/releases/latest/download/lua-language-server-3.7.4-linux-x64.tar.gz"
+        sudo mkdir -p /opt/lua-language-server
+        sudo tar -xzf lua-language-server.tar.gz -C /opt/lua-language-server
+        sudo ln -sf /opt/lua-language-server/bin/lua-language-server /usr/local/bin/lua-language-server
+        
+    - name: Install shellcheck
+      run: sudo apt-get install -y shellcheck
+      
     - name: Run type checking
       run: bun run typecheck
       
