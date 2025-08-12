@@ -13,7 +13,7 @@ export async function handleClaudeCodeHook(filePath: string): Promise<{ hasIssue
   }
   
   // Filter supported file types
-  const supportedExts = ['.ts', '.tsx', '.js', '.jsx', '.py'];
+  const supportedExts = ['.ts', '.tsx', '.js', '.jsx', '.py', '.go'];
   const ext = path.extname(filePath);
   if (!supportedExts.includes(ext)) {
     return { hasIssues: false, output: '' };

@@ -14,6 +14,7 @@ CLI tool for getting LSP diagnostics. Uses a background daemon to keep LSP serve
 |----------|------------|----------------|
 | TypeScript/JavaScript | `typescript-language-server` | ✓ (via bunx) |
 | Python | `pyright-langserver` | ✓ (via bunx) |
+| Go | `gopls` | ✓ (via bunx) |
 
 ## How It Works
 
@@ -26,7 +27,7 @@ CLI tool for getting LSP diagnostics. Uses a background daemon to keep LSP serve
 
 ### Real-time Diagnostics Hook
 
-Get instant TypeScript/Python error feedback as you edit files in Claude Code.
+Get instant TypeScript/Python/Go error feedback as you edit files in Claude Code.
 
 #### Setup
 
@@ -54,7 +55,7 @@ Configure Claude Code to use the built-in hook command:
 #### How It Works
 
 - Automatically runs diagnostics after each file edit
-- Built-in file filtering for TypeScript, JavaScript, and Python files
+- Built-in file filtering for TypeScript, JavaScript, Python, and Go files
 - Shows errors, warnings, and hints inline
 - Graceful error handling - never breaks your editing experience
 - Uses the same fast daemon as the regular diagnostics command

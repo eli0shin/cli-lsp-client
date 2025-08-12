@@ -30,8 +30,7 @@ describe('Claude Code Hook', () => {
     const result = await runHookCommand(input);
     
     expect(result.exitCode).toBe(2);
-    expect(result.stdout).toBe(`
-ERROR at line 3, column 3:
+    expect(stripAnsi(result.stderr)).toBe(`ERROR at line 3, column 3:
   Type 'number' is not assignable to type 'string'.
   Source: typescript
   Code: 2322
@@ -49,9 +48,7 @@ HINT at line 1, column 27:
 HINT at line 7, column 9:
   'x' is declared but its value is never read.
   Source: typescript
-  Code: 6133
-
-`);
+  Code: 6133`);
   });
 
   test('should handle valid TypeScript file without errors', async () => {
@@ -59,7 +56,7 @@ HINT at line 7, column 9:
     const result = await runHookCommand(input);
     
     expect(result.exitCode).toBe(0);
-    expect(result.stdout).toBe('');
+    expect(result.stderr).toBe('');
   });
 
   test('should handle Python file with errors', async () => {
@@ -67,12 +64,9 @@ HINT at line 7, column 9:
     const result = await runHookCommand(input);
     
     expect(result.exitCode).toBe(2);
-    expect(result.stdout).toBe(`
-ERROR at line 2, column 13:
+    expect(stripAnsi(result.stderr)).toBe(`ERROR at line 2, column 13:
   Expected ":"
-  Source: Pyright
-
-`);
+  Source: Pyright`);
   });
 
   test('should ignore unsupported file types', async () => {
@@ -80,7 +74,7 @@ ERROR at line 2, column 13:
     const result = await runHookCommand(input);
     
     expect(result.exitCode).toBe(0);
-    expect(result.stdout).toBe('');
+    expect(result.stderr).toBe('');
   });
 
   test('should handle non-existent files gracefully', async () => {
@@ -88,7 +82,7 @@ ERROR at line 2, column 13:
     const result = await runHookCommand(input);
     
     expect(result.exitCode).toBe(0);
-    expect(result.stdout).toBe('');
+    expect(result.stderr).toBe('');
   });
 
   test('should handle empty JSON input', async () => {
@@ -96,7 +90,7 @@ ERROR at line 2, column 13:
     const result = await runHookCommand(input);
     
     expect(result.exitCode).toBe(0);
-    expect(result.stdout).toBe('');
+    expect(result.stderr).toBe('');
   });
 
   test('should handle alternative file_path property names', async () => {
@@ -104,14 +98,14 @@ ERROR at line 2, column 13:
     const result = await runHookCommand(input);
     
     expect(result.exitCode).toBe(2);
-    expect(result.stdout).toContain('ERROR at line');
+    expect(result.stderr).toContain('ERROR at line');
   });
 
   test('should handle empty stdin gracefully', async () => {
     const result = await runHookCommand('');
     
     expect(result.exitCode).toBe(0);
-    expect(result.stdout).toBe('');
+    expect(result.stderr).toBe('');
   });
 
   test('should handle malformed JSON gracefully', async () => {
@@ -119,15 +113,20 @@ ERROR at line 2, column 13:
     const result = await runHookCommand(input);
     
     expect(result.exitCode).toBe(0);
-    expect(result.stdout).toBe('');
+    expect(result.stderr).toBe('');
   });
 
   test('should handle all supported file extensions', async () => {
-    const extensions = ['.ts', '.tsx', '.js', '.jsx', '.py'];
+    const extensions = ['.ts', '.tsx', '.js', '.jsx', '.py', '.go'];
     
     for (const ext of extensions) {
       // Create a temporary valid file for each extension
-      const testContent = ext === '.py' ? 'def hello():\n    return "world"' : 'function hello() { return "world"; }';
+      let testContent = 'function hello() { return "world"; }';
+      if (ext === '.py') {
+        testContent = 'def hello():\n    return "world"';
+      } else if (ext === '.go') {
+        testContent = 'package main\n\nfunc hello() string {\n    return "world"\n}';
+      }
       await Bun.write(`test-file${ext}`, testContent);
       
       const input = JSON.stringify({ file_path: `test-file${ext}` });
