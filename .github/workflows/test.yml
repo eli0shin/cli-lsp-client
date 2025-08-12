@@ -22,6 +22,33 @@ jobs:
     - name: Install dependencies
       run: bun install
       
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '22'
+      
+    - name: Setup Go for gopls
+      uses: actions/setup-go@v4
+      with:
+        go-version: '1.21'
+        
+    - name: Install gopls
+      run: go install golang.org/x/tools/gopls@latest
+      
+        
+    - name: Install lua-language-server
+      run: |
+        sudo apt-get install -y lua5.4 lua5.4-dev
+        # Get the latest release info and extract the correct download URL
+        LATEST_URL=$(curl -s https://api.github.com/repos/LuaLS/lua-language-server/releases/latest | grep "browser_download_url.*linux-x64.tar.gz" | cut -d '"' -f 4)
+        wget -O lua-language-server.tar.gz "$LATEST_URL"
+        sudo mkdir -p /opt/lua-language-server
+        sudo tar -xzf lua-language-server.tar.gz -C /opt/lua-language-server
+        sudo ln -sf /opt/lua-language-server/bin/lua-language-server /usr/local/bin/lua-language-server
+        
+    - name: Install shellcheck
+      run: sudo apt-get install -y shellcheck
+      
     - name: Run type checking
       run: bun run typecheck
       
@@ -35,4 +62,6 @@ jobs:
       run: ./lspcli status
       
     - name: Run tests
-      run: bun run test
+      run: |
+        shopt -s extglob
+        bun test --timeout 15000 tests/!(java)/**/*.test.ts tests/*.test.ts

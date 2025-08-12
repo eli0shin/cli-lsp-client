@@ -1,0 +1,36 @@
+query GetUsers {
+  users {
+    id
+    name
+    email
+    posts {
+      id
+      title
+      publishedAt
+    }
+  }
+}
+
+query GetUser($userId: ID!) {
+  user(id: $userId) {
+    id
+    name
+    email
+    posts {
+      id
+      title
+      content
+      author {
+        name
+      }
+    }
+  }
+}
+
+mutation CreateUser($input: CreateUserInput!) {
+  createUser(input: $input) {
+    id
+    name
+    email
+  }
+}

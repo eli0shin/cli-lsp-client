@@ -20,6 +20,7 @@ export interface LSPServer {
   command: string[];
   env?: Record<string, string>;
   initialization?: Record<string, any>;
+  dynamicArgs?: (root: string) => string[];
 }
 
 export interface LSPClient {
@@ -27,6 +28,7 @@ export interface LSPClient {
   root: string;
   diagnostics: Map<string, Diagnostic[]>;
   openFile(path: string): Promise<void>;
+  closeFile(path: string): Promise<void>;
   getDiagnostics(path: string): Diagnostic[];
   waitForDiagnostics(path: string, timeoutMs?: number): Promise<void>;
   shutdown(): Promise<void>;

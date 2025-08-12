@@ -1,0 +1,2 @@
+schema: "./valid/schema.graphql"
+documents: "./**/*.{graphql,gql}"

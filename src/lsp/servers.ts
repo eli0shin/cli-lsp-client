@@ -1,6 +1,10 @@
 import path from 'path';
 import { spawn, type ChildProcessWithoutNullStreams } from 'child_process';
 import type { LSPServer } from './types.js';
+import { exec } from 'child_process';
+import { promisify } from 'util';
+
+const execAsync = promisify(exec);
 
 async function findProjectRoot(filePath: string, patterns: string[]): Promise<string> {
   let current = path.dirname(filePath);
@@ -24,7 +28,7 @@ export interface ServerHandle {
   initialization?: Record<string, any>;
 }
 
-export const BUILTIN_SERVERS: LSPServer[] = [
+const ALL_SERVERS: LSPServer[] = [
   {
     id: "typescript",
     extensions: [".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs", ".mts", ".cts"],
@@ -37,15 +41,138 @@ export const BUILTIN_SERVERS: LSPServer[] = [
     extensions: [".py", ".pyi"],
     rootPatterns: ["pyproject.toml", "setup.py", "setup.cfg", "requirements.txt", "Pipfile", "pyrightconfig.json"],
     command: ["bunx", "pyright-langserver", "--stdio"],
+    env: { BUN_BE_BUN: "1" }
+  },
+  {
+    id: "gopls",
+    extensions: [".go"],
+    rootPatterns: ["go.work", "go.mod", "go.sum"],
+    command: ["gopls"],
     env: {}
+  },
+  {
+    id: "json",
+    extensions: [".json", ".jsonc"],
+    rootPatterns: ["package.json", "tsconfig.json", ".vscode"],
+    command: ["bunx", "vscode-json-language-server", "--stdio"],
+    env: { BUN_BE_BUN: "1" }
+  },
+  {
+    id: "css",
+    extensions: [".css", ".scss", ".sass", ".less"],
+    rootPatterns: ["package.json", ".vscode"],
+    command: ["bunx", "vscode-css-language-server", "--stdio"],
+    env: { BUN_BE_BUN: "1" }
+  },
+  {
+    id: "yaml",
+    extensions: [".yaml", ".yml"],
+    rootPatterns: [".yamllint", "docker-compose.yml", "docker-compose.yaml", ".github", "k8s", "kubernetes"],
+    command: ["bunx", "yaml-language-server", "--stdio"],
+    env: { BUN_BE_BUN: "1" }
+  },
+  {
+    id: "bash",
+    extensions: [".sh", ".bash", ".zsh"],
+    rootPatterns: ["Makefile", ".shellcheckrc"],
+    command: ["bunx", "bash-language-server", "start"],
+    env: { BUN_BE_BUN: "1" }
+  },
+  {
+    id: "jdtls",
+    extensions: [".java"],
+    rootPatterns: ["pom.xml", "build.gradle", "build.gradle.kts", ".project", "src/main/java"],
+    command: ["jdtls"],
+    env: {},
+    dynamicArgs: (root: string) => ["-data", `/tmp/jdtls-workspace-${Buffer.from(root).toString('base64').replace(/[/+=]/g, '_')}`]
+  },
+  {
+    id: "lua_ls",
+    extensions: [".lua"],
+    rootPatterns: [".luarc.json", ".luarc.jsonc", ".luacheckrc", "stylua.toml", "init.lua", "main.lua"],
+    command: ["lua-language-server"],
+    env: {}
+  },
+  {
+    id: "graphql",
+    extensions: [".graphql", ".gql"],
+    rootPatterns: [".graphqlrc.yml", ".graphqlrc.yaml", ".graphqlrc.json", "graphql.config.js", "graphql.config.ts", "schema.graphql", "package.json"],
+    command: ["bunx", "graphql-language-service-cli", "server", "--method", "stream"],
+    env: { BUN_BE_BUN: "1" }
   }
 ];
 
-export function getApplicableServers(filePath: string): LSPServer[] {
+// Ensure vscode-langservers-extracted is installed globally
+async function ensureVscodeExtracted(): Promise<boolean> {
+  try {
+    // Check if already installed by trying to run one of the servers
+    await execAsync('bunx vscode-css-language-server --help', { timeout: 5000 });
+    return true;
+  } catch {
+    // Try to install it
+    try {
+      console.log('Installing vscode-langservers-extracted...');
+      await execAsync('bun add -g vscode-langservers-extracted', { timeout: 30000 });
+      return true;
+    } catch (error) {
+      console.error('Failed to install vscode-langservers-extracted:', error);
+      return false;
+    }
+  }
+}
+
+// Filter servers based on availability (for manual install servers)
+async function getAvailableServers(): Promise<LSPServer[]> {
+  const availableServers: LSPServer[] = [];
+  
+  for (const server of ALL_SERVERS) {
+    // Handle vscode-langservers-extracted servers specially
+    if (server.command.includes('vscode-css-language-server')) {
+      const isAvailable = await ensureVscodeExtracted();
+      if (isAvailable) {
+        availableServers.push(server);
+      }
+      continue;
+    }
+    
+    // Auto-installable servers (via bunx) are always available
+    if (server.command[0] === "bunx") {
+      availableServers.push(server);
+      continue;
+    }
+    
+    // Check if manually installed servers exist
+    try {
+      const result = Bun.which(server.command[0]);
+      if (result) {
+        availableServers.push(server);
+      }
+    } catch {
+      // Server not found, skip it
+    }
+  }
+  
+  return availableServers;
+}
+
+let cachedServers: LSPServer[] | null = null;
+
+export async function getApplicableServers(filePath: string): Promise<LSPServer[]> {
+  if (!cachedServers) {
+    cachedServers = await getAvailableServers();
+  }
+  
   const ext = path.extname(filePath);
-  return BUILTIN_SERVERS.filter(server => 
+  return cachedServers.filter(server => 
     server.extensions.includes(ext)
   );
+}
+
+export async function getAllAvailableServers(): Promise<LSPServer[]> {
+  if (!cachedServers) {
+    cachedServers = await getAvailableServers();
+  }
+  return cachedServers;
 }
 
 export async function getProjectRoot(filePath: string, server: LSPServer): Promise<string> {
@@ -54,7 +181,13 @@ export async function getProjectRoot(filePath: string, server: LSPServer): Promi
 
 export async function spawnServer(server: LSPServer, root: string): Promise<ServerHandle | null> {
   try {
-    const childProcess = spawn(server.command[0], server.command.slice(1), {
+    // Build command with dynamic args if provided
+    let command = [...server.command];
+    if (server.dynamicArgs) {
+      command = [...command, ...server.dynamicArgs(root)];
+    }
+    
+    const childProcess = spawn(command[0], command.slice(1), {
       cwd: root,
       env: {
         ...process.env,

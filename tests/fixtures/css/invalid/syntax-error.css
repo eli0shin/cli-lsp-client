@@ -1,0 +1,16 @@
+/* CSS with syntax errors */
+body {
+    font-family: Arial, sans-serif
+    margin: 0;  /* Missing semicolon above */
+    background-color: #invalid-color;  /* Invalid hex color */
+}
+
+.container {
+    max-width: 1200px;
+    margin: 0 auto
+    padding: 20px;  /* Missing semicolon above */
+    unknown-property: value;  /* Unknown CSS property */
+
+h1 {  /* Missing closing brace above */
+    color: #333;
+}
