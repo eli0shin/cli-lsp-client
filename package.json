@@ -5,7 +5,7 @@
   "type": "module",
   "main": "src/cli.ts",
   "bin": {
-    "cli-lsp-client": "./cli-lsp-client"
+    "cli-lsp-client": "cli-lsp-client"
   },
   "files": [
     "cli-lsp-client"
