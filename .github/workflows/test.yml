@@ -57,4 +57,4 @@ jobs:
       run: ./lspcli status
       
     - name: Run tests
-      run: bun test --ignore="**/java/*.test.ts"
+      run: bun test tests/!(java)/**/*.test.ts tests/*.test.ts
