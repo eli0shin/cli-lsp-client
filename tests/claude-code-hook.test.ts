@@ -70,7 +70,7 @@ HINT at line 7, column 9:
   });
 
   test('should ignore unsupported file types', async () => {
-    const input = JSON.stringify({ file_path: 'README.md' });
+    const input = JSON.stringify({ file_path: 'README.txt' });
     const result = await runHookCommand(input);
     
     expect(result.exitCode).toBe(0);
@@ -117,7 +117,8 @@ HINT at line 7, column 9:
   });
 
   test('should handle all supported file extensions', async () => {
-    const extensions = ['.ts', '.tsx', '.js', '.jsx', '.py', '.go'];
+    // Only test extensions for stable, fast language servers
+    const extensions = ['.ts', '.tsx', '.js', '.jsx', '.py', '.go', '.json', '.yaml', '.sh'];
     
     for (const ext of extensions) {
       // Create a temporary valid file for each extension
@@ -126,6 +127,12 @@ HINT at line 7, column 9:
         testContent = 'def hello():\n    return "world"';
       } else if (ext === '.go') {
         testContent = 'package main\n\nfunc hello() string {\n    return "world"\n}';
+      } else if (ext === '.json') {
+        testContent = '{\n  "name": "test",\n  "version": "1.0.0"\n}';
+      } else if (ext === '.yaml') {
+        testContent = 'version: "3.8"\nservices:\n  web:\n    image: nginx';
+      } else if (ext === '.sh') {
+        testContent = '#!/bin/bash\necho "Hello World"';
       }
       await Bun.write(`test-file${ext}`, testContent);
       

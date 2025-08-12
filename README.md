@@ -10,11 +10,19 @@ CLI tool for getting LSP diagnostics. Uses a background daemon to keep LSP serve
 
 ## Supported Languages
 
-| Language | LSP Server | Auto-installed |
-|----------|------------|----------------|
-| TypeScript/JavaScript | `typescript-language-server` | ✓ (via bunx) |
-| Python | `pyright-langserver` | ✓ (via bunx) |
-| Go | `gopls` | ✓ (via bunx) |
+| Language | LSP Server | Auto-installed | Notes |
+|----------|------------|----------------|-------|
+| TypeScript/JavaScript | `typescript-language-server` | ✓ (via bunx) | `.ts`, `.tsx`, `.js`, `.jsx`, `.mjs`, `.cjs`, `.mts`, `.cts` |
+| Python | `pyright-langserver` | ✓ (via bunx) | `.py`, `.pyi` |
+| JSON | `vscode-json-languageserver` | ✓ (via bunx) | `.json`, `.jsonc` - includes schema validation |
+| HTML | `vscode-html-languageserver` | ✓ (via bunx) | `.html`, `.htm` |
+| CSS | `vscode-css-languageserver` | ✓ (via bunx) | `.css`, `.scss`, `.sass`, `.less` |
+| YAML | `yaml-language-server` | ✓ (via bunx) | `.yaml`, `.yml` - includes schema validation |
+| Bash/Shell | `bash-language-server` | ✓ (via bunx) | `.sh`, `.bash`, `.zsh` - **requires shellcheck** (`brew install shellcheck`) |
+| Markdown | `vscode-markdown-languageserver` | ✓ (via bunx) | `.md`, `.markdown` - link validation, completions |
+| Go | `gopls` | ✗ | Requires manual install: `go install golang.org/x/tools/gopls@latest` |
+| Java | `jdtls` (Eclipse JDT) | ✗ | `.java` - see [Java Installation](#java-installation-guide) below |
+
 
 ## How It Works
 
@@ -27,7 +35,7 @@ CLI tool for getting LSP diagnostics. Uses a background daemon to keep LSP serve
 
 ### Real-time Diagnostics Hook
 
-Get instant TypeScript/Python/Go error feedback as you edit files in Claude Code.
+Get instant diagnostic feedback for TypeScript, Python, Go, JSON, HTML, CSS, YAML, Bash, Markdown, and Java files as you edit in Claude Code.
 
 #### Setup
 
@@ -55,7 +63,7 @@ Configure Claude Code to use the built-in hook command:
 #### How It Works
 
 - Automatically runs diagnostics after each file edit
-- Built-in file filtering for TypeScript, JavaScript, Python, and Go files
+- Built-in file filtering for all supported languages (10+ file types)
 - Shows errors, warnings, and hints inline
 - Graceful error handling - never breaks your editing experience
 - Uses the same fast daemon as the regular diagnostics command
@@ -106,6 +114,51 @@ npx lspcli status
 npx lspcli stop
 ```
 
+## Java Installation Guide
+
+Eclipse JDT Language Server requires Java 17+ and manual setup:
+
+### Installation Steps
+
+1. **Download**: Get the latest server from [Eclipse JDT.LS downloads](http://download.eclipse.org/jdtls/snapshots/)
+2. **Extract**: Unpack to your preferred location (e.g., `/opt/jdtls/`)
+3. **Create wrapper script** named `jdtls` in your PATH:
+
+```bash
+#!/bin/bash
+java -Declipse.application=org.eclipse.jdt.ls.core.id1 \
+     -Dosgi.bundles.defaultStartLevel=4 \
+     -Declipse.product=org.eclipse.jdt.ls.core.product \
+     -Xms1g -Xmx2G \
+     -jar /opt/jdtls/plugins/org.eclipse.equinox.launcher_*.jar \
+     -configuration /opt/jdtls/config_linux \
+     -data "${1:-$HOME/workspace}" \
+     --add-modules=ALL-SYSTEM \
+     --add-opens java.base/java.util=ALL-UNNAMED \
+     --add-opens java.base/java.lang=ALL-UNNAMED "$@"
+```
+
+4. **Make executable**: `chmod +x /usr/local/bin/jdtls`
+
+### Alternative Installation Methods
+
+**Homebrew (macOS/Linux)**:
+```bash
+brew install jdtls
+```
+
+**Arch Linux**:
+```bash
+pacman -S jdtls
+```
+
+### Configuration Notes
+
+- Replace `config_linux` with `config_mac` on macOS or `config_win` on Windows
+- Adjust the `-data` workspace path as needed
+- Requires Java 17 or higher to run
+
+For detailed setup instructions, see the [official Eclipse JDT.LS documentation](https://github.com/eclipse-jdtls/eclipse.jdt.ls).
 
 ## Examples
 

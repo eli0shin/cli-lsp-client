@@ -19,7 +19,7 @@ export class LSPManager {
       throw new Error(`File does not exist: ${absolutePath}`);
     }
 
-    const applicableServers = getApplicableServers(absolutePath);
+    const applicableServers = await getApplicableServers(absolutePath);
     if (applicableServers.length === 0) {
       return []; // No LSP servers for this file type
     }

@@ -24,7 +24,7 @@ export interface ServerHandle {
   initialization?: Record<string, any>;
 }
 
-export const BUILTIN_SERVERS: LSPServer[] = [
+const ALL_SERVERS: LSPServer[] = [
   {
     id: "typescript",
     extensions: [".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs", ".mts", ".cts"],
@@ -43,16 +43,103 @@ export const BUILTIN_SERVERS: LSPServer[] = [
     id: "gopls",
     extensions: [".go"],
     rootPatterns: ["go.work", "go.mod", "go.sum"],
-    command: ["bunx", "gopls"],
+    command: ["gopls"],
+    env: {}
+  },
+  {
+    id: "json",
+    extensions: [".json", ".jsonc"],
+    rootPatterns: ["package.json", "tsconfig.json", ".vscode"],
+    command: ["bunx", "vscode-json-language-server", "--stdio"],
     env: { BUN_BE_BUN: "1" }
+  },
+  {
+    id: "html",
+    extensions: [".html", ".htm"],
+    rootPatterns: ["index.html", "package.json", ".vscode"],
+    command: ["bunx", "vscode-html-language-server", "--stdio"],
+    env: { BUN_BE_BUN: "1" }
+  },
+  {
+    id: "css",
+    extensions: [".css", ".scss", ".sass", ".less"],
+    rootPatterns: ["package.json", ".vscode"],
+    command: ["bunx", "vscode-css-language-server", "--stdio"],
+    env: { BUN_BE_BUN: "1" }
+  },
+  {
+    id: "yaml",
+    extensions: [".yaml", ".yml"],
+    rootPatterns: [".yamllint", "docker-compose.yml", "docker-compose.yaml", ".github", "k8s", "kubernetes"],
+    command: ["bunx", "yaml-language-server", "--stdio"],
+    env: { BUN_BE_BUN: "1" }
+  },
+  {
+    id: "bash",
+    extensions: [".sh", ".bash", ".zsh"],
+    rootPatterns: ["Makefile", ".shellcheckrc"],
+    command: ["bunx", "bash-language-server", "start"],
+    env: { BUN_BE_BUN: "1" }
+  },
+  {
+    id: "markdown",
+    extensions: [".md", ".markdown"],
+    rootPatterns: ["README.md", "docs", ".vscode"],
+    command: ["bunx", "vscode-markdown-languageserver", "--stdio"],
+    env: { BUN_BE_BUN: "1" }
+  },
+  {
+    id: "jdtls",
+    extensions: [".java"],
+    rootPatterns: ["pom.xml", "build.gradle", "build.gradle.kts", ".project", "src/main/java"],
+    command: ["jdtls"],
+    env: {}
   }
 ];
 
-export function getApplicableServers(filePath: string): LSPServer[] {
+// Filter servers based on availability (for manual install servers)
+async function getAvailableServers(): Promise<LSPServer[]> {
+  const availableServers: LSPServer[] = [];
+  
+  for (const server of ALL_SERVERS) {
+    // Auto-installable servers (via bunx) are always available
+    if (server.command[0] === "bunx") {
+      availableServers.push(server);
+      continue;
+    }
+    
+    // Check if manually installed servers exist
+    try {
+      const result = Bun.which(server.command[0]);
+      if (result) {
+        availableServers.push(server);
+      }
+    } catch {
+      // Server not found, skip it
+    }
+  }
+  
+  return availableServers;
+}
+
+let cachedServers: LSPServer[] | null = null;
+
+export async function getApplicableServers(filePath: string): Promise<LSPServer[]> {
+  if (!cachedServers) {
+    cachedServers = await getAvailableServers();
+  }
+  
   const ext = path.extname(filePath);
-  return BUILTIN_SERVERS.filter(server => 
+  return cachedServers.filter(server => 
     server.extensions.includes(ext)
   );
+}
+
+export async function getAllAvailableServers(): Promise<LSPServer[]> {
+  if (!cachedServers) {
+    cachedServers = await getAvailableServers();
+  }
+  return cachedServers;
 }
 
 export async function getProjectRoot(filePath: string, server: LSPServer): Promise<string> {
