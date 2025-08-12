@@ -15,7 +15,8 @@
     "dev": "bun run src/cli.ts",
     "typecheck": "bun --bun tsc --noEmit",
     "test": "bun test",
-    "test:watch": "bun test tests/ --watch"
+    "test:watch": "bun test tests/ --watch",
+    "prepublish": "bun test && bun run build"
   },
   "devDependencies": {
     "@types/bun": "latest",
