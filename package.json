@@ -10,6 +10,14 @@
   "files": [
     "cli-lsp-client"
   ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/eli0shin/cli-lsp-client.git"
+  },
+  "homepage": "https://github.com/eli0shin/cli-lsp-client#readme",
+  "bugs": {
+    "url": "https://github.com/eli0shin/cli-lsp-client/issues"
+  },
   "scripts": {
     "build": "bun build src/cli.ts --compile --outfile cli-lsp-client",
     "dev": "bun run src/cli.ts",
