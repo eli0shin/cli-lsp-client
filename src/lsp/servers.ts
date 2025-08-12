@@ -1,6 +1,10 @@
 import path from 'path';
 import { spawn, type ChildProcessWithoutNullStreams } from 'child_process';
 import type { LSPServer } from './types.js';
+import { exec } from 'child_process';
+import { promisify } from 'util';
+
+const execAsync = promisify(exec);
 
 async function findProjectRoot(filePath: string, patterns: string[]): Promise<string> {
   let current = path.dirname(filePath);
@@ -54,13 +58,6 @@ const ALL_SERVERS: LSPServer[] = [
     env: { BUN_BE_BUN: "1" }
   },
   {
-    id: "html",
-    extensions: [".html", ".htm"],
-    rootPatterns: ["index.html", "package.json", ".vscode"],
-    command: ["bunx", "vscode-html-language-server", "--stdio"],
-    env: { BUN_BE_BUN: "1" }
-  },
-  {
     id: "css",
     extensions: [".css", ".scss", ".sass", ".less"],
     rootPatterns: ["package.json", ".vscode"],
@@ -82,11 +79,14 @@ const ALL_SERVERS: LSPServer[] = [
     env: { BUN_BE_BUN: "1" }
   },
   {
-    id: "markdown",
-    extensions: [".md", ".markdown"],
-    rootPatterns: ["README.md", "docs", ".vscode"],
-    command: ["bunx", "vscode-markdown-languageserver", "--stdio"],
-    env: { BUN_BE_BUN: "1" }
+    id: "fish-lsp",
+    extensions: [".fish"],
+    rootPatterns: ["fish_variables", ".config/fish", "config.fish"],
+    command: ["bunx", "fish-lsp", "start", "--enable", "diagnostic"],
+    env: { 
+      BUN_BE_BUN: "1",
+      fish_lsp_enable_experimental_diagnostics: "true"
+    }
   },
   {
     id: "jdtls",
@@ -94,14 +94,56 @@ const ALL_SERVERS: LSPServer[] = [
     rootPatterns: ["pom.xml", "build.gradle", "build.gradle.kts", ".project", "src/main/java"],
     command: ["jdtls"],
     env: {}
+  },
+  {
+    id: "lua_ls",
+    extensions: [".lua"],
+    rootPatterns: [".luarc.json", ".luarc.jsonc", ".luacheckrc", "stylua.toml", "init.lua", "main.lua"],
+    command: ["lua-language-server"],
+    env: {}
+  },
+  {
+    id: "graphql",
+    extensions: [".graphql", ".gql"],
+    rootPatterns: [".graphqlrc.yml", ".graphqlrc.yaml", ".graphqlrc.json", "graphql.config.js", "graphql.config.ts", "schema.graphql", "package.json"],
+    command: ["bunx", "graphql-language-service-cli", "server", "--method", "stream"],
+    env: { BUN_BE_BUN: "1" }
   }
 ];
+
+// Ensure vscode-langservers-extracted is installed globally
+async function ensureVscodeExtracted(): Promise<boolean> {
+  try {
+    // Check if already installed by trying to run one of the servers
+    await execAsync('bunx vscode-css-language-server --help', { timeout: 5000 });
+    return true;
+  } catch {
+    // Try to install it
+    try {
+      console.log('Installing vscode-langservers-extracted...');
+      await execAsync('bun add -g vscode-langservers-extracted', { timeout: 30000 });
+      return true;
+    } catch (error) {
+      console.error('Failed to install vscode-langservers-extracted:', error);
+      return false;
+    }
+  }
+}
 
 // Filter servers based on availability (for manual install servers)
 async function getAvailableServers(): Promise<LSPServer[]> {
   const availableServers: LSPServer[] = [];
   
   for (const server of ALL_SERVERS) {
+    // Handle vscode-langservers-extracted servers specially
+    if (server.command.includes('vscode-css-language-server')) {
+      const isAvailable = await ensureVscodeExtracted();
+      if (isAvailable) {
+        availableServers.push(server);
+      }
+      continue;
+    }
+    
     // Auto-installable servers (via bunx) are always available
     if (server.command[0] === "bunx") {
       availableServers.push(server);

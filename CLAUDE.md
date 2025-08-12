@@ -21,5 +21,8 @@ This is a Bun CLI project that builds a standalone executable.
 - Main executable entry point uses `import.meta.main` check
 
 ## Testing
-- When testing the CLI, use the built executable `./lspcli` 
-- Test all daemon commands: hello, add, status, stop, daemon
+- Run tests: `bun test`
+- Tests use Bun's built-in testing framework with `expect` assertions
+- CLI tests use `spawn` to execute the binary and verify exit codes and output
+- Use `stripAnsi()` helper from test-utils to remove ANSI color codes from output
+- Use `.nothrow()` on Bun shell commands to prevent test failures on non-zero exit codes

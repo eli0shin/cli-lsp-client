@@ -18,12 +18,13 @@ export async function handleClaudeCodeHook(filePath: string): Promise<{ hasIssue
     '.py', '.pyi',
     '.go',
     '.json', '.jsonc',
-    '.html', '.htm',
     '.css', '.scss', '.sass', '.less',
     '.yaml', '.yml',
     '.sh', '.bash', '.zsh',
-    '.md', '.markdown',
-    '.java'
+    '.fish',
+    '.java',
+    '.lua',
+    '.graphql', '.gql'
   ];
   const ext = path.extname(filePath);
   if (!supportedExts.includes(ext)) {

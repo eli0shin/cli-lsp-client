@@ -14,14 +14,14 @@ CLI tool for getting LSP diagnostics. Uses a background daemon to keep LSP serve
 |----------|------------|----------------|-------|
 | TypeScript/JavaScript | `typescript-language-server` | ✓ (via bunx) | `.ts`, `.tsx`, `.js`, `.jsx`, `.mjs`, `.cjs`, `.mts`, `.cts` |
 | Python | `pyright-langserver` | ✓ (via bunx) | `.py`, `.pyi` |
-| JSON | `vscode-json-languageserver` | ✓ (via bunx) | `.json`, `.jsonc` - includes schema validation |
-| HTML | `vscode-html-languageserver` | ✓ (via bunx) | `.html`, `.htm` |
-| CSS | `vscode-css-languageserver` | ✓ (via bunx) | `.css`, `.scss`, `.sass`, `.less` |
+| JSON | `vscode-json-language-server` | ✓ (via vscode-langservers-extracted) | `.json`, `.jsonc` - includes schema validation |
+| CSS | `vscode-css-language-server` | ✓ (via vscode-langservers-extracted) | `.css`, `.scss`, `.sass`, `.less` |
 | YAML | `yaml-language-server` | ✓ (via bunx) | `.yaml`, `.yml` - includes schema validation |
 | Bash/Shell | `bash-language-server` | ✓ (via bunx) | `.sh`, `.bash`, `.zsh` - **requires shellcheck** (`brew install shellcheck`) |
-| Markdown | `vscode-markdown-languageserver` | ✓ (via bunx) | `.md`, `.markdown` - link validation, completions |
+| Fish Shell | `fish-lsp` | ✓ (via bunx) | `.fish` - experimental diagnostics using `fish --no-execute` |
 | Go | `gopls` | ✗ | Requires manual install: `go install golang.org/x/tools/gopls@latest` |
 | Java | `jdtls` (Eclipse JDT) | ✗ | `.java` - see [Java Installation](#java-installation-guide) below |
+| Lua | `lua-language-server` | ✗ | `.lua` - requires manual install via package manager (brew, scoop) or from [releases](https://github.com/LuaLS/lua-language-server/releases) |
 
 
 ## How It Works
@@ -35,7 +35,7 @@ CLI tool for getting LSP diagnostics. Uses a background daemon to keep LSP serve
 
 ### Real-time Diagnostics Hook
 
-Get instant diagnostic feedback for TypeScript, Python, Go, JSON, HTML, CSS, YAML, Bash, Markdown, and Java files as you edit in Claude Code.
+Get instant diagnostic feedback for TypeScript, Python, Go, JSON, CSS, YAML, Bash, Fish, Java, and Lua files as you edit in Claude Code.
 
 #### Setup
 
@@ -63,7 +63,7 @@ Configure Claude Code to use the built-in hook command:
 #### How It Works
 
 - Automatically runs diagnostics after each file edit
-- Built-in file filtering for all supported languages (10+ file types)
+- Built-in file filtering for all supported languages (11 file types)
 - Shows errors, warnings, and hints inline
 - Graceful error handling - never breaks your editing experience
 - Uses the same fast daemon as the regular diagnostics command
