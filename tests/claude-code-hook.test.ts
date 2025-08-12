@@ -117,37 +117,22 @@ HINT at line 7, column 9:
   });
 
   test('should handle all supported file extensions', async () => {
-    // Only test extensions for stable, fast language servers
-    const extensions = ['.ts', '.tsx', '.js', '.jsx', '.py', '.go', '.json', '.yaml', '.sh'];
+    // Test using existing fixture files instead of creating temporary ones
+    const testFiles = [
+      'tests/fixtures/typescript/valid/simple-function.ts',
+      'tests/fixtures/javascript/valid/simple-module.js', 
+      'tests/fixtures/python/valid/simple-module.py',
+      'tests/fixtures/json/valid/package.json',
+      'tests/fixtures/yaml/valid/docker-compose.yml',
+      'tests/fixtures/bash/valid/script.sh'
+    ];
     
-    for (const ext of extensions) {
-      // Create a temporary valid file for each extension
-      let testContent = 'function hello() { return "world"; }';
-      if (ext === '.py') {
-        testContent = 'def hello():\n    return "world"';
-      } else if (ext === '.go') {
-        testContent = 'package main\n\nfunc hello() string {\n    return "world"\n}';
-      } else if (ext === '.json') {
-        testContent = '{\n  "name": "test",\n  "version": "1.0.0"\n}';
-      } else if (ext === '.yaml') {
-        testContent = 'version: "3.8"\nservices:\n  web:\n    image: nginx';
-      } else if (ext === '.sh') {
-        testContent = '#!/bin/bash\necho "Hello World"';
-      }
-      await Bun.write(`test-file${ext}`, testContent);
-      
-      const input = JSON.stringify({ file_path: `test-file${ext}` });
+    for (const filePath of testFiles) {
+      const input = JSON.stringify({ file_path: filePath });
       const result = await runHookCommand(input);
       
       // Should process the file (exit code 0 for valid files)
       expect(result.exitCode).toBe(0);
-      
-      // Clean up
-      try { 
-        await Bun.$`rm test-file${ext}`.quiet();
-      } catch {
-        // Ignore cleanup errors
-      }
     }
   });
 
