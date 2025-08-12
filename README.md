@@ -1,4 +1,4 @@
-# lspcli
+# cli-lsp-client
 
 CLI tool for getting LSP diagnostics. Uses a background daemon to keep LSP servers running.
 
@@ -50,7 +50,7 @@ Configure Claude Code to use the built-in hook command:
         "hooks": [
           {
             "type": "command",
-            "command": "npx -y lspcli claude-code-hook"
+            "command": "npx -y cli-lsp-client claude-code-hook"
           }
         ]
       }
@@ -73,7 +73,7 @@ When you save a file with errors, you'll see immediate feedback:
 
 ```
 Edit operation feedback:
-- [npx -y lspcli claude-code-hook]: 
+- [npx -y cli-lsp-client claude-code-hook]: 
 ERROR at line 3, column 9:
   Type 'number' is not assignable to type 'string'.
   Source: typescript
@@ -86,17 +86,17 @@ ERROR at line 3, column 9:
 
 ```bash
 # Check a TypeScript file
-npx lspcli diagnostics src/example.ts
+npx cli-lsp-client diagnostics src/example.ts
 
 # Check any supported file type
-npx lspcli diagnostics app.py
-npx lspcli diagnostics main.go
+npx cli-lsp-client diagnostics app.py
+npx cli-lsp-client diagnostics main.go
 ```
 
 Exit codes: 0 for no issues, 2 for issues found.
 
 ```bash
-$ npx lspcli diagnostics error.ts
+$ npx cli-lsp-client diagnostics error.ts
 ERROR at line 5, column 20:
   Argument of type 'string' is not assignable to parameter of type 'number'.
   Source: typescript
@@ -107,10 +107,10 @@ ERROR at line 5, column 20:
 
 ```bash
 # Check daemon status
-npx lspcli status
+npx cli-lsp-client status
 
 # Stop daemon (it will auto-restart when needed)
-npx lspcli stop
+npx cli-lsp-client stop
 ```
 
 ## Java Installation Guide
@@ -163,7 +163,7 @@ For detailed setup instructions, see the [official Eclipse JDT.LS documentation]
 
 ```bash
 # Check a specific file
-npx lspcli diagnostics src/main.ts
+npx cli-lsp-client diagnostics src/main.ts
 ```
 
 ## Development

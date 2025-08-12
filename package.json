@@ -1,17 +1,17 @@
 {
-  "name": "lspcli",
+  "name": "cli-lsp-client",
   "version": "1.0.0",
   "description": "A Bun CLI daemon application",
   "type": "module",
   "main": "src/cli.ts",
   "bin": {
-    "lspcli": "./lspcli"
+    "cli-lsp-client": "./cli-lsp-client"
   },
   "files": [
-    "lspcli"
+    "cli-lsp-client"
   ],
   "scripts": {
-    "build": "bun build src/cli.ts --compile --outfile lspcli",
+    "build": "bun build src/cli.ts --compile --outfile cli-lsp-client",
     "dev": "bun run src/cli.ts",
     "typecheck": "bun --bun tsc --noEmit",
     "test": "bun test",

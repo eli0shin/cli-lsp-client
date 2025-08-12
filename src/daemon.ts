@@ -19,8 +19,8 @@ function getDaemonPaths() {
   const hashedCwd = hashPath(cwd);
   
   return {
-    socketPath: path.join(os.tmpdir(), `lspcli-${hashedCwd}.sock`),
-    pidFile: path.join(os.tmpdir(), `lspcli-${hashedCwd}.pid`)
+    socketPath: path.join(os.tmpdir(), `cli-lsp-client-${hashedCwd}.sock`),
+    pidFile: path.join(os.tmpdir(), `cli-lsp-client-${hashedCwd}.pid`)
   };
 }
 

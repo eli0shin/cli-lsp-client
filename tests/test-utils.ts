@@ -1,6 +1,6 @@
 import { $ } from 'bun';
 
-export const CLI_PATH = './lspcli';
+export const CLI_PATH = './cli-lsp-client';
 
 export function stripAnsi(str: string): string {
   return str.replace(/\u001b\[[0-9;]*m/g, '').replace(/^\n/, '').replace(/\xa0/g, ' ').trimEnd();

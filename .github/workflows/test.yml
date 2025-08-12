@@ -56,10 +56,10 @@ jobs:
       run: bun run build
       
     - name: Make CLI executable
-      run: chmod +x ./lspcli
+      run: chmod +x ./cli-lsp-client
       
     - name: Verify CLI works
-      run: ./lspcli status
+      run: ./cli-lsp-client status
       
     - name: Run tests
       run: |

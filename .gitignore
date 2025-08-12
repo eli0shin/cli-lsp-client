@@ -3,7 +3,7 @@ node_modules/
 bun.lockb
 
 # Build outputs
-lspcli
+cli-lsp-client
 dist/
 build/
 

@@ -12,13 +12,13 @@ if [[ -z "$FILE_PATH" ]]; then
 fi
 
 # Run diagnostics on the file
-output=$(./lspcli diagnostics "$FILE_PATH" 2>&1)
+output=$(./cli-lsp-client diagnostics "$FILE_PATH" 2>&1)
 exit_code=$?
 
 # Only block on actual errors, not hints/warnings
 if [[ $exit_code -ne 0 && "$output" =~ ERROR ]]; then
     # Strip ANSI color codes but preserve newlines
-    clean_output=$(echo "$output" | sed 's/\x1b\[[0-9;]*m//g')
+    clean_output=${output//$'\x1b['[0-9;]*m/}
     echo "$clean_output" >&2
     exit 2
 fi
