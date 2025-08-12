@@ -57,4 +57,6 @@ jobs:
       run: ./lspcli status
       
     - name: Run tests
-      run: bun test tests/!(java)/**/*.test.ts tests/*.test.ts
+      run: |
+        shopt -s extglob
+        bun test tests/!(java)/**/*.test.ts tests/*.test.ts
