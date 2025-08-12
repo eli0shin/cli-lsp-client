@@ -61,7 +61,9 @@ jobs:
     - name: Install lua-language-server
       run: |
         sudo apt-get install -y lua5.4 lua5.4-dev
-        wget -O lua-language-server.tar.gz "https://github.com/LuaLS/lua-language-server/releases/latest/download/lua-language-server-3.7.4-linux-x64.tar.gz"
+        # Get the latest release info and extract the correct download URL
+        LATEST_URL=$(curl -s https://api.github.com/repos/LuaLS/lua-language-server/releases/latest | grep "browser_download_url.*linux-x64.tar.gz" | cut -d '"' -f 4)
+        wget -O lua-language-server.tar.gz "$LATEST_URL"
         sudo mkdir -p /opt/lua-language-server
         sudo tar -xzf lua-language-server.tar.gz -C /opt/lua-language-server
         sudo ln -sf /opt/lua-language-server/bin/lua-language-server /usr/local/bin/lua-language-server
