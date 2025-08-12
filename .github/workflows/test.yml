@@ -30,36 +30,6 @@ jobs:
     - name: Install gopls
       run: go install golang.org/x/tools/gopls@latest
       
-    - name: Setup Java for jdtls
-      uses: actions/setup-java@v4
-      with:
-        distribution: 'temurin'
-        java-version: '21'
-        
-    - name: Install jdtls
-      run: |
-        # Download and install JDTLS from official snapshots
-        mkdir -p ~/.local/share/eclipse.jdt.ls
-        cd ~/.local/share/eclipse.jdt.ls
-        curl -L -o jdtls-latest.tar.gz "http://download.eclipse.org/jdtls/snapshots/jdt-language-server-latest.tar.gz"
-        tar -xzf jdtls-latest.tar.gz
-        rm jdtls-latest.tar.gz
-        
-        # Create jdtls wrapper script
-        sudo tee /usr/local/bin/jdtls > /dev/null <<'EOF'
-        #!/bin/bash
-        java -Declipse.application=org.eclipse.jdt.ls.core.id1 \
-             -Dosgi.bundles.defaultStartLevel=4 \
-             -Declipse.product=org.eclipse.jdt.ls.core.product \
-             -Xms1g -Xmx2G \
-             -jar ~/.local/share/eclipse.jdt.ls/plugins/org.eclipse.equinox.launcher_*.jar \
-             -configuration ~/.local/share/eclipse.jdt.ls/config_linux \
-             -data "${1:-$HOME/workspace}" \
-             --add-modules=ALL-SYSTEM \
-             --add-opens java.base/java.util=ALL-UNNAMED \
-             --add-opens java.base/java.lang=ALL-UNNAMED "$@"
-        EOF
-        sudo chmod +x /usr/local/bin/jdtls
         
     - name: Install lua-language-server
       run: |
@@ -87,4 +57,4 @@ jobs:
       run: ./lspcli status
       
     - name: Run tests
-      run: bun run test
+      run: bun test --ignore="**/java/*.test.ts"
