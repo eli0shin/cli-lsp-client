@@ -7,6 +7,7 @@ Commands:
   warmup [directory]           Warm up LSP servers for a directory (default: current)
   logs                         Show the daemon log file path
   stop                         Stop the daemon
+  stop-all                     Stop all daemons across all directories
 
 Examples:
   cli-lsp-client help                           # Show this help
@@ -17,6 +18,7 @@ Examples:
   cli-lsp-client warmup /path/to/project       # Warm up servers for specific directory
   cli-lsp-client logs                           # Get log file location
   cli-lsp-client stop                           # Stop the daemon
+  cli-lsp-client stop-all                       # Stop all daemons (useful after package updates)
 
 The daemon automatically starts when needed and caches LSP servers for fast diagnostics.
 Use 'cli-lsp-client logs' to find the log file for debugging.`;
