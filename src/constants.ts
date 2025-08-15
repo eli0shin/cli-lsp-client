@@ -3,6 +3,7 @@ export const HELP_MESSAGE = `Usage: cli-lsp-client <command> [arguments]
 Commands:
   help                          Show this help message
   status                        Show daemon status and memory usage
+  list                          List all running daemons with their working directories
   diagnostics <file>           Get diagnostics for a file
   warmup [directory]           Warm up LSP servers for a directory (default: current)
   logs                         Show the daemon log file path
@@ -12,6 +13,7 @@ Commands:
 Examples:
   cli-lsp-client help                           # Show this help
   cli-lsp-client status                         # Check daemon status
+  cli-lsp-client list                           # List all running daemons
   cli-lsp-client diagnostics src/main.ts        # Get TypeScript diagnostics
   cli-lsp-client diagnostics ./script.py       # Get Python diagnostics
   cli-lsp-client warmup                         # Warm up servers for current directory

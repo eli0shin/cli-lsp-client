@@ -64,6 +64,8 @@ export async function handleRequest(request: Request): Promise<string | number |
       const { LOG_PATH } = await import('./logger.js');
       return LOG_PATH;
 
+    case 'pwd':
+      return process.cwd();
 
     case 'stop':
       setTimeout(async () => await shutdown(), 100);

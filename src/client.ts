@@ -198,11 +198,199 @@ export async function stopAllDaemons(): Promise<void> {
   console.log(`\nStopped ${stoppedCount} daemon(s)${errorCount > 0 ? `, ${errorCount} error(s)` : ''}`);
 }
 
+async function sendCommandToSocket(socketPath: string, command: string): Promise<any> {
+  return new Promise((resolve, reject) => {
+    const client = net.createConnection(socketPath);
+    let buffer = '';
+    let resolved = false;
+
+    const handleResponse = (response: any) => {
+      if (resolved) return;
+      resolved = true;
+      client.end();
+
+      if (response.success) {
+        resolve(response.result);
+      } else {
+        reject(new Error(response.error));
+      }
+    };
+
+    client.on('connect', () => {
+      const request = JSON.stringify({ command, args: [] });
+      client.write(request);
+    });
+
+    client.on('data', (data) => {
+      if (resolved) return;
+      buffer += data.toString();
+      
+      try {
+        const response = JSON.parse(buffer);
+        handleResponse(response);
+      } catch (error) {
+        // JSON is incomplete, continue buffering
+      }
+    });
+
+    client.on('end', () => {
+      if (resolved) return;
+      
+      // If connection ends without successful parse, try one final parse
+      if (buffer) {
+        try {
+          const response = JSON.parse(buffer);
+          handleResponse(response);
+        } catch (error) {
+          resolved = true;
+          reject(new Error(`Failed to parse response: ${buffer.substring(0, 100)}...`));
+        }
+      }
+    });
+
+    client.on('error', (error) => {
+      if (resolved) return;
+      resolved = true;
+      reject(error);
+    });
+
+    // Timeout after 2 seconds
+    setTimeout(() => {
+      if (resolved) return;
+      resolved = true;
+      client.end();
+      reject(new Error('Timeout waiting for daemon response'));
+    }, 2000);
+  });
+}
+
+export async function listAllDaemons(): Promise<void> {
+  const tempDir = os.tmpdir();
+  
+  // Read all files from temp directory using Node.js fs API
+  let allFiles: string[] = [];
+  try {
+    allFiles = await readdir(tempDir);
+  } catch (error) {
+    console.log('Error reading temp directory:', error);
+    return;
+  }
+  
+  // Filter for socket files and only include those that also have corresponding PID files
+  const socketFiles = allFiles
+    .filter(f => f.startsWith('cli-lsp-client-') && f.endsWith('.sock'))
+    .filter(f => {
+      // Only include if corresponding PID file also exists
+      const pidFile = f.replace('.sock', '.pid');
+      return allFiles.includes(pidFile);
+    })
+    .map(f => path.join(tempDir, f));
+
+  if (socketFiles.length === 0) {
+    console.log('No daemons found');
+    return;
+  }
+
+  console.log('\nRunning Daemons:');
+  console.log('================');
+  
+  const results: Array<{
+    hash: string;
+    pid: number | string;
+    workingDir: string;
+    status: string;
+  }> = [];
+
+  for (const socketPath of socketFiles) {
+    const hash = path.basename(socketPath, '.sock');
+    const pidFile = socketPath.replace('.sock', '.pid');
+    
+    let pid: number | string = 'Unknown';
+    let workingDir: string = 'Unknown';
+    let status = 'Unknown';
+
+    try {
+      // Get PID
+      const pidExists = await Bun.file(pidFile).exists();
+      if (pidExists) {
+        const pidContent = await Bun.file(pidFile).text();
+        pid = parseInt(pidContent.trim());
+        
+        // Check if process is running
+        try {
+          process.kill(pid as number, 0);
+          status = 'Running';
+          
+          // Get working directory from daemon
+          try {
+            workingDir = await sendCommandToSocket(socketPath, 'pwd') as string;
+          } catch (error) {
+            workingDir = 'Unresponsive';
+            status = 'Unresponsive';
+          }
+        } catch (error) {
+          status = 'Dead';
+          workingDir = 'Process not found';
+        }
+      } else {
+        status = 'No PID file';
+      }
+    } catch (error) {
+      status = 'Error';
+    }
+
+    results.push({
+      hash: hash.replace('cli-lsp-client-', ''),
+      pid,
+      workingDir,
+      status
+    });
+  }
+
+  // Display results in a table format
+  const maxHashLen = Math.max(4, ...results.map(r => r.hash.length));
+  const maxPidLen = Math.max(3, ...results.map(r => r.pid.toString().length));
+  const maxStatusLen = Math.max(6, ...results.map(r => r.status.length));
+  const maxDirLen = Math.max(15, ...results.map(r => r.workingDir.length));
+
+  // Header
+  console.log(
+    `${'Hash'.padEnd(maxHashLen)} | ` +
+    `${'PID'.padEnd(maxPidLen)} | ` +
+    `${'Status'.padEnd(maxStatusLen)} | ` +
+    `${'Working Directory'.padEnd(maxDirLen)}`
+  );
+  console.log('-'.repeat(maxHashLen + maxPidLen + maxStatusLen + maxDirLen + 10));
+
+  // Rows
+  for (const result of results) {
+    const statusIcon = result.status === 'Running' ? '●' : 
+                      result.status === 'Dead' ? '○' : 
+                      result.status === 'Unresponsive' ? '◐' : '?';
+    
+    console.log(
+      `${result.hash.padEnd(maxHashLen)} | ` +
+      `${result.pid.toString().padEnd(maxPidLen)} | ` +
+      `${statusIcon} ${result.status.padEnd(maxStatusLen - 2)} | ` +
+      `${result.workingDir}`
+    );
+  }
+  
+  const runningCount = results.filter(r => r.status === 'Running').length;
+  console.log(`\n${runningCount}/${results.length} daemon(s) running`);
+}
+
 export async function runCommand(command: string, commandArgs: string[]): Promise<void> {
   try {
     // Handle stop-all command without daemon communication
     if (command === 'stop-all') {
       await stopAllDaemons();
+      return;
+    }
+
+    // Handle list command without daemon communication
+    if (command === 'list') {
+      await listAllDaemons();
       return;
     }
 
