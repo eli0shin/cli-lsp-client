@@ -87,7 +87,7 @@ export async function runCommand(command: string, commandArgs: string[]): Promis
         const output = formatDiagnostics(filePath, diagnostics);
         
         if (output) {
-          console.log(output);
+          console.error(output);
           process.exit(2); // Exit with error code when diagnostics found
         } else {
           process.exit(0); // Exit with success code when no diagnostics
