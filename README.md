@@ -42,10 +42,21 @@ Get instant diagnostic feedback for TypeScript, Python, Go, JSON, CSS, YAML, Bas
 
 Configure Claude Code to use the built-in hook command:
 
-```bash
+```json
 {
   "$schema": "https://json.schemastore.org/claude-code-settings.json",
   "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "startup|resume",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "npx -y cli-lsp-client warmup"
+          }
+        ]
+      }
+    ],
     "PostToolUse": [
       {
         "matcher": "Edit|MultiEdit|Write",
@@ -63,7 +74,8 @@ Configure Claude Code to use the built-in hook command:
 
 #### How It Works
 
-- Automatically runs diagnostics after each file edit
+- **SessionStart**: Automatically warms up LSP servers when Claude Code starts for faster initial diagnostics
+- **PostToolUse**: Runs diagnostics after each file edit (Edit, MultiEdit, Write tools)
 - Built-in file filtering for all supported languages (11 file types)
 - Shows errors, warnings, and hints inline
 - Graceful error handling - never breaks your editing experience
