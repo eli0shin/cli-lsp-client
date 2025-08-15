@@ -4,17 +4,7 @@ import path from 'path';
 import { lspManager } from './lsp/manager.js';
 import { executeWarmup } from './lsp/warmup.js';
 import { log } from './logger.js';
-
-function hashPath(dirPath: string): string {
-  // Simple hash function to create a short unique identifier for the path
-  let hash = 0;
-  for (let i = 0; i < dirPath.length; i++) {
-    const char = dirPath.charCodeAt(i);
-    hash = ((hash << 5) - hash) + char;
-    hash = hash & hash; // Convert to 32bit integer
-  }
-  return Math.abs(hash).toString(36);
-}
+import { hashPath } from './utils.js';
 
 function getDaemonPaths() {
   const cwd = process.cwd();
