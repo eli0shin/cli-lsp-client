@@ -6,6 +6,7 @@ import { runCommand } from './client.js';
 import { formatDiagnosticsPlain } from './lsp/formatter.js';
 import type { Diagnostic } from './lsp/types.js';
 import { HELP_MESSAGE } from './constants.js';
+import packageJson from '../package.json' with { type: 'json' };
 
 export async function handleClaudeCodeHook(filePath: string): Promise<{ hasIssues: boolean; output: string }> {
   // Check if file exists
@@ -70,6 +71,12 @@ async function run(): Promise<void> {
   // Handle help command directly (no daemon needed)
   if (command === 'help' || command === '--help' || command === '-h') {
     showHelp();
+    return;
+  }
+
+  // Handle version command directly (no daemon needed)
+  if (command === 'version' || command === '--version' || command === '-v') {
+    console.log(packageJson.version);
     return;
   }
 

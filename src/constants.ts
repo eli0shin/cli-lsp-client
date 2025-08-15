@@ -2,6 +2,7 @@ export const HELP_MESSAGE = `Usage: cli-lsp-client <command> [arguments]
 
 Commands:
   help                          Show this help message
+  version                       Show version number
   status                        Show daemon status and memory usage
   list                          List all running daemons with their working directories
   diagnostics <file>           Get diagnostics for a file
@@ -12,6 +13,7 @@ Commands:
 
 Examples:
   cli-lsp-client help                           # Show this help
+  cli-lsp-client version                        # Show version number
   cli-lsp-client status                         # Check daemon status
   cli-lsp-client list                           # List all running daemons
   cli-lsp-client diagnostics src/main.ts        # Get TypeScript diagnostics
