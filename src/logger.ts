@@ -1,11 +1,10 @@
 import path from 'path';
 import os from 'os';
+import { hashPath } from './utils.js';
 
 function getLogPath(): string {
   const cwd = process.cwd();
-  const hashedCwd = Math.abs(
-    cwd.split('').reduce((hash, char) => ((hash << 5) - hash + char.charCodeAt(0)) & 0, 0)
-  ).toString(36);
+  const hashedCwd = hashPath(cwd);
   return path.join(os.tmpdir(), `cli-lsp-client-${hashedCwd}.log`);
 }
 
