@@ -8,10 +8,7 @@ describe('Lua Invalid Files', () => {
     const proc = await runDiagnostics(filePath);
     expect(proc.exitCode).toBe(2);
     
-    const output = stripAnsi(proc.stdout.toString());
-    expect(output).toContain('ERROR');
-    expect(output).toContain('Missed symbol');
-    expect(output).toContain('Source: Lua Syntax Check');
+    expect(stripAnsi(proc.stderr.toString())).toBe('[Lua Syntax Check.] ERROR at line 14, column 35: Missed symbol `)`. [miss-symbol]\n[Lua Syntax Check.] ERROR at line 18, column 30: Missed symbol `"`. [miss-symbol]\n[Lua Syntax Check.] ERROR at line 21, column 14: Missed symbol `,`. [miss-symbol]\n[Lua Syntax Check.] ERROR at line 22, column 13: Missed symbol `do`. [miss-symbol]\n[Lua Syntax Check.] ERROR at line 23, column 4: Missed symbol `end`. [miss-symbol]\n[Lua Syntax Check.] ERROR at line 2, column 7: Miss corresponding `end` . [miss-end]\n[Lua Diagnostics.] HINT at line 21, column 1: Empty block. [empty-block]\n[Lua Diagnostics.] INFO at line 10, column 10: Global variable in lowercase initial, Did you miss `local` or misspell it? [lowercase-global]\n[Lua Diagnostics.] HINT at line 10, column 10: Unreachable code. [unreachable-code]\n[Lua Diagnostics.] WARNING at line 22, column 11: Undefined global `i`. [undefined-global]\n[Lua Diagnostics.] HINT at line 2, column 7: Unused functions. [unused-function]\n[Lua Diagnostics.] HINT at line 2, column 16: Unused local `broken_function`. [unused-local]\n[Lua Diagnostics.] HINT at line 18, column 7: Unused local `message`. [unused-local]\n[Lua Diagnostics.] HINT at line 21, column 5: Unused local `i`. [unused-local]');
   });
 
   test('type-error.lua should exit with code 2 and show type-related warnings', async () => {
@@ -19,10 +16,7 @@ describe('Lua Invalid Files', () => {
     const proc = await runDiagnostics(filePath);
     expect(proc.exitCode).toBe(2);
     
-    const output = stripAnsi(proc.stdout.toString());
-    expect(output).toContain('WARNING');
-    expect(output).toContain('Undefined global');
-    expect(output).toContain('Source: Lua Diagnostics');
+    expect(stripAnsi(proc.stderr.toString())).toBe('[Lua Diagnostics.] WARNING at line 15, column 11: Undefined global `undefined_variable`. [undefined-global]\n[Lua Diagnostics.] HINT at line 2, column 7: Unused functions. [unused-function]\n[Lua Diagnostics.] HINT at line 2, column 16: Unused local `get_string`. [unused-local]\n[Lua Diagnostics.] HINT at line 15, column 7: Unused local `x`. [unused-local]\n[Lua Diagnostics.] HINT at line 19, column 7: Unused local `value`. [unused-local]\n[Lua Diagnostics.] WARNING at line 19, column 19: Undefined field `field`. [undefined-field]');
   });
 
   test('unused-variable.lua should exit with code 2 and show unused variable hints', async () => {
@@ -30,10 +24,7 @@ describe('Lua Invalid Files', () => {
     const proc = await runDiagnostics(filePath);
     expect(proc.exitCode).toBe(2);
     
-    const output = stripAnsi(proc.stdout.toString());
-    expect(output).toContain('HINT');
-    expect(output).toContain('Unused local');
-    expect(output).toContain('Source: Lua Diagnostics');
+    expect(stripAnsi(proc.stderr.toString())).toBe('[Lua Diagnostics.] HINT at line 11, column 1: Line with spaces only. [trailing-space]\n[Lua Diagnostics.] HINT at line 14, column 1: Line with spaces only. [trailing-space]\n[Lua Diagnostics.] HINT at line 19, column 1: Line with spaces only. [trailing-space]\n[Lua Diagnostics.] HINT at line 2, column 7: Unused functions. [unused-function]\n[Lua Diagnostics.] HINT at line 2, column 16: Unused local `unused_function`. [unused-local]\n[Lua Diagnostics.] HINT at line 7, column 11: Unused local `unused_var`. [unused-local]\n[Lua Diagnostics.] HINT at line 8, column 11: Unused local `another_unused`. [unused-local]\n[Lua Diagnostics.] HINT at line 10, column 11: Unused local `y`. [unused-local]\n[Lua Diagnostics.] HINT at line 16, column 35: Unused local `param2`. [unused-local]\n[Lua Diagnostics.] HINT at line 16, column 43: Unused local `param3`. [unused-local]');
   });
 
 });

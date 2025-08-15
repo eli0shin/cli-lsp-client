@@ -7,10 +7,7 @@ describe('YAML Invalid Files', () => {
     const filePath = 'tests/fixtures/yaml/invalid/indentation-error.yml';
     const proc = await runDiagnostics(filePath);
     expect(proc.exitCode).toBe(2);
-    expect(stripAnsi(proc.stdout.toString())).toBe(`ERROR at line 7, column 1:
-  All mapping items must start at the same column
-  Source: YAML
-  Code: 0`);
+    expect(stripAnsi(proc.stderr.toString())).toBe(`[YAML] ERROR at line 7, column 1: All mapping items must start at the same column [0]`);
   });
 
 });
