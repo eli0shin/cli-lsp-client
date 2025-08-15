@@ -3,11 +3,28 @@ import { spawn, type ChildProcessWithoutNullStreams } from 'child_process';
 import type { LSPServer } from './types.js';
 import { exec } from 'child_process';
 import { promisify } from 'util';
+import { log } from '../logger.js';
 
 const execAsync = promisify(exec);
 
-async function findProjectRoot(filePath: string, patterns: string[]): Promise<string> {
-  let current = path.dirname(filePath);
+async function findProjectRoot(fileOrDirPath: string, patterns: string[]): Promise<string> {
+  // Determine if it's a file or directory
+  let current: string;
+  
+  // Check if path exists and if it's a directory
+  try {
+    const fs = await import('fs/promises');
+    const stats = await fs.stat(fileOrDirPath);
+    if (stats.isDirectory()) {
+      current = fileOrDirPath;
+    } else {
+      current = path.dirname(fileOrDirPath);
+    }
+  } catch {
+    // If stat fails, assume it's a file path and use its directory
+    current = path.dirname(fileOrDirPath);
+  }
+  
   const root = path.parse(current).root;
   
   while (current !== root) {
@@ -20,7 +37,14 @@ async function findProjectRoot(filePath: string, patterns: string[]): Promise<st
     current = path.dirname(current);
   }
   
-  return path.dirname(filePath); // fallback to file directory
+  // Fallback: if it's a directory, return it; if it's a file, return its directory
+  try {
+    const fs = await import('fs/promises');
+    const stats = await fs.stat(fileOrDirPath);
+    return stats.isDirectory() ? fileOrDirPath : path.dirname(fileOrDirPath);
+  } catch {
+    return path.dirname(fileOrDirPath);
+  }
 }
 
 export interface ServerHandle {
@@ -111,11 +135,11 @@ async function ensureVscodeExtracted(): Promise<boolean> {
   } catch {
     // Try to install it
     try {
-      console.log('Installing vscode-langservers-extracted...');
+      log('Installing vscode-langservers-extracted...');
       await execAsync('bun add -g vscode-langservers-extracted', { timeout: 30000 });
       return true;
     } catch (error) {
-      console.error('Failed to install vscode-langservers-extracted:', error);
+      log(`Failed to install vscode-langservers-extracted: ${error}`);
       return false;
     }
   }
@@ -175,8 +199,12 @@ export async function getAllAvailableServers(): Promise<LSPServer[]> {
   return cachedServers;
 }
 
-export async function getProjectRoot(filePath: string, server: LSPServer): Promise<string> {
-  return await findProjectRoot(filePath, server.rootPatterns);
+export function getServerById(id: string): LSPServer | null {
+  return ALL_SERVERS.find(server => server.id === id) || null;
+}
+
+export async function getProjectRoot(fileOrDirPath: string, server: LSPServer): Promise<string> {
+  return await findProjectRoot(fileOrDirPath, server.rootPatterns);
 }
 
 export async function spawnServer(server: LSPServer, root: string): Promise<ServerHandle | null> {
@@ -198,7 +226,7 @@ export async function spawnServer(server: LSPServer, root: string): Promise<Serv
 
     // Basic error handling
     childProcess.on('error', (error) => {
-      console.error(`LSP server ${server.id} failed to start:`, error);
+      log(`LSP server ${server.id} failed to start: ${error}`);
     });
 
     return {
@@ -206,7 +234,7 @@ export async function spawnServer(server: LSPServer, root: string): Promise<Serv
       initialization: server.initialization
     };
   } catch (error) {
-    console.error(`Failed to spawn LSP server ${server.id}:`, error);
+    log(`Failed to spawn LSP server ${server.id}: ${error}`);
     return null;
   }
 }

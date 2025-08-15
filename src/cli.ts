@@ -5,6 +5,7 @@ import { startDaemon } from './daemon.js';
 import { runCommand } from './client.js';
 import { formatDiagnosticsPlain } from './lsp/formatter.js';
 import type { Diagnostic } from './lsp/types.js';
+import { HELP_MESSAGE } from './constants.js';
 
 export async function handleClaudeCodeHook(filePath: string): Promise<{ hasIssues: boolean; output: string }> {
   // Check if file exists
@@ -51,6 +52,10 @@ export async function handleClaudeCodeHook(filePath: string): Promise<{ hasIssue
   }
 }
 
+function showHelp(): void {
+  console.log(HELP_MESSAGE);
+}
+
 async function run(): Promise<void> {
   const args = process.argv.slice(2);
   const command = args[0] || 'status';
@@ -59,6 +64,12 @@ async function run(): Promise<void> {
   // Check if we're being invoked to run as daemon
   if (process.env.LSPCLI_DAEMON_MODE === '1') {
     await startDaemon();
+    return;
+  }
+
+  // Handle help command directly (no daemon needed)
+  if (command === 'help' || command === '--help' || command === '-h') {
+    showHelp();
     return;
   }
 
