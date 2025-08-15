@@ -99,12 +99,14 @@ export async function startDaemon(): Promise<void> {
           result: result,
           timestamp: new Date().toISOString()
         }));
+        socket.end();
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : 'Unknown error';
         socket.write(JSON.stringify({
           success: false,
           error: errorMessage
         }));
+        socket.end();
       }
     });
 

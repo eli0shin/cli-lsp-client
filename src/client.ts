@@ -13,6 +13,20 @@ function showHelpForUnknownCommand(command: string): void {
 export async function sendToExistingDaemon(command: string, args: string[]): Promise<string | number | StatusResult> {
   return new Promise((resolve, reject) => {
     const client = net.createConnection(SOCKET_PATH);
+    let buffer = '';
+    let resolved = false;
+
+    const handleResponse = (response: any) => {
+      if (resolved) return;
+      resolved = true;
+      client.end();
+
+      if (response.success) {
+        resolve(response.result);
+      } else {
+        reject(new Error(response.error));
+      }
+    };
 
     client.on('connect', () => {
       const request = JSON.stringify({ command, args });
@@ -20,21 +34,35 @@ export async function sendToExistingDaemon(command: string, args: string[]): Pro
     });
 
     client.on('data', (data) => {
+      if (resolved) return;
+      buffer += data.toString();
+      
       try {
-        const response = JSON.parse(data.toString());
-        client.end();
-
-        if (response.success) {
-          resolve(response.result);
-        } else {
-          reject(new Error(response.error));
-        }
+        const response = JSON.parse(buffer);
+        handleResponse(response);
       } catch (error) {
-        reject(error);
+        // JSON is incomplete, continue buffering
+      }
+    });
+
+    client.on('end', () => {
+      if (resolved) return;
+      
+      // If connection ends without successful parse, try one final parse
+      if (buffer) {
+        try {
+          const response = JSON.parse(buffer);
+          handleResponse(response);
+        } catch (error) {
+          resolved = true;
+          reject(new Error(`Failed to parse response: ${buffer.substring(0, 100)}...`));
+        }
       }
     });
 
     client.on('error', (error) => {
+      if (resolved) return;
+      resolved = true;
       reject(error);
     });
   });
