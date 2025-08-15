@@ -30,25 +30,10 @@ describe('Claude Code Hook', () => {
     const result = await runHookCommand(input);
     
     expect(result.exitCode).toBe(2);
-    expect(stripAnsi(result.stderr)).toBe(`ERROR at line 3, column 3:
-  Type 'number' is not assignable to type 'string'.
-  Source: typescript
-  Code: 2322
-
-ERROR at line 7, column 9:
-  Type 'number' is not assignable to type 'string'.
-  Source: typescript
-  Code: 2322
-
-HINT at line 1, column 27:
-  'name' is declared but its value is never read.
-  Source: typescript
-  Code: 6133
-
-HINT at line 7, column 9:
-  'x' is declared but its value is never read.
-  Source: typescript
-  Code: 6133`);
+    expect(stripAnsi(result.stderr)).toBe(`[typescript] ERROR at line 3, column 3: Type 'number' is not assignable to type 'string'. [2322]
+[typescript] ERROR at line 7, column 9: Type 'number' is not assignable to type 'string'. [2322]
+[typescript] HINT at line 1, column 27: 'name' is declared but its value is never read. [6133]
+[typescript] HINT at line 7, column 9: 'x' is declared but its value is never read. [6133]`);
   });
 
   test('should handle valid TypeScript file without errors', async () => {
@@ -64,9 +49,7 @@ HINT at line 7, column 9:
     const result = await runHookCommand(input);
     
     expect(result.exitCode).toBe(2);
-    expect(stripAnsi(result.stderr)).toBe(`ERROR at line 2, column 13:
-  Expected ":"
-  Source: Pyright`);
+    expect(stripAnsi(result.stderr)).toBe(`[Pyright] ERROR at line 2, column 13: Expected ":"`);
   });
 
   test('should ignore unsupported file types', async () => {

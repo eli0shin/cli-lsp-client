@@ -3,13 +3,15 @@ import { createMessageConnection, StreamMessageReader, StreamMessageWriter } fro
 import type { LSPClient, Diagnostic } from './types.js';
 import type { ServerHandle } from './servers.js';
 import { LANGUAGE_EXTENSIONS } from './language.js';
+import { log } from '../logger.js';
 
 export async function createLSPClient(
   serverID: string, 
   serverHandle: ServerHandle, 
   root: string
 ): Promise<LSPClient> {
-  console.log(`Creating LSP client for ${serverID}`);
+  log(`=== ENTERING createLSPClient for ${serverID} ===`);
+  log(`Creating LSP client for ${serverID}`);
 
   const connection = createMessageConnection(
     new StreamMessageReader(serverHandle.process.stdout),
@@ -19,10 +21,13 @@ export async function createLSPClient(
   const diagnostics = new Map<string, Diagnostic[]>();
 
   // Listen for diagnostics
+  log('REGISTERING publishDiagnostics handler');
   connection.onNotification("textDocument/publishDiagnostics", (params) => {
+    log(`>>> RECEIVED publishDiagnostics!!! uri: ${params.uri}, count: ${params.diagnostics?.length || 0}`);
     const filePath = new URL(params.uri).pathname;
     diagnostics.set(filePath, params.diagnostics);
   });
+  log('publishDiagnostics handler REGISTERED');
 
   // Handle requests
   connection.onRequest("window/workDoneProgress/create", () => null);
@@ -31,7 +36,7 @@ export async function createLSPClient(
   connection.listen();
 
   // Initialize the LSP server
-  console.log(`Initializing LSP server ${serverID}`);
+  log(`Initializing LSP server ${serverID}`);
   await connection.sendRequest("initialize", {
     rootUri: "file://" + root,
     processId: serverHandle.process.pid,
@@ -64,16 +69,19 @@ export async function createLSPClient(
   });
 
   await connection.sendNotification("initialized", {});
-  console.log(`LSP server ${serverID} initialized`);
+  log(`LSP server ${serverID} initialized`);
 
-  return {
+  const client: LSPClient = {
     serverID,
     root,
+    createdAt: Date.now(),
     diagnostics,
+    connection,
 
     async openFile(filePath: string): Promise<void> {
       const absolutePath = path.isAbsolute(filePath) ? filePath : path.resolve(process.cwd(), filePath);
       
+      log(`=== OPENING FILE: ${absolutePath} ===`);
       
       // Clear any existing diagnostics before opening
       diagnostics.delete(absolutePath);
@@ -83,6 +91,7 @@ export async function createLSPClient(
       const extension = path.extname(absolutePath);
       const languageId = LANGUAGE_EXTENSIONS[extension] ?? "plaintext";
 
+      log(`Sending didOpen for ${absolutePath} (${languageId})`);
       // Always use version 0 for didOpen
       await connection.sendNotification("textDocument/didOpen", {
         textDocument: {
@@ -93,6 +102,7 @@ export async function createLSPClient(
         },
       });
       
+      log(`Sending didChange for ${absolutePath}`);
       // CRITICAL: Send a dummy change notification to force diagnostics
       // Some LSP servers (e.g., Pyright) cache diagnostics and won't re-send them
       // when a file is reopened with the same content. This ensures fresh diagnostics.
@@ -105,6 +115,7 @@ export async function createLSPClient(
           text: text,
         }],
       });
+      log(`=== FILE OPEN SEQUENCE COMPLETE: ${absolutePath} ===`);
     },
 
     async closeFile(filePath: string): Promise<void> {
@@ -154,11 +165,23 @@ export async function createLSPClient(
       });
     },
 
+    async triggerDiagnostics(filePath: string, timeoutMs: number = 5000): Promise<void> {
+      log(`Getting diagnostics for ${filePath} with ${timeoutMs}ms timeout`);
+
+      // Open the file to trigger diagnostics
+      await this.openFile(filePath);
+
+      // Wait for diagnostics
+      await this.waitForDiagnostics(filePath, timeoutMs);
+    },
+
     async shutdown(): Promise<void> {
-      console.log(`Shutting down LSP client ${serverID}`);
+      log(`Shutting down LSP client ${serverID}`);
       connection.end();
       connection.dispose();
       serverHandle.process.kill();
     }
   };
+
+  return client;
 }

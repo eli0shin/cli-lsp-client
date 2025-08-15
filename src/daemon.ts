@@ -2,6 +2,8 @@ import net from 'net';
 import os from 'os';
 import path from 'path';
 import { lspManager } from './lsp/manager.js';
+import { executeWarmup } from './lsp/warmup.js';
+import { log } from './logger.js';
 
 function hashPath(dirPath: string): string {
   // Simple hash function to create a short unique identifier for the path
@@ -54,6 +56,25 @@ export async function handleRequest(request: Request): Promise<string | number |
       }
       return await lspManager.getDiagnostics(args[0]);
 
+    case 'warmup':
+      const directory = args[0]; // Optional directory argument
+      log(`=== DAEMON WARMUP START - PID: ${process.pid} ===`);
+      log(`Starting warmup for directory: ${directory || 'current'}`);
+      try {
+        await executeWarmup(directory);
+        log('=== DAEMON WARMUP SUCCESS ===');
+      } catch (error) {
+        log(`=== DAEMON WARMUP ERROR: ${error} ===`);
+        throw error;
+      }
+      log('Warmup completed');
+      return 'Warmup completed';
+
+    case 'logs':
+      const { LOG_PATH } = await import('./logger.js');
+      return LOG_PATH;
+
+
     case 'stop':
       setTimeout(async () => await shutdown(), 100);
       return 'Daemon stopping...';
@@ -67,16 +88,19 @@ let server: net.Server | null = null;
 
 export async function startDaemon(): Promise<void> {
   console.log('Starting daemon…');
+  const { LOG_PATH } = await import('./logger.js');
+  console.log(`Daemon log: ${LOG_PATH}`);
+  log(`Daemon starting... PID: ${process.pid}`);
 
   await cleanup();
 
   server = net.createServer((socket) => {
-    console.log('Client connected');
+    log('Client connected');
 
     socket.on('data', async (data) => {
       try {
         const request = JSON.parse(data.toString()) as Request;
-        console.log('Received request:', request);
+        log(`Received request: ${JSON.stringify(request)}`);
 
         const result = await handleRequest(request);
 
@@ -95,7 +119,7 @@ export async function startDaemon(): Promise<void> {
     });
 
     socket.on('end', () => {
-      console.log('Client disconnected');
+      log('Client disconnected');
     });
   });
 
@@ -104,8 +128,28 @@ export async function startDaemon(): Promise<void> {
 
     await Bun.write(PID_FILE, process.pid.toString());
 
-    process.on('SIGINT', async () => await shutdown());
-    process.on('SIGTERM', async () => await shutdown());
+    process.on('SIGINT', async () => {
+      log('Received SIGINT signal');
+      await shutdown();
+    });
+    process.on('SIGTERM', async () => {
+      log('Received SIGTERM signal');
+      await shutdown();
+    });
+    
+    // Log unexpected exits
+    process.on('exit', async (code) => {
+      log(`Process exiting with code: ${code}`);
+    });
+    
+    process.on('uncaughtException', async (error) => {
+      log(`Uncaught exception: ${error.message}`);
+      await shutdown();
+    });
+    
+    process.on('unhandledRejection', async (reason, promise) => {
+      log(`Unhandled rejection at: ${promise}, reason: ${reason}`);
+    });
   });
 
   server.on('error', (error) => {
@@ -163,18 +207,23 @@ export async function cleanup(): Promise<void> {
 
 export async function shutdown(): Promise<void> {
   console.log('Shutting down daemon…');
+  log(`=== DAEMON SHUTDOWN START - PID: ${process.pid} ===`);
 
   // Shutdown LSP manager first
   try {
     await lspManager.shutdown();
+    log('LSP manager shutdown completed');
   } catch (error) {
     console.error('Error shutting down LSP manager:', error);
+    log(`LSP manager shutdown error: ${error}`);
   }
 
   if (server) {
     server.close();
+    log('Server closed');
   }
 
   await cleanup();
+  log('=== DAEMON SHUTDOWN COMPLETE ===');
   process.exit(0);
 }

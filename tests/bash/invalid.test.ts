@@ -9,10 +9,10 @@ describe('Bash Invalid Files', () => {
     expect(proc.exitCode).toBe(2);
     
     // Bash/ShellCheck can produce various errors, let's check for key ones
-    const output = stripAnsi(proc.stdout.toString());
+    const output = stripAnsi(proc.stderr.toString());
     
     // Should contain shellcheck errors
-    expect(output).toContain('Source: shellcheck');
+    expect(output).toContain('[shellcheck]');
     expect(output).toContain('ERROR');
     
     // Should catch the unclosed string error

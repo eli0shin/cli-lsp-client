@@ -1,4 +1,5 @@
 import type { Diagnostic as VSCodeDiagnostic } from "vscode-languageserver-types";
+import type { MessageConnection } from 'vscode-jsonrpc/node';
 
 export type Diagnostic = VSCodeDiagnostic;
 
@@ -26,10 +27,13 @@ export interface LSPServer {
 export interface LSPClient {
   serverID: string;
   root: string;
+  createdAt: number;
   diagnostics: Map<string, Diagnostic[]>;
+  connection?: MessageConnection;
   openFile(path: string): Promise<void>;
   closeFile(path: string): Promise<void>;
   getDiagnostics(path: string): Diagnostic[];
   waitForDiagnostics(path: string, timeoutMs?: number): Promise<void>;
+  triggerDiagnostics(path: string, timeoutMs?: number): Promise<void>;
   shutdown(): Promise<void>;
 }

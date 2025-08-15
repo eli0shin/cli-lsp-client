@@ -16,7 +16,7 @@ const SEVERITY_COLORS = {
 
 const RESET_COLOR = '\x1b[0m';
 
-export function formatDiagnostics(filePath: string, diagnostics: Diagnostic[]): string {
+export function formatDiagnostics(_filePath: string, diagnostics: Diagnostic[]): string {
   if (diagnostics.length === 0) {
     return '';
   }
@@ -31,24 +31,16 @@ export function formatDiagnostics(filePath: string, diagnostics: Diagnostic[]): 
     const line = diagnostic.range.start.line + 1; // LSP is 0-based, display is 1-based
     const col = diagnostic.range.start.character + 1;
     
-    lines.push('');
-    lines.push(`${color}${severityName}${RESET_COLOR} at line ${line}, column ${col}:`);
-    lines.push(`  ${diagnostic.message}`);
+    const source = diagnostic.source || 'unknown';
+    const codeStr = diagnostic.code !== undefined ? ` [${String(diagnostic.code)}]` : '';
     
-    if (diagnostic.source) {
-      lines.push(`  Source: ${diagnostic.source}`);
-    }
-    
-    if (diagnostic.code !== undefined) {
-      lines.push(`  Code: ${String(diagnostic.code)}`);
-    }
+    lines.push(`[${source}] ${color}${severityName}${RESET_COLOR} at line ${line}, column ${col}: ${diagnostic.message}${codeStr}`);
   }
 
-  lines.push('');
   return lines.join('\n');
 }
 
-export function formatDiagnosticsPlain(filePath: string, diagnostics: Diagnostic[]): string {
+export function formatDiagnosticsPlain(_filePath: string, diagnostics: Diagnostic[]): string {
   if (diagnostics.length === 0) {
     return '';
   }
@@ -62,19 +54,11 @@ export function formatDiagnosticsPlain(filePath: string, diagnostics: Diagnostic
     const line = diagnostic.range.start.line + 1; // LSP is 0-based, display is 1-based
     const col = diagnostic.range.start.character + 1;
     
-    lines.push('');
-    lines.push(`${severityName} at line ${line}, column ${col}:`);
-    lines.push(`  ${diagnostic.message}`);
+    const source = diagnostic.source || 'unknown';
+    const codeStr = diagnostic.code !== undefined ? ` [${String(diagnostic.code)}]` : '';
     
-    if (diagnostic.source) {
-      lines.push(`  Source: ${diagnostic.source}`);
-    }
-    
-    if (diagnostic.code !== undefined) {
-      lines.push(`  Code: ${String(diagnostic.code)}`);
-    }
+    lines.push(`[${source}] ${severityName} at line ${line}, column ${col}: ${diagnostic.message}${codeStr}`);
   }
 
-  lines.push('');
   return lines.join('\n');
 }

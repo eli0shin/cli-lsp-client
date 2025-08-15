@@ -1,8 +1,14 @@
 import net from 'net';
 import { spawn } from 'child_process';
-import { SOCKET_PATH, isDaemonRunning, startDaemon, type Request, type StatusResult } from './daemon.js';
+import { SOCKET_PATH, isDaemonRunning, type StatusResult } from './daemon.js';
 import { formatDiagnostics } from './lsp/formatter.js';
 import type { Diagnostic } from './lsp/types.js';
+import { HELP_MESSAGE } from './constants.js';
+
+function showHelpForUnknownCommand(command: string): void {
+  console.error(`Unknown command: ${command}\n`);
+  console.log(HELP_MESSAGE);
+}
 
 export async function sendToExistingDaemon(command: string, args: string[]): Promise<string | number | StatusResult> {
   return new Promise((resolve, reject) => {
@@ -81,7 +87,7 @@ export async function runCommand(command: string, commandArgs: string[]): Promis
         const output = formatDiagnostics(filePath, diagnostics);
         
         if (output) {
-          console.log(output);
+          console.error(output);
           process.exit(2); // Exit with error code when diagnostics found
         } else {
           process.exit(0); // Exit with success code when no diagnostics
@@ -91,6 +97,13 @@ export async function runCommand(command: string, commandArgs: string[]): Promis
       }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      
+      // Check if it's an unknown command error
+      if (errorMessage.startsWith('Unknown command:')) {
+        showHelpForUnknownCommand(command);
+        process.exit(1);
+      }
+      
       console.error('Error communicating with daemon:', errorMessage);
       process.exit(1);
     }
