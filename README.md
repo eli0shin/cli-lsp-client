@@ -7,6 +7,8 @@ CLI tool for getting LSP diagnostics. Uses a background daemon to keep LSP serve
 - Get diagnostics from LSP servers
 - Background daemon for fast repeated requests
 - Built in Claude Code hook to provide feedback on file edit tool calls
+- Comprehensive daemon management (`list`, `stop-all` commands)
+- Multi-project support with isolated daemon instances per directory
 
 ## Supported Languages
 
@@ -103,15 +105,44 @@ ERROR at line 5, column 20:
   Code: 2345
 ```
 
-### Other Commands
+### Daemon Management
 
 ```bash
-# Check daemon status
+# Check daemon status and memory usage
 npx cli-lsp-client status
 
-# Stop daemon (it will auto-restart when needed)
+# List all running daemons across directories
+npx cli-lsp-client list
+
+# Stop current directory's daemon
 npx cli-lsp-client stop
+
+# Stop all daemons across all directories (useful after package updates)
+npx cli-lsp-client stop-all
+
+# Show version
+npx cli-lsp-client --version
+
+# Show help
+npx cli-lsp-client help
 ```
+
+The `list` command shows all running daemon instances with their working directories, PIDs, and status:
+
+```bash
+$ npx cli-lsp-client list
+
+Running Daemons:
+================
+Hash   | PID   | Status    | Working Directory             
+----------------------------------------------------------
+h0gx9u | 12345 | ● Running | /Users/user/project-a
+94yi9w | 12346 | ● Running | /Users/user/project-b
+
+2/2 daemon(s) running
+```
+
+Use `stop-all` when updating the CLI package to ensure all old daemon processes are terminated and fresh ones spawn with the updated code.
 
 ## Java Installation Guide
 
@@ -159,11 +190,30 @@ pacman -S jdtls
 
 For detailed setup instructions, see the [official Eclipse JDT.LS documentation](https://github.com/eclipse-jdtls/eclipse.jdt.ls).
 
+### Additional Commands
+
+```bash
+# Warm up LSP servers for current directory (faster subsequent requests)
+npx cli-lsp-client warmup
+
+# Warm up for specific directory
+npx cli-lsp-client warmup /path/to/project
+
+# View daemon logs
+npx cli-lsp-client logs
+```
+
 ## Examples
 
 ```bash
 # Check a specific file
 npx cli-lsp-client diagnostics src/main.ts
+
+# List all daemon instances
+npx cli-lsp-client list
+
+# Stop all daemons after package update
+npx cli-lsp-client stop-all
 ```
 
 ## Development
