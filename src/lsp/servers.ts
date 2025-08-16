@@ -47,7 +47,7 @@ async function findProjectRoot(fileOrDirPath: string, patterns: string[]): Promi
   }
 }
 
-export interface ServerHandle {
+export type ServerHandle = {
   process: ChildProcessWithoutNullStreams;
   initialization?: Record<string, any>;
 }

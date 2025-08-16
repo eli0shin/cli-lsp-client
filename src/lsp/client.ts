@@ -1,6 +1,6 @@
 import path from 'path';
 import { createMessageConnection, StreamMessageReader, StreamMessageWriter } from 'vscode-jsonrpc/node';
-import type { LSPClient, Diagnostic } from './types.js';
+import type { LSPClient, Diagnostic, SymbolInformation, DocumentSymbol, Hover, Position, Location, LocationLink, ServerCapabilities } from './types.js';
 import type { ServerHandle } from './servers.js';
 import { LANGUAGE_EXTENSIONS } from './language.js';
 import { log } from '../logger.js';
@@ -37,7 +37,7 @@ export async function createLSPClient(
 
   // Initialize the LSP server
   log(`Initializing LSP server ${serverID}`);
-  await connection.sendRequest("initialize", {
+  const initResult = await connection.sendRequest("initialize", {
     rootUri: "file://" + root,
     processId: serverHandle.process.pid,
     workspaceFolders: [
@@ -64,9 +64,31 @@ export async function createLSPClient(
         publishDiagnostics: {
           versionSupport: true,
         },
+        documentSymbol: {
+          dynamicRegistration: false,
+          hierarchicalDocumentSymbolSupport: true
+        },
+        definition: {
+          dynamicRegistration: false,
+          linkSupport: true
+        },
+        typeDefinition: {
+          dynamicRegistration: false,
+          linkSupport: true
+        },
+        hover: {
+          dynamicRegistration: false,
+          contentFormat: ["markdown", "plaintext"]
+        },
+        diagnostic: {
+          dynamicRegistration: false
+        },
       },
     },
   });
+
+  const serverCapabilities = (initResult as any).capabilities as ServerCapabilities;
+  log(`Server capabilities for ${serverID}: ${JSON.stringify(serverCapabilities.diagnosticProvider)}`);
 
   await connection.sendNotification("initialized", {});
   log(`LSP server ${serverID} initialized`);
@@ -77,6 +99,7 @@ export async function createLSPClient(
     createdAt: Date.now(),
     diagnostics,
     connection,
+    serverCapabilities,
 
     async openFile(filePath: string): Promise<void> {
       const absolutePath = path.isAbsolute(filePath) ? filePath : path.resolve(process.cwd(), filePath);
@@ -144,7 +167,14 @@ export async function createLSPClient(
         
         const timeout = setTimeout(() => {
           if (checkInterval) clearInterval(checkInterval);
-          reject(new Error(`Timeout waiting for diagnostics for ${absolutePath}`));
+          
+          // Instead of rejecting, assume no diagnostics (empty array) for valid files
+          // This handles servers that don't send empty diagnostics notifications
+          if (!diagnostics.has(absolutePath)) {
+            log(`No diagnostics received after ${timeoutMs}ms, assuming valid file`);
+            diagnostics.set(absolutePath, []);
+          }
+          resolve();
         }, timeoutMs);
 
         // Check if we already have diagnostics
@@ -173,6 +203,119 @@ export async function createLSPClient(
 
       // Wait for diagnostics
       await this.waitForDiagnostics(filePath, timeoutMs);
+    },
+
+
+    async getDocumentSymbols(filePath: string): Promise<DocumentSymbol[] | SymbolInformation[]> {
+      const absolutePath = path.isAbsolute(filePath) ? filePath : path.resolve(process.cwd(), filePath);
+      log(`Getting document symbols for: ${absolutePath}`);
+      
+      // Ensure file is open
+      await this.openFile(absolutePath);
+      
+      try {
+        const result = await connection.sendRequest("textDocument/documentSymbol", {
+          textDocument: {
+            uri: `file://${absolutePath}`
+          }
+        });
+        return (result as DocumentSymbol[] | SymbolInformation[]) || [];
+      } catch (error) {
+        log(`documentSymbol not supported or failed: ${error}`);
+        return [];
+      }
+    },
+
+    async getDefinition(filePath: string, position: Position): Promise<Location[] | LocationLink[] | null> {
+      const absolutePath = path.isAbsolute(filePath) ? filePath : path.resolve(process.cwd(), filePath);
+      log(`Getting definition for ${absolutePath} at ${position.line}:${position.character}`);
+      
+      // Ensure file is open
+      await this.openFile(absolutePath);
+      
+      try {
+        const result = await connection.sendRequest("textDocument/definition", {
+          textDocument: {
+            uri: `file://${absolutePath}`
+          },
+          position: position
+        });
+        return (result as Location[] | LocationLink[] | null);
+      } catch (error) {
+        log(`definition request failed: ${error}`);
+        return null;
+      }
+    },
+
+    async getTypeDefinition(filePath: string, position: Position): Promise<Location[] | LocationLink[] | null> {
+      const absolutePath = path.isAbsolute(filePath) ? filePath : path.resolve(process.cwd(), filePath);
+      log(`Getting type definition for ${absolutePath} at ${position.line}:${position.character}`);
+      
+      // Ensure file is open
+      await this.openFile(absolutePath);
+      
+      try {
+        const result = await connection.sendRequest("textDocument/typeDefinition", {
+          textDocument: {
+            uri: `file://${absolutePath}`
+          },
+          position: position
+        });
+        return (result as Location[] | LocationLink[] | null);
+      } catch (error) {
+        log(`typeDefinition request failed: ${error}`);
+        return null;
+      }
+    },
+
+    async getHover(filePath: string, position: Position): Promise<Hover | null> {
+      const absolutePath = path.isAbsolute(filePath) ? filePath : path.resolve(process.cwd(), filePath);
+      log(`Getting hover for ${absolutePath} at ${position.line}:${position.character}`);
+      
+      // Ensure file is open
+      await this.openFile(absolutePath);
+      
+      try {
+        const result = await connection.sendRequest("textDocument/hover", {
+          textDocument: {
+            uri: `file://${absolutePath}`
+          },
+          position: position
+        });
+        return (result as Hover | null);
+      } catch (error) {
+        log(`hover request failed: ${error}`);
+        return null;
+      }
+    },
+
+    async pullDiagnostics(filePath: string): Promise<Diagnostic[]> {
+      const absolutePath = path.isAbsolute(filePath) ? filePath : path.resolve(process.cwd(), filePath);
+      log(`Pulling diagnostics for ${absolutePath}`);
+      
+      // Ensure file is open
+      await this.openFile(absolutePath);
+      
+      try {
+        const result = await connection.sendRequest("textDocument/diagnostic", {
+          textDocument: {
+            uri: `file://${absolutePath}`
+          }
+        });
+        
+        // Handle the response based on LSP spec
+        const diagnosticReport = result as any;
+        if (diagnosticReport.kind === 'full') {
+          return diagnosticReport.items || [];
+        } else if (diagnosticReport.kind === 'unchanged') {
+          // Return previously cached diagnostics
+          return this.getDiagnostics(absolutePath);
+        }
+        return [];
+      } catch (error) {
+        log(`textDocument/diagnostic not supported or failed: ${error}`);
+        throw error;
+      }
     },
 
     async shutdown(): Promise<void> {

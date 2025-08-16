@@ -1,36 +1,73 @@
+"""
+Root query type for the API
+"""
 type Query {
+  "Get a single user by ID"
   user(id: ID!): User
+  "Get all users"
   users: [User!]!
+  "Get a single post by ID"
   post(id: ID!): Post
 }
 
+"""
+A user in the system
+"""
 type User {
+  "Unique identifier for the user"
   id: ID!
+  "Full name of the user"
   name: String!
+  "Email address of the user"
   email: String!
+  "Posts authored by this user"
   posts: [Post!]!
 }
 
+"""
+A blog post
+"""
 type Post {
+  "Unique identifier for the post"
   id: ID!
+  "Title of the post"
   title: String!
+  "Content of the post"
   content: String!
+  "Author of the post"
   author: User!
+  "When the post was published"
   publishedAt: String
 }
 
+"""
+Root mutation type for the API
+"""
 type Mutation {
+  "Create a new user"
   createUser(input: CreateUserInput!): User!
+  "Update an existing user"
   updateUser(id: ID!, input: UpdateUserInput!): User!
+  "Delete a user"
   deleteUser(id: ID!): Boolean!
 }
 
+"""
+Input for creating a new user
+"""
 input CreateUserInput {
+  "Full name of the user"
   name: String!
+  "Email address of the user"
   email: String!
 }
 
+"""
+Input for updating an existing user
+"""
 input UpdateUserInput {
+  "Full name of the user"
   name: String
+  "Email address of the user"
   email: String
 }

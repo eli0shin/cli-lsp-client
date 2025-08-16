@@ -6,6 +6,7 @@ Commands:
   status                        Show daemon status and memory usage
   list                          List all running daemons with their working directories
   diagnostics <file>           Get diagnostics for a file
+  hover <file> <symbol>        Get hover info for a symbol in specific file
   warmup [directory]           Warm up LSP servers for a directory (default: current)
   logs                         Show the daemon log file path
   stop                         Stop the daemon
@@ -18,6 +19,8 @@ Examples:
   cli-lsp-client list                           # List all running daemons
   cli-lsp-client diagnostics src/main.ts        # Get TypeScript diagnostics
   cli-lsp-client diagnostics ./script.py       # Get Python diagnostics
+  cli-lsp-client hover src/client.ts runCommand # Get hover info for runCommand function
+  cli-lsp-client hover src/formatter.ts formatHoverResults # Get hover info for formatHoverResults function
   cli-lsp-client warmup                         # Warm up servers for current directory
   cli-lsp-client warmup /path/to/project       # Warm up servers for specific directory
   cli-lsp-client logs                           # Get log file location

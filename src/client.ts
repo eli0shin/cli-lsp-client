@@ -2,11 +2,11 @@ import net from 'net';
 import os from 'os';
 import path from 'path';
 import { readdir } from 'node:fs/promises';
-import { spawn } from 'child_process';
-import { SOCKET_PATH, isDaemonRunning, type StatusResult } from './daemon.js';
-import { formatDiagnostics } from './lsp/formatter.js';
-import type { Diagnostic } from './lsp/types.js';
+import { SOCKET_PATH, type StatusResult } from './daemon.js';
+import { formatDiagnostics, formatHoverResults } from './lsp/formatter.js';
+import type { Diagnostic, HoverResult } from './lsp/types.js';
 import { HELP_MESSAGE } from './constants.js';
+import { ensureDaemonRunning } from './utils.js';
 
 function showHelpForUnknownCommand(command: string): void {
   console.error(`Unknown command: ${command}\n`);
@@ -71,19 +71,6 @@ export async function sendToExistingDaemon(command: string, args: string[]): Pro
   });
 }
 
-function spawnDaemon(): void {
-  // Spawn a new process of ourselves with daemon mode enabled
-  const child = spawn(process.execPath, [process.argv[1]], {
-    detached: true,
-    stdio: 'ignore',
-    env: {
-      ...process.env,
-      LSPCLI_DAEMON_MODE: '1'
-    }
-  });
-  
-  child.unref();
-}
 
 async function sendStopCommandToSocket(socketPath: string): Promise<void> {
   return new Promise((resolve, reject) => {
@@ -395,23 +382,11 @@ export async function runCommand(command: string, commandArgs: string[]): Promis
     }
 
     // For all other commands: check if daemon running, start if needed, send command, exit
-    let daemonRunning = await isDaemonRunning();
+    const daemonStarted = await ensureDaemonRunning();
     
-    if (!daemonRunning) {
-      // Start daemon in background process
-      spawnDaemon();
-
-      // Wait for daemon to be ready
-      let attempts = 0;
-      while (attempts < 50 && !(await isDaemonRunning())) {
-        await new Promise(resolve => setTimeout(resolve, 100));
-        attempts++;
-      }
-
-      if (!(await isDaemonRunning())) {
-        console.error('Failed to start daemon');
-        process.exit(1);
-      }
+    if (!daemonStarted) {
+      console.error('Failed to start daemon');
+      process.exit(1);
     }
 
     // Send command to daemon and exit
@@ -430,6 +405,12 @@ export async function runCommand(command: string, commandArgs: string[]): Promis
         } else {
           process.exit(0); // Exit with success code when no diagnostics
         }
+      } else if (command === 'hover' && Array.isArray(result)) {
+        // Special formatting for hover command
+        const hoverResults = result as HoverResult[];
+        const formatted = await formatHoverResults(hoverResults);
+        console.log(formatted);
+        process.exit(0);
       } else {
         console.log('Result:', result);
       }
