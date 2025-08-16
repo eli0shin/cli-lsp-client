@@ -34,7 +34,40 @@ export async function handleClaudeCodeHook(filePath: string): Promise<{ hasIssue
   
   // Get diagnostics (suppress errors to stdout)
   try {
+    // Import dependencies
     const { sendToExistingDaemon } = await import('./client.js');
+    const { isDaemonRunning } = await import('./daemon.js');
+    const { spawn } = await import('child_process');
+    
+    // Check if daemon is running, start if needed
+    let daemonRunning = await isDaemonRunning();
+    
+    if (!daemonRunning) {
+      // Spawn a new daemon process
+      const child = spawn(process.execPath, [process.argv[1]], {
+        detached: true,
+        stdio: 'ignore',
+        env: {
+          ...process.env,
+          LSPCLI_DAEMON_MODE: '1'
+        }
+      });
+      
+      child.unref();
+      
+      // Wait for daemon to be ready
+      let attempts = 0;
+      while (attempts < 50 && !(await isDaemonRunning())) {
+        await new Promise(resolve => setTimeout(resolve, 100));
+        attempts++;
+      }
+      
+      if (!(await isDaemonRunning())) {
+        // Failed to start daemon
+        return { hasIssues: false, output: '' };
+      }
+    }
+    
     const result = await sendToExistingDaemon('diagnostics', [filePath]);
     
     // The diagnostics command returns an array of diagnostics
