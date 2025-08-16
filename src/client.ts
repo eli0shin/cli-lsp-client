@@ -412,7 +412,7 @@ export async function runCommand(command: string, commandArgs: string[]): Promis
         console.log(formatted);
         process.exit(0);
       } else {
-        console.log('Result:', result);
+        console.log(result);
       }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';

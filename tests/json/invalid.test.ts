@@ -7,8 +7,8 @@ describe('JSON Invalid Files', () => {
     const filePath = 'tests/fixtures/json/invalid/syntax-error.json';
     const proc = await runDiagnostics(filePath);
     expect(proc.exitCode).toBe(2);
-    expect(stripAnsi(proc.stderr.toString())).toBe(`[plaintext] ERROR at line 3, column 23: Property expected [513]
-[plaintext] ERROR at line 5, column 1: Value expected [516]`);
+    expect(stripAnsi(proc.stderr.toString())).toBe(`[json] ERROR at line 3, column 23: Property expected [513]
+[json] ERROR at line 5, column 1: Value expected [516]`);
   });
 
 });

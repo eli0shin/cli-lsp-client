@@ -53,7 +53,7 @@ Configure Claude Code to use the built-in hook command:
         "hooks": [
           {
             "type": "command",
-            "command": "npx -y cli-lsp-client warmup"
+            "command": "npx -y cli-lsp-client start"
           }
         ]
       }
@@ -75,7 +75,7 @@ Configure Claude Code to use the built-in hook command:
 
 #### How It Works
 
-- **SessionStart**: Automatically warms up LSP servers when Claude Code starts for faster initial diagnostics
+- **SessionStart**: Automatically starts LSP servers when Claude Code starts for faster initial diagnostics
 - **PostToolUse**: Runs diagnostics after each file edit (Edit, MultiEdit, Write tools)
 - Built-in file filtering for all supported languages (11 file types)
 - Shows errors, warnings, and hints inline
@@ -139,7 +139,7 @@ export function runCommand(command: string, commandArgs: string[]): Promise<void
 ### Daemon Management
 
 ```bash
-# Check daemon status and memory usage
+# Check daemon status with uptime and running language servers
 npx cli-lsp-client status
 
 # List all running daemons across directories
@@ -156,6 +156,22 @@ npx cli-lsp-client --version
 
 # Show help
 npx cli-lsp-client help
+```
+
+The `status` command shows the current daemon's uptime and running language servers:
+
+```bash
+$ npx cli-lsp-client status
+LSP Daemon Status
+================
+PID: 33502
+Uptime: 1m 38s
+
+Language Servers:
+- typescript (.) - running 1m 33s
+- pyright (.) - running 1m 10s
+
+Total: 2 language servers running
 ```
 
 The `list` command shows all running daemon instances with their working directories, PIDs, and status:
@@ -224,11 +240,11 @@ For detailed setup instructions, see the [official Eclipse JDT.LS documentation]
 ### Additional Commands
 
 ```bash
-# Warm up LSP servers for current directory (faster subsequent requests)
-npx cli-lsp-client warmup
+# Start LSP servers for current directory (faster subsequent requests)
+npx cli-lsp-client start
 
-# Warm up for specific directory
-npx cli-lsp-client warmup /path/to/project
+# Start servers for specific directory
+npx cli-lsp-client start /path/to/project
 
 # View daemon logs
 npx cli-lsp-client logs

@@ -390,6 +390,14 @@ export class LSPManager {
     return client;
   }
 
+  getRunningServers(): Array<{ serverID: string; root: string; uptime: number }> {
+    return Array.from(this.clients.values()).map(client => ({
+      serverID: client.serverID,
+      root: client.root,
+      uptime: Date.now() - client.createdAt
+    }));
+  }
+
   async shutdown(): Promise<void> {
     log('Shutting down LSP manager...');
 

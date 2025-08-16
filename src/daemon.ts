@@ -2,7 +2,7 @@ import net from 'net';
 import os from 'os';
 import path from 'path';
 import { lspManager } from './lsp/manager.js';
-import { executeWarmup } from './lsp/warmup.js';
+import { executeStart } from './lsp/start.js';
 import { log } from './logger.js';
 import { hashPath } from './utils.js';
 
@@ -29,16 +29,45 @@ export type StatusResult = {
   memory: NodeJS.MemoryUsage;
 };
 
+function formatUptime(uptimeMs: number): string {
+  const seconds = Math.floor(uptimeMs / 1000);
+  const minutes = Math.floor(seconds / 60);
+  const hours = Math.floor(minutes / 60);
+  
+  if (hours > 0) {
+    return `${hours}h ${minutes % 60}m ${seconds % 60}s`;
+  } else if (minutes > 0) {
+    return `${minutes}m ${seconds % 60}s`;
+  } else {
+    return `${seconds}s`;
+  }
+}
+
 export async function handleRequest(request: Request): Promise<string | number | StatusResult | any> {
   const { command, args = [] } = request;
 
   switch (command) {
     case 'status':
-      return {
-        pid: process.pid,
-        uptime: process.uptime(),
-        memory: process.memoryUsage()
-      };
+      const runningServers = lspManager.getRunningServers();
+      const daemonUptimeMs = process.uptime() * 1000;
+      
+      let output = 'LSP Daemon Status\n';
+      output += '================\n';
+      output += `PID: ${process.pid}\n`;
+      output += `Uptime: ${formatUptime(daemonUptimeMs)}\n\n`;
+      
+      if (runningServers.length === 0) {
+        output += 'No language servers running\n';
+      } else {
+        output += 'Language Servers:\n';
+        for (const server of runningServers) {
+          const relativePath = path.relative(process.cwd(), server.root) || '.';
+          output += `- ${server.serverID} (${relativePath}) - running ${formatUptime(server.uptime)}\n`;
+        }
+        output += `\nTotal: ${runningServers.length} language server${runningServers.length === 1 ? '' : 's'} running\n`;
+      }
+      
+      return output;
 
     case 'diagnostics':
       if (!args[0]) {
@@ -46,19 +75,21 @@ export async function handleRequest(request: Request): Promise<string | number |
       }
       return await lspManager.getDiagnostics(args[0]);
 
-    case 'warmup':
+    case 'start':
       const directory = args[0]; // Optional directory argument
-      log(`=== DAEMON WARMUP START - PID: ${process.pid} ===`);
-      log(`Starting warmup for directory: ${directory || 'current'}`);
+      log(`=== DAEMON START - PID: ${process.pid} ===`);
+      log(`Starting LSP servers for directory: ${directory || 'current'}`);
       try {
-        await executeWarmup(directory);
-        log('=== DAEMON WARMUP SUCCESS ===');
+        const startedServers = await executeStart(directory);
+        log('=== DAEMON START SUCCESS ===');
+        if (startedServers.length === 0) {
+          return 'Started LSP daemon';
+        }
+        return `Started LSP servers for ${startedServers.join(',')}`;
       } catch (error) {
-        log(`=== DAEMON WARMUP ERROR: ${error} ===`);
+        log(`=== DAEMON START ERROR: ${error} ===`);
         throw error;
       }
-      log('Warmup completed');
-      return 'Warmup completed';
 
     case 'logs':
       const { LOG_PATH } = await import('./logger.js');

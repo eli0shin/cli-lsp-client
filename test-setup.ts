@@ -12,11 +12,11 @@ try {
   console.log('Stopping any existing daemons...');
   await spawn(['./cli-lsp-client', 'stop']).exited;
 
-  // Run warmup to ensure daemon is ready
-  console.log('Warming up daemon...');
-  await spawn(['./cli-lsp-client', 'warmup']).exited;
+  // Run start to ensure daemon is ready
+  console.log('Starting daemon...');
+  await spawn(['./cli-lsp-client', 'start']).exited;
 
-  // Wait for daemon to be fully ready after warmup
+  // Wait for daemon to be fully ready after start
   console.log('Waiting for daemon to be ready...');
   await new Promise(resolve => setTimeout(resolve, 5000));
 
