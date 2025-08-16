@@ -29,16 +29,45 @@ export type StatusResult = {
   memory: NodeJS.MemoryUsage;
 };
 
+function formatUptime(uptimeMs: number): string {
+  const seconds = Math.floor(uptimeMs / 1000);
+  const minutes = Math.floor(seconds / 60);
+  const hours = Math.floor(minutes / 60);
+  
+  if (hours > 0) {
+    return `${hours}h ${minutes % 60}m ${seconds % 60}s`;
+  } else if (minutes > 0) {
+    return `${minutes}m ${seconds % 60}s`;
+  } else {
+    return `${seconds}s`;
+  }
+}
+
 export async function handleRequest(request: Request): Promise<string | number | StatusResult | any> {
   const { command, args = [] } = request;
 
   switch (command) {
     case 'status':
-      return {
-        pid: process.pid,
-        uptime: process.uptime(),
-        memory: process.memoryUsage()
-      };
+      const runningServers = lspManager.getRunningServers();
+      const daemonUptimeMs = process.uptime() * 1000;
+      
+      let output = 'LSP Daemon Status\n';
+      output += '================\n';
+      output += `PID: ${process.pid}\n`;
+      output += `Uptime: ${formatUptime(daemonUptimeMs)}\n\n`;
+      
+      if (runningServers.length === 0) {
+        output += 'No language servers running\n';
+      } else {
+        output += 'Language Servers:\n';
+        for (const server of runningServers) {
+          const relativePath = path.relative(process.cwd(), server.root) || '.';
+          output += `- ${server.serverID} (${relativePath}) - running ${formatUptime(server.uptime)}\n`;
+        }
+        output += `\nTotal: ${runningServers.length} language server${runningServers.length === 1 ? '' : 's'} running\n`;
+      }
+      
+      return output;
 
     case 'diagnostics':
       if (!args[0]) {

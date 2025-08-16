@@ -139,7 +139,7 @@ export function runCommand(command: string, commandArgs: string[]): Promise<void
 ### Daemon Management
 
 ```bash
-# Check daemon status and memory usage
+# Check daemon status with uptime and running language servers
 npx cli-lsp-client status
 
 # List all running daemons across directories
@@ -156,6 +156,22 @@ npx cli-lsp-client --version
 
 # Show help
 npx cli-lsp-client help
+```
+
+The `status` command shows the current daemon's uptime and running language servers:
+
+```bash
+$ npx cli-lsp-client status
+LSP Daemon Status
+================
+PID: 33502
+Uptime: 1m 38s
+
+Language Servers:
+- typescript (.) - running 1m 33s
+- pyright (.) - running 1m 10s
+
+Total: 2 language servers running
 ```
 
 The `list` command shows all running daemon instances with their working directories, PIDs, and status:
