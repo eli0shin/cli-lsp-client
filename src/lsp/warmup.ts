@@ -123,14 +123,12 @@ export async function detectProjectTypes(directory: string): Promise<LSPServer[]
     })()
   );
   
-  // JSON (but not if TypeScript already detected)
+  // JSON
   detectionPromises.push(
     (async () => {
       if (await hasAnyFile(directory, ['*.json', '*.jsonc'])) {
-        if (!detectedServers.some(s => s.id === 'typescript')) {
-          const server = getServerById('json');
-          if (server) detectedServers.push(server);
-        }
+        const server = getServerById('json');
+        if (server) detectedServers.push(server);
       }
     })()
   );
@@ -151,7 +149,7 @@ export async function detectProjectTypes(directory: string): Promise<LSPServer[]
   return detectedServers;
 }
 
-export async function executeWarmup(directory?: string): Promise<void> {
+export async function executeWarmup(directory?: string): Promise<string[]> {
   log(`=== WARMUP FUNCTION CALLED ===`);
   const targetDir = directory || process.cwd();
   log(`Target directory: ${targetDir}`);
@@ -162,6 +160,8 @@ export async function executeWarmup(directory?: string): Promise<void> {
   
   log(`Warming up ${projectServers.length} LSP servers for ${targetDir}...`);
   log(`Detected servers: ${projectServers.map(s => s.id).join(', ')}`);
+  
+  const startedServers: string[] = [];
   
   for (const server of projectServers) {
     try {
@@ -178,6 +178,7 @@ export async function executeWarmup(directory?: string): Promise<void> {
       if (existingClient) {
         log(`Client already exists for ${clientKey}, skipping warmup`);
         log(`✓ ${server.id} already warmed up`);
+        startedServers.push(server.id);
         continue;
       }
       
@@ -199,6 +200,7 @@ export async function executeWarmup(directory?: string): Promise<void> {
       (lspManager as any).clients.set(clientKey, client);
       log(`Stored client in manager with key: ${clientKey}`);
       log(`✓ ${server.id} ready`);
+      startedServers.push(server.id);
       
     } catch (error) {
       log(`Warmup failed for ${server.id}: ${error instanceof Error ? error.message : String(error)}`);
@@ -208,4 +210,5 @@ export async function executeWarmup(directory?: string): Promise<void> {
   
   log('=== WARMUP FUNCTION COMPLETED ===');
   log('Warmup complete');
+  return startedServers;
 }

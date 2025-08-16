@@ -51,14 +51,16 @@ export async function handleRequest(request: Request): Promise<string | number |
       log(`=== DAEMON WARMUP START - PID: ${process.pid} ===`);
       log(`Starting warmup for directory: ${directory || 'current'}`);
       try {
-        await executeWarmup(directory);
+        const startedServers = await executeWarmup(directory);
         log('=== DAEMON WARMUP SUCCESS ===');
+        if (startedServers.length === 0) {
+          return 'Started LSP daemon';
+        }
+        return `Started LSP servers for ${startedServers.join(',')}`;
       } catch (error) {
         log(`=== DAEMON WARMUP ERROR: ${error} ===`);
         throw error;
       }
-      log('Warmup completed');
-      return 'LSP daemon started';
 
     case 'logs':
       const { LOG_PATH } = await import('./logger.js');
