@@ -43,7 +43,7 @@ export async function detectProjectTypes(directory: string): Promise<LSPServer[]
   detectionPromises.push(
     (async () => {
       log('Checking for TypeScript/JavaScript files...');
-      if (await hasAnyFile(directory, ['tsconfig.json', 'jsconfig.json', 'package.json', '*.ts', '*.tsx', '*.js', '*.jsx', '*.mjs', '*.cjs'])) {
+      if (await hasAnyFile(directory, ['tsconfig.json', 'jsconfig.json', 'package.json', '**/*.ts', '**/*.tsx', '**/*.js', '**/*.jsx', '**/*.mjs', '**/*.cjs'])) {
         log('TypeScript/JavaScript detected');
         const server = getServerById('typescript');
         if (server) detectedServers.push(server);
@@ -56,7 +56,7 @@ export async function detectProjectTypes(directory: string): Promise<LSPServer[]
   // Python
   detectionPromises.push(
     (async () => {
-      if (await hasAnyFile(directory, ['pyproject.toml', 'requirements.txt', '*.py', '*.pyi'])) {
+      if (await hasAnyFile(directory, ['pyproject.toml', 'requirements.txt', '**/*.py', '**/*.pyi'])) {
         const server = getServerById('pyright');
         if (server) detectedServers.push(server);
       }
@@ -66,7 +66,7 @@ export async function detectProjectTypes(directory: string): Promise<LSPServer[]
   // Go
   detectionPromises.push(
     (async () => {
-      if (await hasAnyFile(directory, ['go.mod', '*.go'])) {
+      if (await hasAnyFile(directory, ['go.mod', '**/*.go'])) {
         const server = getServerById('gopls');
         if (server) detectedServers.push(server);
       }
@@ -76,7 +76,7 @@ export async function detectProjectTypes(directory: string): Promise<LSPServer[]
   // Java
   detectionPromises.push(
     (async () => {
-      if (await hasAnyFile(directory, ['pom.xml', 'build.gradle', 'build.gradle.kts', '*.java'])) {
+      if (await hasAnyFile(directory, ['pom.xml', 'build.gradle', 'build.gradle.kts', '**/*.java'])) {
         const server = getServerById('jdtls');
         if (server) detectedServers.push(server);
       }
@@ -86,7 +86,7 @@ export async function detectProjectTypes(directory: string): Promise<LSPServer[]
   // Lua
   detectionPromises.push(
     (async () => {
-      if (await hasAnyFile(directory, ['.luarc.json', '.luarc.jsonc', '*.lua'])) {
+      if (await hasAnyFile(directory, ['.luarc.json', '.luarc.jsonc', '**/*.lua'])) {
         const server = getServerById('lua_ls');
         if (server) detectedServers.push(server);
       }
@@ -96,7 +96,7 @@ export async function detectProjectTypes(directory: string): Promise<LSPServer[]
   // GraphQL
   detectionPromises.push(
     (async () => {
-      if (await hasAnyFile(directory, ['.graphqlrc', '.graphqlrc.yml', '.graphqlrc.yaml', '.graphqlrc.json', '*.graphql', '*.gql'])) {
+      if (await hasAnyFile(directory, ['.graphqlrc', '.graphqlrc.yml', '.graphqlrc.yaml', '.graphqlrc.json', '**/*.graphql', '**/*.gql'])) {
         const server = getServerById('graphql');
         if (server) detectedServers.push(server);
       }
@@ -106,7 +106,7 @@ export async function detectProjectTypes(directory: string): Promise<LSPServer[]
   // YAML
   detectionPromises.push(
     (async () => {
-      if (await hasAnyFile(directory, ['*.yml', '*.yaml'])) {
+      if (await hasAnyFile(directory, ['**/*.yml', '**/*.yaml'])) {
         const server = getServerById('yaml');
         if (server) detectedServers.push(server);
       }
@@ -116,7 +116,7 @@ export async function detectProjectTypes(directory: string): Promise<LSPServer[]
   // Bash
   detectionPromises.push(
     (async () => {
-      if (await hasAnyFile(directory, ['*.sh', '*.bash', '*.zsh'])) {
+      if (await hasAnyFile(directory, ['**/*.sh', '**/*.bash', '**/*.zsh'])) {
         const server = getServerById('bash');
         if (server) detectedServers.push(server);
       }
@@ -126,7 +126,7 @@ export async function detectProjectTypes(directory: string): Promise<LSPServer[]
   // JSON
   detectionPromises.push(
     (async () => {
-      if (await hasAnyFile(directory, ['*.json', '*.jsonc'])) {
+      if (await hasAnyFile(directory, ['**/*.json', '**/*.jsonc'])) {
         const server = getServerById('json');
         if (server) detectedServers.push(server);
       }
@@ -136,7 +136,7 @@ export async function detectProjectTypes(directory: string): Promise<LSPServer[]
   // CSS/SCSS
   detectionPromises.push(
     (async () => {
-      if (await hasAnyFile(directory, ['*.css', '*.scss', '*.sass', '*.less'])) {
+      if (await hasAnyFile(directory, ['**/*.css', '**/*.scss', '**/*.sass', '**/*.less'])) {
         const server = getServerById('css');
         if (server) detectedServers.push(server);
       }
