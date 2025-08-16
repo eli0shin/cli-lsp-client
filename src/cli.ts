@@ -2,13 +2,14 @@
 
 import path from 'path';
 import { startDaemon } from './daemon.js';
-import { runCommand } from './client.js';
+import { runCommand, sendToExistingDaemon } from './client.js';
 import { formatDiagnosticsPlain } from './lsp/formatter.js';
 import type { Diagnostic } from './lsp/types.js';
 import { HELP_MESSAGE } from './constants.js';
+import { ensureDaemonRunning } from './utils.js';
 import packageJson from '../package.json' with { type: 'json' };
 
-export async function handleClaudeCodeHook(filePath: string): Promise<{ hasIssues: boolean; output: string }> {
+export async function handleClaudeCodeHook(filePath: string): Promise<{ hasIssues: boolean; output: string; daemonFailed?: boolean }> {
   // Check if file exists
   if (!await Bun.file(filePath).exists()) {
     return { hasIssues: false, output: '' };
@@ -34,38 +35,16 @@ export async function handleClaudeCodeHook(filePath: string): Promise<{ hasIssue
   
   // Get diagnostics (suppress errors to stdout)
   try {
-    // Import dependencies
-    const { sendToExistingDaemon } = await import('./client.js');
-    const { isDaemonRunning } = await import('./daemon.js');
-    const { spawn } = await import('child_process');
+    // Ensure daemon is running
+    const daemonStarted = await ensureDaemonRunning();
     
-    // Check if daemon is running, start if needed
-    let daemonRunning = await isDaemonRunning();
-    
-    if (!daemonRunning) {
-      // Spawn a new daemon process
-      const child = spawn(process.execPath, [process.argv[1]], {
-        detached: true,
-        stdio: 'ignore',
-        env: {
-          ...process.env,
-          LSPCLI_DAEMON_MODE: '1'
-        }
-      });
-      
-      child.unref();
-      
-      // Wait for daemon to be ready
-      let attempts = 0;
-      while (attempts < 50 && !(await isDaemonRunning())) {
-        await new Promise(resolve => setTimeout(resolve, 100));
-        attempts++;
-      }
-      
-      if (!(await isDaemonRunning())) {
-        // Failed to start daemon
-        return { hasIssues: false, output: '' };
-      }
+    if (!daemonStarted) {
+      // Failed to start daemon - return with flag so caller can handle
+      return { 
+        hasIssues: false, 
+        output: 'Failed to start LSP daemon. Please try running "cli-lsp-client stop" and retry.',
+        daemonFailed: true 
+      };
     }
     
     const result = await sendToExistingDaemon('diagnostics', [filePath]);
@@ -142,6 +121,11 @@ async function run(): Promise<void> {
       }
 
       const result = await handleClaudeCodeHook(filePath);
+      if (result.daemonFailed) {
+        // Daemon failed to start - exit with status 1 to show error to user
+        console.error(result.output);
+        process.exit(1);
+      }
       if (result.hasIssues) {
         console.error(result.output);
         process.exit(2);
