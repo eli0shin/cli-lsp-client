@@ -77,6 +77,7 @@ Greets a person by name
     
     expect(result.exitCode).toBe(0);
     const output = stripAnsi(result.stdout.toString());
+    // When hovering over an import, we follow to the actual type definition
     expect(output).toBe(`Location: src/lsp/types.ts:47:13
 \`\`\`typescript
 type HoverResult = {
@@ -97,9 +98,85 @@ type HoverResult = {
     
     expect(result.exitCode).toBe(0);
     const output = stripAnsi(result.stdout.toString());
+    // When hovering over an import, we follow to the actual type definition
     expect(output).toBe(`Location: src/lsp/types.ts:14:13
 \`\`\`typescript
 type Diagnostic = VSCodeDiagnostic
 \`\`\``);
+  }, 10000);
+
+  test('should get hover info for async function with JSDoc', async () => {
+    const result = await runHover('tests/fixtures/typescript/valid/simple-function.ts', 'fetchData');
+    
+    expect(result.exitCode).toBe(0);
+    const output = stripAnsi(result.stdout.toString());
+    expect(output).toBe(`Location: tests/fixtures/typescript/valid/simple-function.ts:26:23
+\`\`\`typescript
+function fetchData(): Promise<string>
+\`\`\`
+Fetches data asynchronously from a remote source
+
+@returns — A promise that resolves to a string containing the fetched data`);
+  }, 10000);
+
+  test('should get hover info for variable with interface type', async () => {
+    const result = await runHover('tests/fixtures/typescript/valid/simple-function.ts', 'myUser');
+    
+    expect(result.exitCode).toBe(0);
+    const output = stripAnsi(result.stdout.toString());
+    // For variables, we expect to see the interface definition
+    expect(output).toContain('interface User');
+  }, 10000);
+
+  test('should get hover info for variable with type alias', async () => {
+    const result = await runHover('tests/fixtures/typescript/valid/simple-function.ts', 'userId');
+    
+    expect(result.exitCode).toBe(0);
+    const output = stripAnsi(result.stdout.toString());
+    // For variables with type aliases, we show the resolved type (string, not UserID)
+    expect(output).toContain('const userId: string');
+  }, 10000);
+
+  test('should get hover info for type alias itself', async () => {
+    const result = await runHover('tests/fixtures/typescript/valid/simple-function.ts', 'UserID');
+    
+    expect(result.exitCode).toBe(0);
+    const output = stripAnsi(result.stdout.toString());
+    expect(output).toContain('type UserID = string');
+  }, 10000);
+
+  test('should get hover info for interface', async () => {
+    const result = await runHover('tests/fixtures/typescript/valid/simple-function.ts', 'User');
+    
+    expect(result.exitCode).toBe(0);
+    const output = stripAnsi(result.stdout.toString());
+    expect(output).toContain('interface User');
+  }, 10000);
+
+  test('should get hover info for variable with inferred type', async () => {
+    const result = await runHover('tests/fixtures/typescript/valid/simple-function.ts', 'config');
+    
+    expect(result.exitCode).toBe(0);
+    const output = stripAnsi(result.stdout.toString());
+    // Should show the const declaration with inferred type
+    expect(output).toContain('const config');
+  }, 10000);
+
+  test('should get hover info for variable with imported type', async () => {
+    const result = await runHover('tests/fixtures/typescript/valid/simple-function.ts', 'myPromise');
+    
+    expect(result.exitCode).toBe(0);
+    const output = stripAnsi(result.stdout.toString());
+    // For variables with Promise type, should show Promise interface
+    expect(output).toContain('Promise');
+  }, 10000);
+
+  test('should get hover info for function with type alias return', async () => {
+    const result = await runHover('tests/fixtures/typescript/valid/simple-function.ts', 'getUserId');
+    
+    expect(result.exitCode).toBe(0);
+    const output = stripAnsi(result.stdout.toString());
+    // Should show function signature, not the return type definition
+    expect(output).toContain('function getUserId(): UserID');
   }, 10000);
 });

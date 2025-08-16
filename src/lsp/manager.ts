@@ -1,8 +1,38 @@
 import path from 'path';
-import type { LSPClient, Diagnostic, HoverResult, Position, LSPServer, Location, LocationLink } from './types.js';
+import type { LSPClient, Diagnostic, HoverResult, Position, LSPServer, Location, LocationLink, DocumentSymbol, SymbolInformation } from './types.js';
 import { createLSPClient } from './client.js';
 import { getApplicableServers, getProjectRoot, spawnServer } from './servers.js';
 import { log } from '../logger.js';
+
+// SymbolKind enum values from LSP spec
+const SymbolKind = {
+  File: 1,
+  Module: 2,
+  Namespace: 3,
+  Package: 4,
+  Class: 5,
+  Method: 6,
+  Property: 7,
+  Field: 8,
+  Constructor: 9,
+  Enum: 10,
+  Interface: 11,
+  Function: 12,
+  Variable: 13,
+  Constant: 14,
+  String: 15,
+  Number: 16,
+  Boolean: 17,
+  Array: 18,
+  Object: 19,
+  Key: 20,
+  Null: 21,
+  EnumMember: 22,
+  Struct: 23,
+  Event: 24,
+  Operator: 25,
+  TypeParameter: 26
+} as const;
 
 export class LSPManager {
   private clients = new Map<string, LSPClient>();
@@ -129,45 +159,67 @@ export class LSPManager {
         const fileContent = await Bun.file(absolutePath).text();
         const symbolPositions = this.findSymbolOccurrences(fileContent, symbolName);
         
+        // Get document symbols to identify symbol types
+        const documentSymbols = await client.getDocumentSymbols(absolutePath);
+        log(`Got ${documentSymbols.length} document symbols`);
+        
         // Try hover at each occurrence
         for (const position of symbolPositions) {
           let hoverLocation = position;
           let hoverFile = absolutePath;
           
-          // Try to get the type definition for better hover information
-          try {
-            const typeDefinitions = await client.getTypeDefinition(absolutePath, position);
-            if (typeDefinitions && typeDefinitions.length > 0) {
-              const firstTypeDef = typeDefinitions[0];
-              if ('uri' in firstTypeDef) {
-                const location = firstTypeDef as Location;
-                const typeDefFile = new URL(location.uri).pathname;
-                const typeDefLocation = location.range.start;
-                
-                // Only use type definition if it's different from original location
-                if (typeDefFile !== absolutePath || typeDefLocation.line !== position.line) {
-                  hoverFile = typeDefFile;
-                  hoverLocation = typeDefLocation;
-                  log(`Using type definition at ${hoverFile}:${hoverLocation.line}:${hoverLocation.character}`);
-                }
-              } else if ('targetUri' in firstTypeDef) {
-                const locationLink = firstTypeDef as LocationLink;
-                const typeDefFile = new URL(locationLink.targetUri).pathname;
-                const typeDefLocation = locationLink.targetSelectionRange?.start || locationLink.targetRange.start;
-                
-                // Only use type definition if it's different from original location
-                if (typeDefFile !== absolutePath || typeDefLocation.line !== position.line) {
-                  hoverFile = typeDefFile;
-                  hoverLocation = typeDefLocation;
-                  log(`Using type definition link at ${hoverFile}:${hoverLocation.line}:${hoverLocation.character}`);
+          // Find the symbol at this position
+          const symbolAtPosition = this.findSymbolAtPosition(documentSymbols, symbolName, position);
+          const symbolKind = symbolAtPosition?.kind;
+          
+          log(`Symbol "${symbolName}" at ${position.line}:${position.character} has kind: ${symbolKind}`);
+          
+          // Determine if we should follow type definitions based on symbol kind
+          // For functions and methods, we want to show the function itself, not its return type
+          // If symbol is not found in document symbols (like imports), we should follow type definitions
+          const shouldFollowTypeDefinition = symbolKind === undefined || (
+            symbolKind !== SymbolKind.Function && 
+            symbolKind !== SymbolKind.Method &&
+            symbolKind !== SymbolKind.Constructor
+          );
+          
+          if (shouldFollowTypeDefinition) {
+            try {
+              const typeDefinitions = await client.getTypeDefinition(absolutePath, position);
+              if (typeDefinitions && typeDefinitions.length > 0) {
+                const firstTypeDef = typeDefinitions[0];
+                if ('uri' in firstTypeDef) {
+                  const location = firstTypeDef as Location;
+                  const typeDefFile = new URL(location.uri).pathname;
+                  const typeDefLocation = location.range.start;
+                  
+                  // Only use type definition if it's different from original location
+                  if (typeDefFile !== absolutePath || typeDefLocation.line !== position.line) {
+                    hoverFile = typeDefFile;
+                    hoverLocation = typeDefLocation;
+                    log(`Using type definition at ${hoverFile}:${hoverLocation.line}:${hoverLocation.character}`);
+                  }
+                } else if ('targetUri' in firstTypeDef) {
+                  const locationLink = firstTypeDef as LocationLink;
+                  const typeDefFile = new URL(locationLink.targetUri).pathname;
+                  const typeDefLocation = locationLink.targetSelectionRange?.start || locationLink.targetRange.start;
+                  
+                  // Only use type definition if it's different from original location
+                  if (typeDefFile !== absolutePath || typeDefLocation.line !== position.line) {
+                    hoverFile = typeDefFile;
+                    hoverLocation = typeDefLocation;
+                    log(`Using type definition link at ${hoverFile}:${hoverLocation.line}:${hoverLocation.character}`);
+                  }
                 }
               }
+            } catch (error) {
+              log(`Type definition lookup failed: ${error}`);
             }
-          } catch (error) {
-            log(`Type definition lookup failed: ${error}`);
+          } else {
+            log(`Symbol kind ${symbolKind} indicates function/method, skipping type definition lookup`);
           }
           
-          // Get hover at the definition location (or original location if definition failed)
+          // Get hover at the appropriate location
           let hover = await client.getHover(hoverFile, hoverLocation);
           
           if (hover) {
@@ -195,6 +247,51 @@ export class LSPManager {
     
     log(`=== HOVER REQUEST COMPLETE - Found ${results.length} results ===`);
     return results;
+  }
+
+  // Helper method to find symbol at a specific position
+  private findSymbolAtPosition(
+    symbols: DocumentSymbol[] | SymbolInformation[], 
+    symbolName: string, 
+    position: Position
+  ): DocumentSymbol | SymbolInformation | undefined {
+    // Handle DocumentSymbol format (hierarchical)
+    if (symbols.length > 0 && 'children' in symbols[0]) {
+      const findInDocumentSymbols = (syms: DocumentSymbol[]): DocumentSymbol | undefined => {
+        for (const sym of syms) {
+          if (sym.name === symbolName && this.positionInRange(position, sym.range)) {
+            return sym;
+          }
+          // Check children recursively
+          if (sym.children) {
+            const found = findInDocumentSymbols(sym.children);
+            if (found) return found;
+          }
+        }
+        return undefined;
+      };
+      return findInDocumentSymbols(symbols as DocumentSymbol[]);
+    }
+    
+    // Handle SymbolInformation format (flat list)
+    const symbolInfos = symbols as SymbolInformation[];
+    return symbolInfos.find(sym => 
+      sym.name === symbolName && 
+      this.positionInRange(position, sym.location.range)
+    );
+  }
+
+  private positionInRange(position: Position, range: { start: Position; end: Position }): boolean {
+    if (position.line < range.start.line || position.line > range.end.line) {
+      return false;
+    }
+    if (position.line === range.start.line && position.character < range.start.character) {
+      return false;
+    }
+    if (position.line === range.end.line && position.character > range.end.character) {
+      return false;
+    }
+    return true;
   }
 
   // Helper method to find text occurrences of symbol name in file content
