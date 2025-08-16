@@ -5,6 +5,7 @@ CLI tool for getting LSP diagnostics. Uses a background daemon to keep LSP serve
 ## Features
 
 - Get diagnostics from LSP servers
+- Get hover information for symbols (functions, variables, types)
 - Background daemon for fast repeated requests
 - Built in Claude Code hook to provide feedback on file edit tool calls
 - Comprehensive daemon management (`list`, `stop-all` commands)
@@ -117,6 +118,24 @@ ERROR at line 5, column 20:
   Code: 2345
 ```
 
+### Get Hover Information
+
+```bash
+# Get hover info for a function
+npx cli-lsp-client hover src/main.ts myFunction
+
+# Get hover info for a variable or type
+npx cli-lsp-client hover app.py MyClass
+```
+
+```bash
+$ npx cli-lsp-client hover src/client.ts runCommand
+Location: src/client.ts:370:17
+```typescript
+export function runCommand(command: string, commandArgs: string[]): Promise<void>
+```
+```
+
 ### Daemon Management
 
 ```bash
@@ -220,6 +239,9 @@ npx cli-lsp-client logs
 ```bash
 # Check a specific file
 npx cli-lsp-client diagnostics src/main.ts
+
+# Get hover info for a symbol
+npx cli-lsp-client hover src/main.ts myFunction
 
 # List all daemon instances
 npx cli-lsp-client list
