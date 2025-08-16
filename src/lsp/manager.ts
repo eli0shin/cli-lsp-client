@@ -175,7 +175,7 @@ export class LSPManager {
               symbol: symbolName,
               hover: hover,
               location: {
-                file: hoverFile,
+                file: path.relative(process.cwd(), hoverFile),
                 line: hoverLocation.line,
                 column: hoverLocation.character
               }

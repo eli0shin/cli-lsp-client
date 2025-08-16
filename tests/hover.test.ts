@@ -8,7 +8,7 @@ describe('Hover Command', () => {
     
     expect(result.exitCode).toBe(0);
     const output = stripAnsi(result.stdout.toString());
-    expect(output).toBe(`Location: /Users/elioshinsky/code/lspcli/tests/fixtures/typescript/valid/simple-function.ts:7:17
+    expect(output).toBe(`Location: tests/fixtures/typescript/valid/simple-function.ts:7:17
 \`\`\`typescript
 function add(a: number, b: number): number
 \`\`\`
@@ -26,7 +26,7 @@ Adds two numbers together
     
     expect(result.exitCode).toBe(0);
     const output = stripAnsi(result.stdout.toString());
-    expect(output).toBe(`Location: /Users/elioshinsky/code/lspcli/tests/fixtures/typescript/valid/simple-function.ts:16:17
+    expect(output).toBe(`Location: tests/fixtures/typescript/valid/simple-function.ts:16:17
 \`\`\`typescript
 function greet(name: string): string
 \`\`\`
@@ -77,7 +77,7 @@ Greets a person by name
     
     expect(result.exitCode).toBe(0);
     const output = stripAnsi(result.stdout.toString());
-    expect(output).toBe(`Location: /Users/elioshinsky/code/lspcli/src/lsp/types.ts:47:13
+    expect(output).toBe(`Location: src/lsp/types.ts:47:13
 \`\`\`typescript
 type HoverResult = {
     symbol: string;
@@ -97,7 +97,7 @@ type HoverResult = {
     
     expect(result.exitCode).toBe(0);
     const output = stripAnsi(result.stdout.toString());
-    expect(output).toBe(`Location: /Users/elioshinsky/code/lspcli/src/lsp/types.ts:14:13
+    expect(output).toBe(`Location: src/lsp/types.ts:14:13
 \`\`\`typescript
 type Diagnostic = VSCodeDiagnostic
 \`\`\``);
