@@ -58,7 +58,7 @@ export async function handleRequest(request: Request): Promise<string | number |
         throw error;
       }
       log('Warmup completed');
-      return 'Warmup completed';
+      return 'LSP daemon started';
 
     case 'logs':
       const { LOG_PATH } = await import('./logger.js');
