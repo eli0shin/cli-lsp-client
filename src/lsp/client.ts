@@ -1,6 +1,6 @@
 import path from 'path';
 import { createMessageConnection, StreamMessageReader, StreamMessageWriter } from 'vscode-jsonrpc/node';
-import type { LSPClient, Diagnostic, SymbolInformation, DocumentSymbol, Hover, Position, Location, LocationLink } from './types.js';
+import type { LSPClient, Diagnostic, SymbolInformation, DocumentSymbol, Hover, Position, Location, LocationLink, ServerCapabilities } from './types.js';
 import type { ServerHandle } from './servers.js';
 import { LANGUAGE_EXTENSIONS } from './language.js';
 import { log } from '../logger.js';
@@ -37,7 +37,7 @@ export async function createLSPClient(
 
   // Initialize the LSP server
   log(`Initializing LSP server ${serverID}`);
-  await connection.sendRequest("initialize", {
+  const initResult = await connection.sendRequest("initialize", {
     rootUri: "file://" + root,
     processId: serverHandle.process.pid,
     workspaceFolders: [
@@ -80,9 +80,15 @@ export async function createLSPClient(
           dynamicRegistration: false,
           contentFormat: ["markdown", "plaintext"]
         },
+        diagnostic: {
+          dynamicRegistration: false
+        },
       },
     },
   });
+
+  const serverCapabilities = (initResult as any).capabilities as ServerCapabilities;
+  log(`Server capabilities for ${serverID}: ${JSON.stringify(serverCapabilities.diagnosticProvider)}`);
 
   await connection.sendNotification("initialized", {});
   log(`LSP server ${serverID} initialized`);
@@ -93,6 +99,7 @@ export async function createLSPClient(
     createdAt: Date.now(),
     diagnostics,
     connection,
+    serverCapabilities,
 
     async openFile(filePath: string): Promise<void> {
       const absolutePath = path.isAbsolute(filePath) ? filePath : path.resolve(process.cwd(), filePath);
@@ -160,7 +167,14 @@ export async function createLSPClient(
         
         const timeout = setTimeout(() => {
           if (checkInterval) clearInterval(checkInterval);
-          reject(new Error(`Timeout waiting for diagnostics for ${absolutePath}`));
+          
+          // Instead of rejecting, assume no diagnostics (empty array) for valid files
+          // This handles servers that don't send empty diagnostics notifications
+          if (!diagnostics.has(absolutePath)) {
+            log(`No diagnostics received after ${timeoutMs}ms, assuming valid file`);
+            diagnostics.set(absolutePath, []);
+          }
+          resolve();
         }, timeoutMs);
 
         // Check if we already have diagnostics
@@ -272,6 +286,35 @@ export async function createLSPClient(
       } catch (error) {
         log(`hover request failed: ${error}`);
         return null;
+      }
+    },
+
+    async pullDiagnostics(filePath: string): Promise<Diagnostic[]> {
+      const absolutePath = path.isAbsolute(filePath) ? filePath : path.resolve(process.cwd(), filePath);
+      log(`Pulling diagnostics for ${absolutePath}`);
+      
+      // Ensure file is open
+      await this.openFile(absolutePath);
+      
+      try {
+        const result = await connection.sendRequest("textDocument/diagnostic", {
+          textDocument: {
+            uri: `file://${absolutePath}`
+          }
+        });
+        
+        // Handle the response based on LSP spec
+        const diagnosticReport = result as any;
+        if (diagnosticReport.kind === 'full') {
+          return diagnosticReport.items || [];
+        } else if (diagnosticReport.kind === 'unchanged') {
+          // Return previously cached diagnostics
+          return this.getDiagnostics(absolutePath);
+        }
+        return [];
+      } catch (error) {
+        log(`textDocument/diagnostic not supported or failed: ${error}`);
+        throw error;
       }
     },
 

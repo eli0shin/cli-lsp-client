@@ -54,17 +54,27 @@ export type HoverResult = {
   };
 }
 
+export type ServerCapabilities = {
+  diagnosticProvider?: {
+    interFileDependencies: boolean;
+    workspaceDiagnostics: boolean;
+  } | boolean;
+  [key: string]: any;
+}
+
 export type LSPClient = {
   serverID: string;
   root: string;
   createdAt: number;
   diagnostics: Map<string, Diagnostic[]>;
   connection?: MessageConnection;
+  serverCapabilities?: ServerCapabilities;
   openFile(path: string): Promise<void>;
   closeFile(path: string): Promise<void>;
   getDiagnostics(path: string): Diagnostic[];
   waitForDiagnostics(path: string, timeoutMs?: number): Promise<void>;
   triggerDiagnostics(path: string, timeoutMs?: number): Promise<void>;
+  pullDiagnostics?(path: string): Promise<Diagnostic[]>;
   getDocumentSymbols(filePath: string): Promise<DocumentSymbol[] | SymbolInformation[]>;
   getDefinition(filePath: string, position: Position): Promise<Location[] | LocationLink[] | null>;
   getTypeDefinition(filePath: string, position: Position): Promise<Location[] | LocationLink[] | null>;

@@ -95,17 +95,38 @@ export class LSPManager {
           log(`Using existing client for ${clientKey}, age: ${Date.now() - client.createdAt}ms`);
         }
 
-        // Get diagnostics using simplified approach
-        try {
-          log(`Getting diagnostics for: ${absolutePath}`);
-          await client.triggerDiagnostics(absolutePath, 5000);
-          log(`Successfully received diagnostics from ${server.id}`);
-        } catch (error) {
-          log(`Timeout waiting for diagnostics from ${server.id}: ${error instanceof Error ? error.message : String(error)}`);
+        // Get diagnostics using pull or push approach based on server capabilities
+        let diagnostics: Diagnostic[] = [];
+        
+        if (client.serverCapabilities?.diagnosticProvider) {
+          // Use pull diagnostics (request/response pattern - no timeout issues!)
+          try {
+            log(`Using pull diagnostics for: ${absolutePath}`);
+            diagnostics = await client.pullDiagnostics!(absolutePath);
+            log(`Retrieved ${diagnostics.length} diagnostics from ${server.id} via pull`);
+          } catch (error) {
+            log(`Pull diagnostics failed, falling back to push: ${error}`);
+            // Fall back to push-based diagnostics
+            try {
+              await client.triggerDiagnostics(absolutePath, 5000);
+              diagnostics = client.getDiagnostics(absolutePath);
+            } catch (pushError) {
+              log(`Push diagnostics also failed: ${pushError}`);
+            }
+          }
+        } else {
+          // Use traditional push-based diagnostics
+          // 3 second timeout to handle cold starts (Java, C++ need time for initial analysis)
+          try {
+            log(`Using push diagnostics for: ${absolutePath}`);
+            await client.triggerDiagnostics(absolutePath, 3000);
+            log(`Successfully received diagnostics from ${server.id}`);
+          } catch (error) {
+            log(`Timeout waiting for diagnostics from ${server.id}: ${error instanceof Error ? error.message : String(error)}`);
+          }
+          diagnostics = client.getDiagnostics(absolutePath);
         }
-
-        // Get diagnostics for this file
-        const diagnostics = client.getDiagnostics(absolutePath);
+        
         log(`Retrieved ${diagnostics.length} diagnostics from ${server.id}`);
         allDiagnostics.push(...diagnostics);
 
