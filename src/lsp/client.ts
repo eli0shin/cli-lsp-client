@@ -1,6 +1,6 @@
 import path from 'path';
 import { createMessageConnection, StreamMessageReader, StreamMessageWriter } from 'vscode-jsonrpc/node';
-import type { LSPClient, Diagnostic } from './types.js';
+import type { LSPClient, Diagnostic, SymbolInformation, DocumentSymbol, Hover, Position, Location, LocationLink } from './types.js';
 import type { ServerHandle } from './servers.js';
 import { LANGUAGE_EXTENSIONS } from './language.js';
 import { log } from '../logger.js';
@@ -63,6 +63,22 @@ export async function createLSPClient(
         },
         publishDiagnostics: {
           versionSupport: true,
+        },
+        documentSymbol: {
+          dynamicRegistration: false,
+          hierarchicalDocumentSymbolSupport: true
+        },
+        definition: {
+          dynamicRegistration: false,
+          linkSupport: true
+        },
+        typeDefinition: {
+          dynamicRegistration: false,
+          linkSupport: true
+        },
+        hover: {
+          dynamicRegistration: false,
+          contentFormat: ["markdown", "plaintext"]
         },
       },
     },
@@ -173,6 +189,90 @@ export async function createLSPClient(
 
       // Wait for diagnostics
       await this.waitForDiagnostics(filePath, timeoutMs);
+    },
+
+
+    async getDocumentSymbols(filePath: string): Promise<DocumentSymbol[] | SymbolInformation[]> {
+      const absolutePath = path.isAbsolute(filePath) ? filePath : path.resolve(process.cwd(), filePath);
+      log(`Getting document symbols for: ${absolutePath}`);
+      
+      // Ensure file is open
+      await this.openFile(absolutePath);
+      
+      try {
+        const result = await connection.sendRequest("textDocument/documentSymbol", {
+          textDocument: {
+            uri: `file://${absolutePath}`
+          }
+        });
+        return (result as DocumentSymbol[] | SymbolInformation[]) || [];
+      } catch (error) {
+        log(`documentSymbol not supported or failed: ${error}`);
+        return [];
+      }
+    },
+
+    async getDefinition(filePath: string, position: Position): Promise<Location[] | LocationLink[] | null> {
+      const absolutePath = path.isAbsolute(filePath) ? filePath : path.resolve(process.cwd(), filePath);
+      log(`Getting definition for ${absolutePath} at ${position.line}:${position.character}`);
+      
+      // Ensure file is open
+      await this.openFile(absolutePath);
+      
+      try {
+        const result = await connection.sendRequest("textDocument/definition", {
+          textDocument: {
+            uri: `file://${absolutePath}`
+          },
+          position: position
+        });
+        return (result as Location[] | LocationLink[] | null);
+      } catch (error) {
+        log(`definition request failed: ${error}`);
+        return null;
+      }
+    },
+
+    async getTypeDefinition(filePath: string, position: Position): Promise<Location[] | LocationLink[] | null> {
+      const absolutePath = path.isAbsolute(filePath) ? filePath : path.resolve(process.cwd(), filePath);
+      log(`Getting type definition for ${absolutePath} at ${position.line}:${position.character}`);
+      
+      // Ensure file is open
+      await this.openFile(absolutePath);
+      
+      try {
+        const result = await connection.sendRequest("textDocument/typeDefinition", {
+          textDocument: {
+            uri: `file://${absolutePath}`
+          },
+          position: position
+        });
+        return (result as Location[] | LocationLink[] | null);
+      } catch (error) {
+        log(`typeDefinition request failed: ${error}`);
+        return null;
+      }
+    },
+
+    async getHover(filePath: string, position: Position): Promise<Hover | null> {
+      const absolutePath = path.isAbsolute(filePath) ? filePath : path.resolve(process.cwd(), filePath);
+      log(`Getting hover for ${absolutePath} at ${position.line}:${position.character}`);
+      
+      // Ensure file is open
+      await this.openFile(absolutePath);
+      
+      try {
+        const result = await connection.sendRequest("textDocument/hover", {
+          textDocument: {
+            uri: `file://${absolutePath}`
+          },
+          position: position
+        });
+        return (result as Hover | null);
+      } catch (error) {
+        log(`hover request failed: ${error}`);
+        return null;
+      }
     },
 
     async shutdown(): Promise<void> {

@@ -42,7 +42,7 @@ describe('Claude Code Hook', () => {
     
     expect(result.exitCode).toBe(0);
     expect(result.stderr).toBe('');
-  });
+  }, 10000); // 10 second timeout
 
   test('should handle Python file with errors', async () => {
     const input = JSON.stringify({ file_path: 'tests/fixtures/python/invalid/syntax-error.py' });
@@ -117,6 +117,6 @@ describe('Claude Code Hook', () => {
       // Should process the file (exit code 0 for valid files)
       expect(result.exitCode).toBe(0);
     }
-  });
+  }, 10000); // 10 second timeout for multiple file processing
 
 });

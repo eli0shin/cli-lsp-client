@@ -9,3 +9,7 @@ export function stripAnsi(str: string): string {
 export async function runDiagnostics(filePath: string) {
   return await $`${CLI_PATH} diagnostics ${filePath}`.nothrow();
 }
+
+export async function runHover(filePath: string, symbol: string) {
+  return await $`${CLI_PATH} hover ${filePath} ${symbol}`.nothrow();
+}

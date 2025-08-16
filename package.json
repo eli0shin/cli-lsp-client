@@ -4,6 +4,7 @@
   "description": "CLI tool for fast LSP diagnostics with background daemon and multi-project support",
   "type": "module",
   "main": "src/cli.ts",
+  "license": "MIT",
   "bin": {
     "cli-lsp-client": "cli-lsp-client"
   },

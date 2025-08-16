@@ -67,6 +67,18 @@ export async function handleRequest(request: Request): Promise<string | number |
     case 'pwd':
       return process.cwd();
 
+    case 'hover':
+      // Parse arguments - require both file and symbol
+      if (args.length !== 2) {
+        throw new Error('hover command requires: hover <file> <symbol>');
+      }
+      
+      const targetFile = args[0];
+      const targetSymbol = args[1];
+      
+      const hoverResults = await lspManager.getHover(targetSymbol, targetFile);
+      return hoverResults;
+
     case 'stop':
       setTimeout(async () => await shutdown(), 100);
       return 'Daemon stopping...';

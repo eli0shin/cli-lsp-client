@@ -13,6 +13,12 @@ This is a Bun CLI project that builds a standalone executable.
 - Type checking: `bun run typecheck`
 - Install dependencies: `bun install`
 
+## Development Workflow
+- **CRITICAL**: After making code changes, ALWAYS run `bun run build` to rebuild the executable
+- **CRITICAL**: After rebuilding, ALWAYS run `./cli-lsp-client stop` to stop the daemon before testing
+- The daemon runs the compiled executable, not the source files directly
+- Changes to source files are not visible until you build and restart the daemon
+
 ## Code Style
 - This project uses ES modules exclusively
 - TypeScript with strict mode enabled

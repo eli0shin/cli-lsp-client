@@ -4,8 +4,8 @@ import path from 'path';
 import { readdir } from 'node:fs/promises';
 import { spawn } from 'child_process';
 import { SOCKET_PATH, isDaemonRunning, type StatusResult } from './daemon.js';
-import { formatDiagnostics } from './lsp/formatter.js';
-import type { Diagnostic } from './lsp/types.js';
+import { formatDiagnostics, formatHoverResults } from './lsp/formatter.js';
+import type { Diagnostic, HoverResult } from './lsp/types.js';
 import { HELP_MESSAGE } from './constants.js';
 
 function showHelpForUnknownCommand(command: string): void {
@@ -430,6 +430,12 @@ export async function runCommand(command: string, commandArgs: string[]): Promis
         } else {
           process.exit(0); // Exit with success code when no diagnostics
         }
+      } else if (command === 'hover' && Array.isArray(result)) {
+        // Special formatting for hover command
+        const hoverResults = result as HoverResult[];
+        const formatted = await formatHoverResults(hoverResults);
+        console.log(formatted);
+        process.exit(0);
       } else {
         console.log('Result:', result);
       }
