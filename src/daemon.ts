@@ -2,7 +2,7 @@ import net from 'net';
 import os from 'os';
 import path from 'path';
 import { lspManager } from './lsp/manager.js';
-import { executeWarmup } from './lsp/warmup.js';
+import { executeStart } from './lsp/start.js';
 import { log } from './logger.js';
 import { hashPath } from './utils.js';
 
@@ -75,19 +75,19 @@ export async function handleRequest(request: Request): Promise<string | number |
       }
       return await lspManager.getDiagnostics(args[0]);
 
-    case 'warmup':
+    case 'start':
       const directory = args[0]; // Optional directory argument
-      log(`=== DAEMON WARMUP START - PID: ${process.pid} ===`);
-      log(`Starting warmup for directory: ${directory || 'current'}`);
+      log(`=== DAEMON START - PID: ${process.pid} ===`);
+      log(`Starting LSP servers for directory: ${directory || 'current'}`);
       try {
-        const startedServers = await executeWarmup(directory);
-        log('=== DAEMON WARMUP SUCCESS ===');
+        const startedServers = await executeStart(directory);
+        log('=== DAEMON START SUCCESS ===');
         if (startedServers.length === 0) {
           return 'Started LSP daemon';
         }
         return `Started LSP servers for ${startedServers.join(',')}`;
       } catch (error) {
-        log(`=== DAEMON WARMUP ERROR: ${error} ===`);
+        log(`=== DAEMON START ERROR: ${error} ===`);
         throw error;
       }
 

@@ -485,7 +485,7 @@ bun run build
 
 2. **Empty hover results**
    - Symbol might be in a file not yet indexed
-   - Solution: Run warmup command first
+   - Solution: Run start command first
 
 3. **Timeout errors**
    - Large workspace taking too long to search

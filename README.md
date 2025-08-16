@@ -53,7 +53,7 @@ Configure Claude Code to use the built-in hook command:
         "hooks": [
           {
             "type": "command",
-            "command": "npx -y cli-lsp-client warmup"
+            "command": "npx -y cli-lsp-client start"
           }
         ]
       }
@@ -75,7 +75,7 @@ Configure Claude Code to use the built-in hook command:
 
 #### How It Works
 
-- **SessionStart**: Automatically warms up LSP servers when Claude Code starts for faster initial diagnostics
+- **SessionStart**: Automatically starts LSP servers when Claude Code starts for faster initial diagnostics
 - **PostToolUse**: Runs diagnostics after each file edit (Edit, MultiEdit, Write tools)
 - Built-in file filtering for all supported languages (11 file types)
 - Shows errors, warnings, and hints inline
@@ -240,11 +240,11 @@ For detailed setup instructions, see the [official Eclipse JDT.LS documentation]
 ### Additional Commands
 
 ```bash
-# Warm up LSP servers for current directory (faster subsequent requests)
-npx cli-lsp-client warmup
+# Start LSP servers for current directory (faster subsequent requests)
+npx cli-lsp-client start
 
-# Warm up for specific directory
-npx cli-lsp-client warmup /path/to/project
+# Start servers for specific directory
+npx cli-lsp-client start /path/to/project
 
 # View daemon logs
 npx cli-lsp-client logs

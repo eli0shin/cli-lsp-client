@@ -93,12 +93,12 @@ The core problem is assuming LSP servers are immediately ready to provide diagno
 Combine two strategies to eliminate timing issues:
 
 1. **Extended timeout strategy**: Intelligent timeout handling based on client age and readiness
-2. **Proactive warmup command**: Allow pre-initialization of LSP servers before diagnostic requests
+2. **Proactive start command**: Allow pre-initialization of LSP servers before diagnostic requests
 
 ### Key Benefits
 - **Backward compatibility**: All existing functionality preserved
 - **Graceful degradation**: Extended timeouts provide safety net for cold starts
-- **Performance optimization**: Warmup enables sub-second response times
+- **Performance optimization**: Start command enables sub-second response times
 - **Integration flexibility**: Can be adopted incrementally
 
 ## Implementation Details
@@ -276,7 +276,7 @@ async function ensureReady(
   if (entryPoint) {
     await client.openFile(entryPoint);
     
-    // For warmup (no timeout): wait indefinitely for diagnostic or up to 30s, whichever comes first
+    // For start (no timeout): wait indefinitely for diagnostic or up to 30s, whichever comes first
     // For user commands (with timeout): respect the timeout
     const waitPromises = [diagnosticPromise];
     if (timeoutMs) {
@@ -330,7 +330,7 @@ async function ensureReady(
 
 ### 4. Warmup Command Implementation
 
-**New CLI Command**: `cli-lsp-client warmup [directory]`
+**New CLI Command**: `cli-lsp-client start [directory]`
 
 **Project Detection Logic**:
 ```typescript
@@ -463,12 +463,12 @@ async function executeWarmup(directory?: string): Promise<void> {
       const serverHandle = await spawnServer(server, root);
       const client = await createLSPClient(server.id, serverHandle, root);
       
-      // Wait for readiness (no timeout for warmup)
+      // Wait for readiness (no timeout for start)
       await ensureReady(client, connection);
       
       console.log(`✓ ${server.id} ready`);
     } catch (error) {
-      console.warn(`⚠ ${server.id} warmup failed: ${error.message}`);
+      console.warn(`⚠ ${server.id} start failed: ${error.message}`);`
     }
   }
   
@@ -514,11 +514,11 @@ async getDiagnostics(filePath: string): Promise<Diagnostic[]> {
 
 **Warmup Command**:
 ```bash
-# Warm up LSP servers for current directory
-cli-lsp-client warmup
+# Start LSP servers for current directory
+cli-lsp-client start
 
-# Warm up LSP servers for specific directory
-cli-lsp-client warmup /path/to/project
+# Start LSP servers for specific directory
+cli-lsp-client start /path/to/project
 ```
 
 ### Backward Compatibility
@@ -526,4 +526,4 @@ cli-lsp-client warmup /path/to/project
 - All existing commands work unchanged
 - No breaking changes to current API
 - Default behavior improved without user intervention
-- Optional warmup provides performance benefits
+- Optional start command provides performance benefits

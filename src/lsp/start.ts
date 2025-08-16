@@ -149,8 +149,8 @@ export async function detectProjectTypes(directory: string): Promise<LSPServer[]
   return detectedServers;
 }
 
-export async function executeWarmup(directory?: string): Promise<string[]> {
-  log(`=== WARMUP FUNCTION CALLED ===`);
+export async function executeStart(directory?: string): Promise<string[]> {
+  log(`=== START FUNCTION CALLED ===`);
   const targetDir = directory || process.cwd();
   log(`Target directory: ${targetDir}`);
   
@@ -158,14 +158,14 @@ export async function executeWarmup(directory?: string): Promise<string[]> {
   
   log(`Detected ${projectServers.length} servers: ${projectServers.map(s => s.id).join(', ')}`);
   
-  log(`Warming up ${projectServers.length} LSP servers for ${targetDir}...`);
+  log(`Starting ${projectServers.length} LSP servers for ${targetDir}...`);
   log(`Detected servers: ${projectServers.map(s => s.id).join(', ')}`);
   
   const startedServers: string[] = [];
   
   for (const server of projectServers) {
     try {
-      log(`Starting warmup for server: ${server.id}`);
+      log(`Starting server: ${server.id}`);
       const root = await getProjectRoot(targetDir, server);
       log(`Project root for ${server.id}: ${root}`);
       
@@ -176,8 +176,8 @@ export async function executeWarmup(directory?: string): Promise<string[]> {
       // Check if client already exists in manager
       const existingClient = (lspManager as any).clients.get(clientKey);
       if (existingClient) {
-        log(`Client already exists for ${clientKey}, skipping warmup`);
-        log(`✓ ${server.id} already warmed up`);
+        log(`Client already exists for ${clientKey}, skipping start`);
+        log(`✓ ${server.id} already started`);
         startedServers.push(server.id);
         continue;
       }
@@ -203,12 +203,12 @@ export async function executeWarmup(directory?: string): Promise<string[]> {
       startedServers.push(server.id);
       
     } catch (error) {
-      log(`Warmup failed for ${server.id}: ${error instanceof Error ? error.message : String(error)}`);
-      log(`⚠ ${server.id} warmup failed: ${error instanceof Error ? error.message : String(error)}`);
+      log(`Start failed for ${server.id}: ${error instanceof Error ? error.message : String(error)}`);
+      log(`⚠ ${server.id} start failed: ${error instanceof Error ? error.message : String(error)}`);
     }
   }
   
-  log('=== WARMUP FUNCTION COMPLETED ===');
-  log('Warmup complete');
+  log('=== START FUNCTION COMPLETED ===');
+  log('Start complete');
   return startedServers;
 }
