@@ -10,10 +10,10 @@ import { hashPath } from './utils.js';
 function getDaemonPaths() {
   const cwd = process.cwd();
   const hashedCwd = hashPath(cwd);
-  
+
   return {
     socketPath: path.join(os.tmpdir(), `cli-lsp-client-${hashedCwd}.sock`),
-    pidFile: path.join(os.tmpdir(), `cli-lsp-client-${hashedCwd}.pid`)
+    pidFile: path.join(os.tmpdir(), `cli-lsp-client-${hashedCwd}.pid`),
   };
 }
 
@@ -21,7 +21,7 @@ export const { socketPath: SOCKET_PATH, pidFile: PID_FILE } = getDaemonPaths();
 
 const RequestSchema = z.object({
   command: z.string(),
-  args: z.array(z.string()).optional()
+  args: z.array(z.string()).optional(),
 });
 
 export type Request = z.infer<typeof RequestSchema>;
@@ -30,13 +30,13 @@ export type StatusResult = {
   pid: number;
   uptime: number;
   memory: NodeJS.MemoryUsage;
-}
+};
 
 function formatUptime(uptimeMs: number): string {
   const seconds = Math.floor(uptimeMs / 1000);
   const minutes = Math.floor(seconds / 60);
   const hours = Math.floor(minutes / 60);
-  
+
   if (hours > 0) {
     return `${hours}h ${minutes % 60}m ${seconds % 60}s`;
   } else if (minutes > 0) {
@@ -46,19 +46,21 @@ function formatUptime(uptimeMs: number): string {
   }
 }
 
-export async function handleRequest(request: Request): Promise<string | number | StatusResult | unknown> {
+export async function handleRequest(
+  request: Request
+): Promise<string | number | StatusResult | unknown> {
   const { command, args = [] } = request;
 
   switch (command) {
     case 'status': {
       const runningServers = lspManager.getRunningServers();
       const daemonUptimeMs = process.uptime() * 1000;
-      
+
       let output = 'LSP Daemon Status\n';
       output += '================\n';
       output += `PID: ${process.pid}\n`;
       output += `Uptime: ${formatUptime(daemonUptimeMs)}\n\n`;
-      
+
       if (runningServers.length === 0) {
         output += 'No language servers running\n';
       } else {
@@ -69,7 +71,7 @@ export async function handleRequest(request: Request): Promise<string | number |
         }
         output += `\nTotal: ${runningServers.length} language server${runningServers.length === 1 ? '' : 's'} running\n`;
       }
-      
+
       return output;
     }
 
@@ -111,10 +113,10 @@ export async function handleRequest(request: Request): Promise<string | number |
       if (args.length !== 2) {
         throw new Error('hover command requires: hover <file> <symbol>');
       }
-      
+
       const targetFile = args[0];
       const targetSymbol = args[1];
-      
+
       const hoverResults = await lspManager.getHover(targetSymbol, targetFile);
       return hoverResults;
     }
@@ -146,33 +148,40 @@ export async function startDaemon(): Promise<void> {
       try {
         const rawRequest = JSON.parse(data.toString()) as unknown;
         const parseResult = RequestSchema.safeParse(rawRequest);
-        
+
         if (!parseResult.success) {
-          socket.write(JSON.stringify({
-            success: false,
-            error: `Invalid request format: ${parseResult.error.message}`
-          }));
+          socket.write(
+            JSON.stringify({
+              success: false,
+              error: `Invalid request format: ${parseResult.error.message}`,
+            })
+          );
           socket.end();
           return;
         }
-        
+
         const request = parseResult.data;
         log(`Received request: ${JSON.stringify(request)}`);
 
         const result = await handleRequest(request);
 
-        socket.write(JSON.stringify({
-          success: true,
-          result: result,
-          timestamp: new Date().toISOString()
-        }));
+        socket.write(
+          JSON.stringify({
+            success: true,
+            result: result,
+            timestamp: new Date().toISOString(),
+          })
+        );
         socket.end();
       } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-        socket.write(JSON.stringify({
-          success: false,
-          error: errorMessage
-        }));
+        const errorMessage =
+          error instanceof Error ? error.message : 'Unknown error';
+        socket.write(
+          JSON.stringify({
+            success: false,
+            error: errorMessage,
+          })
+        );
         socket.end();
       }
     });
@@ -195,17 +204,17 @@ export async function startDaemon(): Promise<void> {
       log('Received SIGTERM signal');
       await shutdown();
     });
-    
+
     // Log unexpected exits
     process.on('exit', async (code) => {
       log(`Process exiting with code: ${code}`);
     });
-    
+
     process.on('uncaughtException', async (error) => {
       log(`Uncaught exception: ${error.message}`);
       await shutdown();
     });
-    
+
     process.on('unhandledRejection', async (reason, promise) => {
       log(`Unhandled rejection at: ${promise}, reason: ${reason}`);
     });

@@ -1,0 +1,21 @@
+# Dependencies
+node_modules/
+
+# Build artifacts
+cli-lsp-client
+*.tsbuildinfo
+
+# Package manager lock files
+bun.lock
+package-lock.json
+yarn.lock
+
+# Test fixtures (may contain intentionally invalid syntax)
+tests/fixtures/
+
+# Documentation that might need specific formatting
+CHANGELOG.md
+
+# Generated files
+coverage/
+*.log

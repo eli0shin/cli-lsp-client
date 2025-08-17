@@ -2,12 +2,13 @@ import { test, describe, expect } from 'bun:test';
 import { stripAnsi, runDiagnostics } from '../test-utils.js';
 
 describe('Java Invalid Files', () => {
-
   test('syntax-error.java should exit with code 2 and show exact errors', async () => {
-    const filePath = 'tests/fixtures/java/invalid/src/main/java/com/example/syntax-error.java';
+    const filePath =
+      'tests/fixtures/java/invalid/src/main/java/com/example/syntax-error.java';
     const proc = await runDiagnostics(filePath);
     expect(proc.exitCode).toBe(2);
-    expect(stripAnsi(proc.stderr.toString())).toBe(`[Java] ERROR at line 3, column 14: The public type SyntaxError must be defined in its own file [16777541]
+    expect(stripAnsi(proc.stderr.toString()))
+      .toBe(`[Java] ERROR at line 3, column 14: The public type SyntaxError must be defined in its own file [16777541]
 [Java] ERROR at line 7, column 42: Syntax error on token ")", { expected after this token [1610612967]
 [Java] ERROR at line 8, column 35: Syntax error, insert ";" to complete BlockStatements [1610612976]
 [Java] ERROR at line 11, column 28: undefinedVariable cannot be resolved to a variable [33554515]

@@ -13,12 +13,12 @@ import { ensureDaemonRunning } from './utils.js';
 const DaemonResponseSchema = z.union([
   z.object({
     success: z.literal(true),
-    result: z.unknown()
+    result: z.unknown(),
   }),
   z.object({
     success: z.literal(false),
-    error: z.string()
-  })
+    error: z.string(),
+  }),
 ]);
 
 function showHelpForUnknownCommand(command: string): void {
@@ -26,7 +26,10 @@ function showHelpForUnknownCommand(command: string): void {
   process.stdout.write(HELP_MESSAGE);
 }
 
-export async function sendToExistingDaemon(command: string, args: string[]): Promise<string | number | StatusResult> {
+export async function sendToExistingDaemon(
+  command: string,
+  args: string[]
+): Promise<string | number | StatusResult> {
   return new Promise((resolve, reject) => {
     const client = net.createConnection(SOCKET_PATH);
     let buffer = '';
@@ -39,7 +42,11 @@ export async function sendToExistingDaemon(command: string, args: string[]): Pro
 
       const parseResult = DaemonResponseSchema.safeParse(rawResponse);
       if (!parseResult.success) {
-        reject(new Error(`Invalid response from daemon: ${JSON.stringify(rawResponse)}`));
+        reject(
+          new Error(
+            `Invalid response from daemon: ${JSON.stringify(rawResponse)}`
+          )
+        );
         return;
       }
 
@@ -78,7 +85,11 @@ export async function sendToExistingDaemon(command: string, args: string[]): Pro
           handleResponse(rawResponse);
         } catch (_error) {
           resolved = true;
-          reject(new Error(`Failed to parse response: ${buffer.substring(0, 100)}...`));
+          reject(
+            new Error(
+              `Failed to parse response: ${buffer.substring(0, 100)}...`
+            )
+          );
         }
       }
     });
@@ -90,7 +101,6 @@ export async function sendToExistingDaemon(command: string, args: string[]): Pro
     });
   });
 }
-
 
 async function sendStopCommandToSocket(socketPath: string): Promise<void> {
   return new Promise((resolve, reject) => {
@@ -148,8 +158,8 @@ export async function stopAllDaemons(): Promise<void> {
 
   // Filter for our daemon files
   const socketFiles = allFiles
-    .filter(f => f.startsWith('cli-lsp-client-') && f.endsWith('.sock'))
-    .map(f => path.join(tempDir, f));
+    .filter((f) => f.startsWith('cli-lsp-client-') && f.endsWith('.sock'))
+    .map((f) => path.join(tempDir, f));
 
   if (socketFiles.length === 0) {
     process.stdout.write('No daemons found to stop\n');
@@ -177,13 +187,19 @@ export async function stopAllDaemons(): Promise<void> {
           const pid = parseInt(pidContent.trim());
           process.kill(pid, 'SIGTERM');
           stoppedCount++;
-          process.stdout.write(`✓ Force stopped daemon: ${path.basename(socketPath)} (PID: ${pid})\n`);
+          process.stdout.write(
+            `✓ Force stopped daemon: ${path.basename(socketPath)} (PID: ${pid})\n`
+          );
         } else {
-          process.stdout.write(`! Daemon ${path.basename(socketPath)} already stopped\n`);
+          process.stdout.write(
+            `! Daemon ${path.basename(socketPath)} already stopped\n`
+          );
         }
       } catch (_pidError) {
         errorCount++;
-        process.stderr.write(`✗ Failed to stop daemon: ${path.basename(socketPath)}\n`);
+        process.stderr.write(
+          `✗ Failed to stop daemon: ${path.basename(socketPath)}\n`
+        );
       }
     }
 
@@ -203,10 +219,15 @@ export async function stopAllDaemons(): Promise<void> {
     }
   }
 
-  process.stdout.write(`\nStopped ${stoppedCount} daemon(s)${errorCount > 0 ? `, ${errorCount} error(s)` : ''}\n`);
+  process.stdout.write(
+    `\nStopped ${stoppedCount} daemon(s)${errorCount > 0 ? `, ${errorCount} error(s)` : ''}\n`
+  );
 }
 
-async function sendCommandToSocket(socketPath: string, command: string): Promise<unknown> {
+async function sendCommandToSocket(
+  socketPath: string,
+  command: string
+): Promise<unknown> {
   return new Promise((resolve, reject) => {
     const client = net.createConnection(socketPath);
     let buffer = '';
@@ -219,7 +240,11 @@ async function sendCommandToSocket(socketPath: string, command: string): Promise
 
       const parseResult = DaemonResponseSchema.safeParse(rawResponse);
       if (!parseResult.success) {
-        reject(new Error(`Invalid response from daemon: ${JSON.stringify(rawResponse)}`));
+        reject(
+          new Error(
+            `Invalid response from daemon: ${JSON.stringify(rawResponse)}`
+          )
+        );
         return;
       }
 
@@ -258,7 +283,11 @@ async function sendCommandToSocket(socketPath: string, command: string): Promise
           handleResponse(rawResponse);
         } catch (_error) {
           resolved = true;
-          reject(new Error(`Failed to parse response: ${buffer.substring(0, 100)}...`));
+          reject(
+            new Error(
+              `Failed to parse response: ${buffer.substring(0, 100)}...`
+            )
+          );
         }
       }
     });
@@ -293,13 +322,13 @@ export async function listAllDaemons(): Promise<void> {
 
   // Filter for socket files and only include those that also have corresponding PID files
   const socketFiles = allFiles
-    .filter(f => f.startsWith('cli-lsp-client-') && f.endsWith('.sock'))
-    .filter(f => {
+    .filter((f) => f.startsWith('cli-lsp-client-') && f.endsWith('.sock'))
+    .filter((f) => {
       // Only include if corresponding PID file also exists
       const pidFile = f.replace('.sock', '.pid');
       return allFiles.includes(pidFile);
     })
-    .map(f => path.join(tempDir, f));
+    .map((f) => path.join(tempDir, f));
 
   if (socketFiles.length === 0) {
     process.stdout.write('No daemons found\n');
@@ -338,7 +367,10 @@ export async function listAllDaemons(): Promise<void> {
 
           // Get working directory from daemon
           try {
-            workingDir = await sendCommandToSocket(socketPath, 'pwd') as string;
+            workingDir = (await sendCommandToSocket(
+              socketPath,
+              'pwd'
+            )) as string;
           } catch (_error) {
             workingDir = 'Unresponsive';
             status = 'Unresponsive';
@@ -358,44 +390,56 @@ export async function listAllDaemons(): Promise<void> {
       hash: hash.replace('cli-lsp-client-', ''),
       pid,
       workingDir,
-      status
+      status,
     });
   }
 
   // Display results in a table format
-  const maxHashLen = Math.max(4, ...results.map(r => r.hash.length));
-  const maxPidLen = Math.max(3, ...results.map(r => r.pid.toString().length));
-  const maxStatusLen = Math.max(6, ...results.map(r => r.status.length));
-  const maxDirLen = Math.max(15, ...results.map(r => r.workingDir.length));
+  const maxHashLen = Math.max(4, ...results.map((r) => r.hash.length));
+  const maxPidLen = Math.max(3, ...results.map((r) => r.pid.toString().length));
+  const maxStatusLen = Math.max(6, ...results.map((r) => r.status.length));
+  const maxDirLen = Math.max(15, ...results.map((r) => r.workingDir.length));
 
   // Header
   process.stdout.write(
     `${'Hash'.padEnd(maxHashLen)} | ` +
-    `${'PID'.padEnd(maxPidLen)} | ` +
-    `${'Status'.padEnd(maxStatusLen)} | ` +
-    `${'Working Directory'.padEnd(maxDirLen)}\n`
+      `${'PID'.padEnd(maxPidLen)} | ` +
+      `${'Status'.padEnd(maxStatusLen)} | ` +
+      `${'Working Directory'.padEnd(maxDirLen)}\n`
   );
-  process.stdout.write('-'.repeat(maxHashLen + maxPidLen + maxStatusLen + maxDirLen + 10) + '\n');
+  process.stdout.write(
+    '-'.repeat(maxHashLen + maxPidLen + maxStatusLen + maxDirLen + 10) + '\n'
+  );
 
   // Rows
   for (const result of results) {
-    const statusIcon = result.status === 'Running' ? '●' :
-      result.status === 'Dead' ? '○' :
-        result.status === 'Unresponsive' ? '◐' : '?';
+    const statusIcon =
+      result.status === 'Running'
+        ? '●'
+        : result.status === 'Dead'
+          ? '○'
+          : result.status === 'Unresponsive'
+            ? '◐'
+            : '?';
 
     process.stdout.write(
       `${result.hash.padEnd(maxHashLen)} | ` +
-      `${result.pid.toString().padEnd(maxPidLen)} | ` +
-      `${statusIcon} ${result.status.padEnd(maxStatusLen - 2)} | ` +
-      `${result.workingDir}\n`
+        `${result.pid.toString().padEnd(maxPidLen)} | ` +
+        `${statusIcon} ${result.status.padEnd(maxStatusLen - 2)} | ` +
+        `${result.workingDir}\n`
     );
   }
 
-  const runningCount = results.filter(r => r.status === 'Running').length;
-  process.stdout.write(`\n${runningCount}/${results.length} daemon(s) running\n`);
+  const runningCount = results.filter((r) => r.status === 'Running').length;
+  process.stdout.write(
+    `\n${runningCount}/${results.length} daemon(s) running\n`
+  );
 }
 
-export async function runCommand(command: string, commandArgs: string[]): Promise<void> {
+export async function runCommand(
+  command: string,
+  commandArgs: string[]
+): Promise<void> {
   try {
     // Handle stop-all command without daemon communication
     if (command === 'stop-all') {
@@ -443,7 +487,8 @@ export async function runCommand(command: string, commandArgs: string[]): Promis
         process.stdout.write(`${result}\n`);
       }
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      const errorMessage =
+        error instanceof Error ? error.message : 'Unknown error';
 
       // Check if it's an unknown command error
       if (errorMessage.startsWith('Unknown command:')) {
@@ -454,9 +499,9 @@ export async function runCommand(command: string, commandArgs: string[]): Promis
       process.stderr.write(`${errorMessage}\n`);
       process.exit(1);
     }
-
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    const errorMessage =
+      error instanceof Error ? error.message : 'Unknown error';
     process.stderr.write(`Error: ${errorMessage}\n`);
     process.exit(1);
   }

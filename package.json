@@ -25,6 +25,8 @@
     "typecheck": "bun --bun tsc --noEmit",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
+    "format": "prettier --check .",
+    "format:fix": "prettier --write .",
     "test": "bun test",
     "test:watch": "bun test tests/ --watch",
     "prepublish": "bun test && bun run build"
@@ -34,10 +36,12 @@
     "@types/bun": "latest",
     "@types/node": "latest",
     "eslint": "^9.33.0",
+    "eslint-config-prettier": "10.1.8",
     "eslint-import-resolver-typescript": "^4.4.4",
     "eslint-plugin-import-x": "^4.16.1",
     "eslint-plugin-unused-imports": "^4.1.4",
     "globals": "^16.3.0",
+    "prettier": "3.6.2",
     "typescript": "latest",
     "typescript-eslint": "^8.39.1"
   },

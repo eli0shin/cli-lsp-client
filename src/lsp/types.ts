@@ -7,8 +7,8 @@ import type {
   Position,
   MarkupContent,
   Location,
-  LocationLink
-} from "vscode-languageserver-types";
+  LocationLink,
+} from 'vscode-languageserver-types';
 import type { MessageConnection } from 'vscode-jsonrpc/node';
 import { z } from 'zod';
 
@@ -21,19 +21,19 @@ export type {
   Position,
   MarkupContent,
   Location,
-  LocationLink
+  LocationLink,
 };
 
 export type Request = {
   command: string;
   args?: string[];
-}
+};
 
 export type StatusResult = {
   pid: number;
   uptime: number;
   memory: NodeJS.MemoryUsage;
-}
+};
 
 export type LSPServer = {
   id: string;
@@ -43,7 +43,7 @@ export type LSPServer = {
   env?: Record<string, string>;
   initialization?: Record<string, unknown>;
   dynamicArgs?: (root: string) => string[];
-}
+};
 
 export type HoverResult = {
   symbol: string;
@@ -53,13 +53,13 @@ export type HoverResult = {
     line: number;
     column: number;
   };
-}
+};
 
 // Zod schemas for runtime validation
 
 // Base options schemas
 export const WorkDoneProgressOptionsSchema = z.object({
-  workDoneProgress: z.boolean().optional()
+  workDoneProgress: z.boolean().optional(),
 });
 
 // Provider options schemas - most extend WorkDoneProgressOptions
@@ -75,7 +75,7 @@ export const CallHierarchyOptionsSchema = WorkDoneProgressOptionsSchema;
 
 export const RenameOptionsSchema = z.object({
   prepareProvider: z.boolean().optional(),
-  workDoneProgress: z.boolean().optional()
+  workDoneProgress: z.boolean().optional(),
 });
 
 export const CompletionOptionsSchema = z.object({
@@ -83,152 +83,156 @@ export const CompletionOptionsSchema = z.object({
   allCommitCharacters: z.array(z.string()).optional(),
   resolveProvider: z.boolean().optional(),
   workDoneProgress: z.boolean().optional(),
-  completionItem: z.object({
-    labelDetailsSupport: z.boolean().optional()
-  }).optional()
+  completionItem: z
+    .object({
+      labelDetailsSupport: z.boolean().optional(),
+    })
+    .optional(),
 });
 
 export const SignatureHelpOptionsSchema = z.object({
   triggerCharacters: z.array(z.string()).optional(),
   retriggerCharacters: z.array(z.string()).optional(),
-  workDoneProgress: z.boolean().optional()
+  workDoneProgress: z.boolean().optional(),
 });
 
 export const CodeActionOptionsSchema = z.object({
   codeActionKinds: z.array(z.string()).optional(),
   workDoneProgress: z.boolean().optional(),
-  resolveProvider: z.boolean().optional()
+  resolveProvider: z.boolean().optional(),
 });
 
 export const ExecuteCommandOptionsSchema = z.object({
   commands: z.array(z.string()),
-  workDoneProgress: z.boolean().optional()
+  workDoneProgress: z.boolean().optional(),
 });
 
-export const DiagnosticOptionsSchema = z.object({
-  interFileDependencies: z.boolean(),
-  workspaceDiagnostics: z.boolean(),
-  workDoneProgress: z.boolean().optional()
-}).partial();
+export const DiagnosticOptionsSchema = z
+  .object({
+    interFileDependencies: z.boolean(),
+    workspaceDiagnostics: z.boolean(),
+    workDoneProgress: z.boolean().optional(),
+  })
+  .partial();
 
 // Union types for providers (boolean | options)
 export const DiagnosticProviderSchema = z.union([
   z.boolean(),
-  DiagnosticOptionsSchema
+  DiagnosticOptionsSchema,
 ]);
 
-export const HoverProviderSchema = z.union([
-  z.boolean(),
-  HoverOptionsSchema
-]);
+export const HoverProviderSchema = z.union([z.boolean(), HoverOptionsSchema]);
 
 export const DefinitionProviderSchema = z.union([
   z.boolean(),
-  DefinitionOptionsSchema
+  DefinitionOptionsSchema,
 ]);
 
 export const TypeDefinitionProviderSchema = z.union([
   z.boolean(),
-  TypeDefinitionOptionsSchema
+  TypeDefinitionOptionsSchema,
 ]);
 
 export const DocumentSymbolProviderSchema = z.union([
   z.boolean(),
-  DocumentSymbolOptionsSchema
+  DocumentSymbolOptionsSchema,
 ]);
 
 export const WorkspaceSymbolProviderSchema = z.union([
   z.boolean(),
-  WorkspaceSymbolOptionsSchema
+  WorkspaceSymbolOptionsSchema,
 ]);
 
 export const DeclarationProviderSchema = z.union([
   z.boolean(),
-  DeclarationOptionsSchema
+  DeclarationOptionsSchema,
 ]);
 
 export const ReferencesProviderSchema = z.union([
   z.boolean(),
-  ReferencesOptionsSchema
+  ReferencesOptionsSchema,
 ]);
 
 export const DocumentHighlightProviderSchema = z.union([
   z.boolean(),
-  DocumentHighlightOptionsSchema
+  DocumentHighlightOptionsSchema,
 ]);
 
-export const RenameProviderSchema = z.union([
-  z.boolean(),
-  RenameOptionsSchema
-]);
+export const RenameProviderSchema = z.union([z.boolean(), RenameOptionsSchema]);
 
 export const CompletionProviderSchema = z.union([
   z.boolean(),
-  CompletionOptionsSchema
+  CompletionOptionsSchema,
 ]);
 
 export const SignatureHelpProviderSchema = z.union([
   z.boolean(),
-  SignatureHelpOptionsSchema
+  SignatureHelpOptionsSchema,
 ]);
 
 export const CodeActionProviderSchema = z.union([
   z.boolean(),
-  CodeActionOptionsSchema
+  CodeActionOptionsSchema,
 ]);
 
 export const ExecuteCommandProviderSchema = z.union([
   z.boolean(),
-  ExecuteCommandOptionsSchema
+  ExecuteCommandOptionsSchema,
 ]);
 
 export const CallHierarchyProviderSchema = z.union([
   z.boolean(),
-  CallHierarchyOptionsSchema
+  CallHierarchyOptionsSchema,
 ]);
 
-export const ServerCapabilitiesSchema = z.object({
-  // Text synchronization
-  textDocumentSync: z.union([z.number(), z.object({}).passthrough()]).optional(),
-  
-  // Language features
-  diagnosticProvider: DiagnosticProviderSchema.optional(),
-  documentSymbolProvider: DocumentSymbolProviderSchema.optional(),
-  definitionProvider: DefinitionProviderSchema.optional(),
-  typeDefinitionProvider: TypeDefinitionProviderSchema.optional(),
-  declarationProvider: DeclarationProviderSchema.optional(),
-  referencesProvider: ReferencesProviderSchema.optional(),
-  hoverProvider: HoverProviderSchema.optional(),
-  documentHighlightProvider: DocumentHighlightProviderSchema.optional(),
-  workspaceSymbolProvider: WorkspaceSymbolProviderSchema.optional(),
-  renameProvider: RenameProviderSchema.optional(),
-  completionProvider: CompletionProviderSchema.optional(),
-  signatureHelpProvider: SignatureHelpProviderSchema.optional(),
-  codeActionProvider: CodeActionProviderSchema.optional(),
-  executeCommandProvider: ExecuteCommandProviderSchema.optional(),
-  callHierarchyProvider: CallHierarchyProviderSchema.optional(),
-  
-  // Workspace features
-  workspace: z.object({}).passthrough().optional()
-}).passthrough();
+export const ServerCapabilitiesSchema = z
+  .object({
+    // Text synchronization
+    textDocumentSync: z
+      .union([z.number(), z.object({}).passthrough()])
+      .optional(),
 
-export const InitializationResultSchema = z.object({
-  capabilities: ServerCapabilitiesSchema
-}).passthrough();
+    // Language features
+    diagnosticProvider: DiagnosticProviderSchema.optional(),
+    documentSymbolProvider: DocumentSymbolProviderSchema.optional(),
+    definitionProvider: DefinitionProviderSchema.optional(),
+    typeDefinitionProvider: TypeDefinitionProviderSchema.optional(),
+    declarationProvider: DeclarationProviderSchema.optional(),
+    referencesProvider: ReferencesProviderSchema.optional(),
+    hoverProvider: HoverProviderSchema.optional(),
+    documentHighlightProvider: DocumentHighlightProviderSchema.optional(),
+    workspaceSymbolProvider: WorkspaceSymbolProviderSchema.optional(),
+    renameProvider: RenameProviderSchema.optional(),
+    completionProvider: CompletionProviderSchema.optional(),
+    signatureHelpProvider: SignatureHelpProviderSchema.optional(),
+    codeActionProvider: CodeActionProviderSchema.optional(),
+    executeCommandProvider: ExecuteCommandProviderSchema.optional(),
+    callHierarchyProvider: CallHierarchyProviderSchema.optional(),
+
+    // Workspace features
+    workspace: z.object({}).passthrough().optional(),
+  })
+  .passthrough();
+
+export const InitializationResultSchema = z
+  .object({
+    capabilities: ServerCapabilitiesSchema,
+  })
+  .passthrough();
 
 export const DiagnosticReportSchema = z.union([
   z.object({
     kind: z.literal('full'),
-    items: z.array(z.unknown()).optional()
+    items: z.array(z.unknown()).optional(),
   }),
   z.object({
-    kind: z.literal('unchanged')
-  })
+    kind: z.literal('unchanged'),
+  }),
 ]);
 
 export const PublishDiagnosticsSchema = z.object({
   uri: z.string(),
-  diagnostics: z.array(z.unknown()).optional()
+  diagnostics: z.array(z.unknown()).optional(),
 });
 
 // Inferred TypeScript types from Zod schemas
@@ -238,7 +242,6 @@ export type ServerCapabilities = z.infer<typeof ServerCapabilitiesSchema>;
 export type InitializationResult = z.infer<typeof InitializationResultSchema>;
 export type DiagnosticReport = z.infer<typeof DiagnosticReportSchema>;
 export type PublishDiagnosticsParams = z.infer<typeof PublishDiagnosticsSchema>;
-
 
 export type LSPClient = {
   serverID: string;
@@ -253,9 +256,17 @@ export type LSPClient = {
   waitForDiagnostics(path: string, timeoutMs?: number): Promise<void>;
   triggerDiagnostics(path: string, timeoutMs?: number): Promise<void>;
   pullDiagnostics(path: string): Promise<Diagnostic[]>;
-  getDocumentSymbols(filePath: string): Promise<DocumentSymbol[] | SymbolInformation[]>;
-  getDefinition(filePath: string, position: Position): Promise<Location[] | LocationLink[] | null>;
-  getTypeDefinition(filePath: string, position: Position): Promise<Location[] | LocationLink[] | null>;
+  getDocumentSymbols(
+    filePath: string
+  ): Promise<DocumentSymbol[] | SymbolInformation[]>;
+  getDefinition(
+    filePath: string,
+    position: Position
+  ): Promise<Location[] | LocationLink[] | null>;
+  getTypeDefinition(
+    filePath: string,
+    position: Position
+  ): Promise<Location[] | LocationLink[] | null>;
   getHover(filePath: string, position: Position): Promise<Hover | null>;
   shutdown(): Promise<void>;
-}
+};

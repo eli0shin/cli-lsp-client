@@ -4,15 +4,35 @@ import tseslint from 'typescript-eslint';
 import importX from 'eslint-plugin-import-x';
 import unusedImports from 'eslint-plugin-unused-imports';
 import globals from 'globals';
+import prettierConfig from 'eslint-config-prettier';
 
 export default tseslint.config(
   // Global ignores
   {
-    ignores: ['dist/', 'node_modules/', '**/*.d.ts', 'coverage/', '*.js', 'tests/fixtures/**/*']
+    ignores: [
+      'dist/',
+      'node_modules/',
+      '**/*.d.ts',
+      'coverage/',
+      '*.js',
+      'tests/fixtures/**/*',
+    ],
   },
 
   // Base JavaScript configuration
   eslint.configs.recommended,
+
+  // Prettier configuration - disables ESLint rules that conflict with Prettier
+  prettierConfig,
+
+  // JavaScript/MJS files - disable unused vars since TypeScript handles this
+  {
+    name: 'javascript-files',
+    files: ['**/*.js', '**/*.mjs'],
+    rules: {
+      'no-unused-vars': 'off', // Use TypeScript compiler instead
+    },
+  },
 
   // TypeScript configuration for .ts files
   {
@@ -21,7 +41,7 @@ export default tseslint.config(
     extends: [
       tseslint.configs.recommended,
       tseslint.configs.strict,
-      tseslint.configs.stylistic
+      tseslint.configs.stylistic,
     ],
     languageOptions: {
       parser: tseslint.parser,
@@ -31,8 +51,8 @@ export default tseslint.config(
       },
       globals: {
         ...globals.node,
-        Bun: 'readonly'
-      }
+        Bun: 'readonly',
+      },
     },
     plugins: {
       'import-x': importX,
@@ -42,13 +62,16 @@ export default tseslint.config(
       'import-x/resolver': {
         typescript: {
           alwaysTryTypes: true,
-          project: './tsconfig.json'
+          project: './tsconfig.json',
         },
-        node: true
+        node: true,
       },
       'import-x/extensions': ['.ts', '.tsx', '.js', '.jsx', '.mjs'],
-      'import-x/external-module-folders': ['node_modules', 'node_modules/@types'],
-      'import-x/core-modules': ['bun', 'bun:test', 'bun:jsc']
+      'import-x/external-module-folders': [
+        'node_modules',
+        'node_modules/@types',
+      ],
+      'import-x/core-modules': ['bun', 'bun:test', 'bun:jsc'],
     },
     rules: {
       // TypeScript strict rules - BAN EXPLICIT ANY
@@ -56,8 +79,8 @@ export default tseslint.config(
         'error',
         {
           fixToUnknown: false,
-          ignoreRestArgs: false
-        }
+          ignoreRestArgs: false,
+        },
       ],
 
       // Additional TypeScript rules for best practices
@@ -71,8 +94,8 @@ export default tseslint.config(
         'error',
         {
           prefer: 'type-imports',
-          fixStyle: 'inline-type-imports'
-        }
+          fixStyle: 'inline-type-imports',
+        },
       ],
       '@typescript-eslint/no-import-type-side-effects': 'error',
       '@typescript-eslint/switch-exhaustiveness-check': 'error',
@@ -103,7 +126,6 @@ export default tseslint.config(
       'import-x/newline-after-import': ['error', { count: 1 }],
       'import-x/order': 'off', // User preference - disabled
 
-
       // Additional best practices
       'no-console': 'error', // Force use of process.stdout/stderr.write for CLI output
       'prefer-const': 'error',
@@ -113,7 +135,7 @@ export default tseslint.config(
       // Allow empty interfaces and functions (useful for LSP protocol)
       '@typescript-eslint/no-empty-interface': 'off',
       '@typescript-eslint/no-empty-function': 'off',
-    }
+    },
   },
 
   // Test files configuration
@@ -123,8 +145,8 @@ export default tseslint.config(
     rules: {
       '@typescript-eslint/no-explicit-any': 'off', // Allow any in tests
       'no-console': 'off', // Allow console in tests
-      '@typescript-eslint/no-non-null-assertion': 'off'
-    }
+      '@typescript-eslint/no-non-null-assertion': 'off',
+    },
   },
 
   // CLI entry point configuration - still enforce process.stdout/stderr.write
@@ -133,6 +155,6 @@ export default tseslint.config(
     files: ['src/cli.ts', 'src/index.ts'],
     rules: {
       // Keep no-console error to enforce proper CLI output methods
-    }
+    },
   }
 );

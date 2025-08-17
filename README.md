@@ -13,24 +13,23 @@ CLI tool for getting LSP diagnostics. Uses a background daemon to keep LSP serve
 
 ## Supported Languages
 
-| Language | LSP Server | Auto-installed | Notes |
-|----------|------------|----------------|-------|
-| TypeScript/JavaScript | `typescript-language-server` | ✓ (via bunx) | `.ts`, `.tsx`, `.js`, `.jsx`, `.mjs`, `.cjs`, `.mts`, `.cts` |
-| Python | `pyright-langserver` | ✓ (via bunx) | `.py`, `.pyi` |
-| JSON | `vscode-json-language-server` | ✓ (via vscode-langservers-extracted) | `.json`, `.jsonc` - includes schema validation |
-| CSS | `vscode-css-language-server` | ✓ (via vscode-langservers-extracted) | `.css`, `.scss`, `.sass`, `.less` |
-| YAML | `yaml-language-server` | ✓ (via bunx) | `.yaml`, `.yml` - includes schema validation |
-| Bash/Shell | `bash-language-server` | ✓ (via bunx) | `.sh`, `.bash`, `.zsh` - **requires shellcheck** (`brew install shellcheck`) |
-| GraphQL | `graphql-language-service-cli` | ✓ (via bunx) | `.graphql`, `.gql` |
-| Go | `gopls` | ✗ | Requires manual install: `go install golang.org/x/tools/gopls@latest` |
-| Java | `jdtls` (Eclipse JDT) | ✗ | `.java` - see [Java Installation](#java-installation-guide) below |
-| Lua | `lua-language-server` | ✗ | `.lua` - requires manual install via package manager (brew, scoop) or from [releases](https://github.com/LuaLS/lua-language-server/releases) |
-
+| Language              | LSP Server                     | Auto-installed                       | Notes                                                                                                                                        |
+| --------------------- | ------------------------------ | ------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| TypeScript/JavaScript | `typescript-language-server`   | ✓ (via bunx)                         | `.ts`, `.tsx`, `.js`, `.jsx`, `.mjs`, `.cjs`, `.mts`, `.cts`                                                                                 |
+| Python                | `pyright-langserver`           | ✓ (via bunx)                         | `.py`, `.pyi`                                                                                                                                |
+| JSON                  | `vscode-json-language-server`  | ✓ (via vscode-langservers-extracted) | `.json`, `.jsonc` - includes schema validation                                                                                               |
+| CSS                   | `vscode-css-language-server`   | ✓ (via vscode-langservers-extracted) | `.css`, `.scss`, `.sass`, `.less`                                                                                                            |
+| YAML                  | `yaml-language-server`         | ✓ (via bunx)                         | `.yaml`, `.yml` - includes schema validation                                                                                                 |
+| Bash/Shell            | `bash-language-server`         | ✓ (via bunx)                         | `.sh`, `.bash`, `.zsh` - **requires shellcheck** (`brew install shellcheck`)                                                                 |
+| GraphQL               | `graphql-language-service-cli` | ✓ (via bunx)                         | `.graphql`, `.gql`                                                                                                                           |
+| Go                    | `gopls`                        | ✗                                    | Requires manual install: `go install golang.org/x/tools/gopls@latest`                                                                        |
+| Java                  | `jdtls` (Eclipse JDT)          | ✗                                    | `.java` - see [Java Installation](#java-installation-guide) below                                                                            |
+| Lua                   | `lua-language-server`          | ✗                                    | `.lua` - requires manual install via package manager (brew, scoop) or from [releases](https://github.com/LuaLS/lua-language-server/releases) |
 
 ## How It Works
 
 - Daemon starts automatically when needed
-- LSP servers spawn based on file type  
+- LSP servers spawn based on file type
 - Finds project roots using config files (tsconfig.json, etc.)
 - Servers stay running for subsequent requests
 
@@ -89,7 +88,7 @@ When you save a file with errors, you'll see immediate feedback:
 
 ```
 Edit operation feedback:
-- [npx -y cli-lsp-client claude-code-hook]: 
+- [npx -y cli-lsp-client claude-code-hook]:
 ERROR at line 3, column 9:
   Type 'number' is not assignable to type 'string'.
   Source: typescript
@@ -129,13 +128,14 @@ npx cli-lsp-client hover src/main.ts myFunction
 npx cli-lsp-client hover app.py MyClass
 ```
 
-```bash
+````bash
 $ npx cli-lsp-client hover src/client.ts runCommand
 Location: src/client.ts:370:17
 ```typescript
 export function runCommand(command: string, commandArgs: string[]): Promise<void>
-```
-```
+````
+
+````
 
 ### Daemon Management
 
@@ -157,7 +157,7 @@ npx cli-lsp-client --version
 
 # Show help
 npx cli-lsp-client help
-```
+````
 
 The `status` command shows the current daemon's uptime and running language servers:
 
@@ -182,7 +182,7 @@ $ npx cli-lsp-client list
 
 Running Daemons:
 ================
-Hash   | PID   | Status    | Working Directory             
+Hash   | PID   | Status    | Working Directory
 ----------------------------------------------------------
 h0gx9u | 12345 | ● Running | /Users/user/project-a
 94yi9w | 12346 | ● Running | /Users/user/project-b
@@ -221,11 +221,13 @@ java -Declipse.application=org.eclipse.jdt.ls.core.id1 \
 ### Alternative Installation Methods
 
 **Homebrew (macOS/Linux)**:
+
 ```bash
 brew install jdtls
 ```
 
 **Arch Linux**:
+
 ```bash
 pacman -S jdtls
 ```

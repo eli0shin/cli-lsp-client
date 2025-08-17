@@ -10,34 +10,53 @@ import { HELP_MESSAGE } from './constants.js';
 import { ensureDaemonRunning } from './utils.js';
 import packageJson from '../package.json' with { type: 'json' };
 
-// TODO: Fix this, the model is incorrect about where tool_input comes from 
+// TODO: Fix this, the model is incorrect about where tool_input comes from
 const HookDataSchema = z.object({
-  tool_input: z.object({
-    file_path: z.string().optional()
-  }).optional(),
+  tool_input: z
+    .object({
+      file_path: z.string().optional(),
+    })
+    .optional(),
   file_path: z.string().optional(),
-  filePath: z.string().optional()
+  filePath: z.string().optional(),
 });
 
-
-export async function handleClaudeCodeHook(filePath: string): Promise<{ hasIssues: boolean; output: string; daemonFailed?: boolean }> {
+export async function handleClaudeCodeHook(
+  filePath: string
+): Promise<{ hasIssues: boolean; output: string; daemonFailed?: boolean }> {
   // Check if file exists
-  if (!await Bun.file(filePath).exists()) {
+  if (!(await Bun.file(filePath).exists())) {
     return { hasIssues: false, output: '' };
   }
 
   // Filter supported file types
   const supportedExts = [
-    '.ts', '.tsx', '.js', '.jsx', '.mjs', '.cjs', '.mts', '.cts',
-    '.py', '.pyi',
+    '.ts',
+    '.tsx',
+    '.js',
+    '.jsx',
+    '.mjs',
+    '.cjs',
+    '.mts',
+    '.cts',
+    '.py',
+    '.pyi',
     '.go',
-    '.json', '.jsonc',
-    '.css', '.scss', '.sass', '.less',
-    '.yaml', '.yml',
-    '.sh', '.bash', '.zsh',
+    '.json',
+    '.jsonc',
+    '.css',
+    '.scss',
+    '.sass',
+    '.less',
+    '.yaml',
+    '.yml',
+    '.sh',
+    '.bash',
+    '.zsh',
     '.java',
     '.lua',
-    '.graphql', '.gql'
+    '.graphql',
+    '.gql',
   ];
   const ext = path.extname(filePath);
   if (!supportedExts.includes(ext)) {
@@ -53,8 +72,9 @@ export async function handleClaudeCodeHook(filePath: string): Promise<{ hasIssue
       // Failed to start daemon - return with flag so caller can handle
       return {
         hasIssues: false,
-        output: 'Failed to start LSP daemon. Please try running "cli-lsp-client stop" and retry.',
-        daemonFailed: true
+        output:
+          'Failed to start LSP daemon. Please try running "cli-lsp-client stop" and retry.',
+        daemonFailed: true,
       };
     }
 
@@ -129,7 +149,10 @@ async function run(): Promise<void> {
       }
       const hookData = parseResult.data;
       // Handle both PostToolUse format (tool_input.file_path) and simple format (file_path)
-      const filePath = hookData.tool_input?.file_path || hookData.file_path || hookData.filePath;
+      const filePath =
+        hookData.tool_input?.file_path ||
+        hookData.file_path ||
+        hookData.filePath;
 
       if (!filePath) {
         process.exit(0); // No file path, silently exit
