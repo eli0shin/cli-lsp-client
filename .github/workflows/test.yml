@@ -124,8 +124,9 @@ jobs:
         with:
           path: |
             ${{ github.workspace }}/.dotnet
+            ${{ github.workspace }}/.local/omnisharp
             ${{ github.workspace }}/.local/bin/omnisharp
-          key: ${{ runner.os }}-dotnet-omnisharp-8.0-v2
+          key: ${{ runner.os }}-dotnet-omnisharp-8.0-v3
           restore-keys: |
             ${{ runner.os }}-dotnet-omnisharp-8.0-
             ${{ runner.os }}-dotnet-omnisharp-
