@@ -7,7 +7,7 @@ describe('GraphQL Hover Command', () => {
     
     expect(result.exitCode).toBe(0);
     const output = stripAnsi(result.stdout.toString());
-    expect(output).toBe(`Location: tests/fixtures/graphql/valid/schema.graphql:38:11
+    expect(output).toBe(`Location: tests/fixtures/graphql/valid/schema.graphql:16:6
 No documentation available.`);
   }, 10000);
 

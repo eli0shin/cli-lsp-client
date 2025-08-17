@@ -1,6 +1,7 @@
 import net from 'net';
 import os from 'os';
 import path from 'path';
+import { z } from 'zod';
 import { lspManager } from './lsp/manager.js';
 import { executeStart } from './lsp/start.js';
 import { log } from './logger.js';
@@ -18,10 +19,12 @@ function getDaemonPaths() {
 
 export const { socketPath: SOCKET_PATH, pidFile: PID_FILE } = getDaemonPaths();
 
-export type Request = {
-  command: string;
-  args?: string[];
-}
+const RequestSchema = z.object({
+  command: z.string(),
+  args: z.array(z.string()).optional()
+});
+
+export type Request = z.infer<typeof RequestSchema>;
 
 export type StatusResult = {
   pid: number;
@@ -141,7 +144,19 @@ export async function startDaemon(): Promise<void> {
 
     socket.on('data', async (data) => {
       try {
-        const request = JSON.parse(data.toString()) as Request;
+        const rawRequest = JSON.parse(data.toString()) as unknown;
+        const parseResult = RequestSchema.safeParse(rawRequest);
+        
+        if (!parseResult.success) {
+          socket.write(JSON.stringify({
+            success: false,
+            error: `Invalid request format: ${parseResult.error.message}`
+          }));
+          socket.end();
+          return;
+        }
+        
+        const request = parseResult.data;
         log(`Received request: ${JSON.stringify(request)}`);
 
         const result = await handleRequest(request);
