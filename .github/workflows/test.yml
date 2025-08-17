@@ -88,6 +88,9 @@ jobs:
           "${{ github.workspace }}/.local/lua-language-server/bin/lua-language-server" "$@"
           EOF
           chmod +x "${{ github.workspace }}/.local/bin/lua-language-server"
+          
+          # Add to PATH for all subsequent steps
+          echo "${{ github.workspace }}/.local/bin" >> $GITHUB_PATH
 
       - name: Install shellcheck
         run: sudo apt-get install -y shellcheck
@@ -135,8 +138,8 @@ jobs:
             echo ".NET SDK found in cache, skipping installation"
           fi
           
-          # Ensure .NET is in PATH
-          export PATH="${{ github.workspace }}/.dotnet:$PATH"
+          # Add .NET to PATH for all subsequent steps
+          echo "${{ github.workspace }}/.dotnet" >> $GITHUB_PATH
           
           # Verify .NET installation
           dotnet --version
@@ -157,10 +160,7 @@ jobs:
             echo "OmniSharp found in cache, skipping installation"
           fi
           
-          # Ensure OmniSharp is in PATH
-          export PATH="${{ github.workspace }}/.local/bin:$PATH"
-          
-          # Verify OmniSharp installation
+          # PATH already added by Lua setup, verify OmniSharp installation
           omnisharp --help
 
       - name: Run type checking
@@ -182,9 +182,7 @@ jobs:
 
       - name: Verify C# language server
         run: |
-          # Add user directories to PATH
-          export PATH="${{ github.workspace }}/.dotnet:${{ github.workspace }}/.local/bin:$PATH"
-          # Test that OmniSharp is working
+          # Test that OmniSharp is working (PATH already set globally)
           omnisharp --help | head -5
 
       - name: Run tests
