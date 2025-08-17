@@ -36,4 +36,8 @@ export const LANGUAGE_EXTENSIONS: Record<string, string> = {
   '.zsh': 'shellscript',
   '.graphql': 'graphql',
   '.gql': 'graphql',
+  '.r': 'r',
+  '.R': 'r',
+  '.rmd': 'rmd',
+  '.Rmd': 'rmd',
 };

@@ -201,6 +201,45 @@ export async function detectProjectTypes(
     })()
   );
 
+  // R
+  detectionPromises.push(
+    (async () => {
+      if (
+        await hasAnyFile(directory, [
+          'DESCRIPTION',
+          'NAMESPACE',
+          '.Rproj',
+          'renv.lock',
+          '**/*.r',
+          '**/*.R',
+          '**/*.rmd',
+          '**/*.Rmd',
+        ])
+      ) {
+        const server = getServerById('r_language_server');
+        if (server) detectedServers.push(server);
+      }
+    })()
+  );
+
+  // C#
+  detectionPromises.push(
+    (async () => {
+      if (
+        await hasAnyFile(directory, [
+          '*.sln',
+          '*.csproj',
+          'project.json',
+          'global.json',
+          '**/*.cs',
+        ])
+      ) {
+        const server = getServerById('omnisharp');
+        if (server) detectedServers.push(server);
+      }
+    })()
+  );
+
   // Run all detection checks in parallel
   await Promise.all(detectionPromises);
 

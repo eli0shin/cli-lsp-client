@@ -62,6 +62,11 @@ export async function handleClaudeCodeHook(
     '.lua',
     '.graphql',
     '.gql',
+    '.r',
+    '.R',
+    '.rmd',
+    '.Rmd',
+    '.cs',
   ];
   const ext = path.extname(filePath);
   if (!supportedExts.includes(ext)) {

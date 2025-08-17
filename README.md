@@ -22,6 +22,8 @@ CLI tool for getting LSP diagnostics. Uses a background daemon to keep LSP serve
 | YAML                  | `yaml-language-server`         | ✓ (via bunx)                         | `.yaml`, `.yml` - includes schema validation                                                                                                 |
 | Bash/Shell            | `bash-language-server`         | ✓ (via bunx)                         | `.sh`, `.bash`, `.zsh` - **requires shellcheck** (`brew install shellcheck`)                                                                 |
 | GraphQL               | `graphql-language-service-cli` | ✓ (via bunx)                         | `.graphql`, `.gql`                                                                                                                           |
+| **R**                 | **R languageserver**           | **✗**                                | **`.r`, `.R`, `.rmd`, `.Rmd` - see [R Installation](#r-installation-guide) below**                                                           |
+| **C#**                | **OmniSharp-Roslyn**           | **✗**                                | **`.cs` - see [C# Installation](#c-installation-guide) below**                                                                               |
 | Go                    | `gopls`                        | ✗                                    | Requires manual install: `go install golang.org/x/tools/gopls@latest`                                                                        |
 | Java                  | `jdtls` (Eclipse JDT)          | ✗                                    | `.java` - see [Java Installation](#java-installation-guide) below                                                                            |
 | Lua                   | `lua-language-server`          | ✗                                    | `.lua` - requires manual install via package manager (brew, scoop) or from [releases](https://github.com/LuaLS/lua-language-server/releases) |
@@ -37,7 +39,7 @@ CLI tool for getting LSP diagnostics. Uses a background daemon to keep LSP serve
 
 ### Real-time Diagnostics Hook
 
-Get instant diagnostic feedback for TypeScript, Python, JSON, CSS, YAML, Bash, GraphQL, Go, Java, and Lua files as you edit in Claude Code.
+Get instant diagnostic feedback for TypeScript, Python, JSON, CSS, YAML, Bash, GraphQL, R, C#, Go, Java, and Lua files as you edit in Claude Code.
 
 #### Setup
 
@@ -77,7 +79,7 @@ Configure Claude Code to use the built-in hook command:
 
 - **SessionStart**: Automatically starts LSP servers when Claude Code starts for faster initial diagnostics
 - **PostToolUse**: Runs diagnostics after each file edit (Edit, MultiEdit, Write tools)
-- Built-in file filtering for all supported languages (14 file types)
+- Built-in file filtering for all supported languages (16 file types)
 - Shows errors, warnings, and hints inline
 - Graceful error handling - never breaks your editing experience
 - Uses the same fast daemon as the regular diagnostics command
@@ -106,6 +108,8 @@ npx cli-lsp-client diagnostics src/example.ts
 # Check any supported file type
 npx cli-lsp-client diagnostics app.py
 npx cli-lsp-client diagnostics main.go
+npx cli-lsp-client diagnostics analysis.R
+npx cli-lsp-client diagnostics Program.cs
 ```
 
 Exit codes: 0 for no issues, 2 for issues found.
@@ -126,6 +130,8 @@ npx cli-lsp-client hover src/main.ts myFunction
 
 # Get hover info for a variable or type
 npx cli-lsp-client hover app.py MyClass
+npx cli-lsp-client hover analysis.R mean
+npx cli-lsp-client hover Program.cs Console
 ```
 
 ````bash
@@ -239,6 +245,133 @@ pacman -S jdtls
 - Requires Java 17 or higher to run
 
 For detailed setup instructions, see the [official Eclipse JDT.LS documentation](https://github.com/eclipse-jdtls/eclipse.jdt.ls).
+
+## R Installation Guide
+
+The R language server requires R runtime and the `languageserver` package:
+
+### Installation Steps
+
+1. **Install R**: Download and install R from [CRAN](https://cran.r-project.org/) or use a package manager:
+
+   **macOS (Homebrew)**:
+   ```bash
+   brew install r
+   ```
+
+   **Ubuntu/Debian**:
+   ```bash
+   sudo apt-get update
+   sudo apt-get install r-base
+   ```
+
+   **Windows**: Download installer from [CRAN Windows](https://cran.r-project.org/bin/windows/base/)
+
+2. **Install R languageserver package**: Open R and run:
+   ```r
+   install.packages("languageserver")
+   ```
+
+   Or from command line:
+   ```bash
+   R --slave -e 'install.packages("languageserver", repos="https://cran.rstudio.com/")'
+   ```
+
+### Verification
+
+Test that the language server works:
+```bash
+R --slave -e 'languageserver::run()'
+```
+
+### Project Detection
+
+The R LSP automatically detects R projects based on these files:
+- `DESCRIPTION` (R packages)
+- `NAMESPACE` (R packages) 
+- `.Rproj` (RStudio projects)
+- `renv.lock` (renv dependency management)
+- Any `.r`, `.R`, `.rmd`, `.Rmd` files
+
+For more information, see the [R languageserver documentation](https://github.com/REditorSupport/languageserver).
+
+## C# Installation Guide
+
+The C# language server requires .NET SDK and OmniSharp-Roslyn:
+
+### Installation Steps
+
+1. **Install .NET SDK**: Download .NET 6.0+ from [Microsoft .NET](https://dotnet.microsoft.com/download) or use a package manager:
+
+   **macOS (Homebrew)**:
+   ```bash
+   brew install dotnet
+   ```
+
+   **Ubuntu/Debian**:
+   ```bash
+   # Add Microsoft package repository
+   wget https://packages.microsoft.com/config/ubuntu/$(lsb_release -rs)/packages-microsoft-prod.deb -O packages-microsoft-prod.deb
+   sudo dpkg -i packages-microsoft-prod.deb
+   sudo apt-get update
+   sudo apt-get install -y dotnet-sdk-8.0
+   ```
+
+   **Windows**: Download installer from [.NET Downloads](https://dotnet.microsoft.com/download)
+
+2. **Install OmniSharp-Roslyn**: Download the latest release from [OmniSharp releases](https://github.com/OmniSharp/omnisharp-roslyn/releases):
+
+   **Automatic script** (recommended):
+   ```bash
+   # Download and extract OmniSharp to ~/.omnisharp/
+   mkdir -p ~/.omnisharp
+   curl -L https://github.com/OmniSharp/omnisharp-roslyn/releases/latest/download/omnisharp-osx-arm64-net6.0.tar.gz | tar -xz -C ~/.omnisharp/
+   
+   # Create symlink to make omnisharp available in PATH
+   sudo ln -sf ~/.omnisharp/OmniSharp /usr/local/bin/omnisharp
+   ```
+
+   **Manual installation**:
+   - Download the appropriate release for your platform (Windows: `omnisharp-win-x64-net6.0.zip`, Linux: `omnisharp-linux-x64-net6.0.tar.gz`)
+   - Extract to a directory (e.g., `~/.omnisharp/`)
+   - Add the executable to your PATH or create a symlink
+
+3. **Set environment variables**:
+
+   **Fish shell**:
+   ```bash
+   set -Ux DOTNET_ROOT ~/.dotnet
+   ```
+
+   **Bash/Zsh**:
+   ```bash
+   echo 'export DOTNET_ROOT=~/.dotnet' >> ~/.bashrc  # or ~/.zshrc
+   source ~/.bashrc  # or ~/.zshrc
+   ```
+
+   **Note**: `DOTNET_ROOT` must be set in your shell environment for the C# language server to work. The CLI will only load OmniSharp if this environment variable is defined. Restart your terminal after setting the environment variable to ensure it's available.
+
+### Verification
+
+Test that OmniSharp works:
+```bash
+# Verify DOTNET_ROOT is set
+echo $DOTNET_ROOT
+
+# Test OmniSharp command
+omnisharp --help
+```
+
+### Project Detection
+
+The C# LSP automatically detects C# projects based on these files:
+- `*.sln` (Solution files)
+- `*.csproj` (Project files)
+- `project.json` (Legacy project files)
+- `global.json` (.NET global configuration)
+- Any `.cs` files
+
+For more information, see the [OmniSharp documentation](https://github.com/OmniSharp/omnisharp-roslyn).
 
 ### Additional Commands
 
