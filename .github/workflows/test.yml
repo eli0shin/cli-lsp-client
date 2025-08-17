@@ -59,6 +59,7 @@ jobs:
 
       - name: Install lua-language-server
         run: |
+          # Install Lua dependencies (these are small and quick)
           sudo apt-get install -y lua5.4 lua5.4-dev
           
           # Check if lua-language-server is already installed (from cache)
@@ -82,7 +83,7 @@ jobs:
       - name: Setup R and R languageserver
         run: |
           # Check if R is already installed (from cache)
-          if ! command -v R &> /dev/null; then
+          if [ ! -f /usr/lib/R/bin/R ]; then
             echo "Installing R..."
             sudo apt-get update
             sudo apt-get install -y r-base r-base-dev
@@ -93,8 +94,11 @@ jobs:
             echo "R found in cache, skipping installation"
           fi
           
+          # Ensure R is in PATH
+          export PATH="/usr/lib/R/bin:$PATH"
+          
           # Check if languageserver package is installed
-          if ! R --slave -e 'library(languageserver)' 2>/dev/null; then
+          if [ ! -d /usr/local/lib/R/site-library/languageserver ]; then
             echo "Installing R languageserver package..."
             sudo R --slave -e 'install.packages("languageserver", repos="https://cran.rstudio.com/", dependencies=TRUE, Ncpus=2)'
           else
@@ -119,7 +123,7 @@ jobs:
       - name: Setup .NET SDK and OmniSharp
         run: |
           # Check if .NET SDK is already installed (from cache)
-          if ! command -v dotnet &> /dev/null; then
+          if [ ! -f /usr/share/dotnet/dotnet ]; then
             echo "Installing .NET SDK..."
             wget https://packages.microsoft.com/config/ubuntu/22.04/packages-microsoft-prod.deb -O packages-microsoft-prod.deb
             sudo dpkg -i packages-microsoft-prod.deb
@@ -128,6 +132,9 @@ jobs:
           else
             echo ".NET SDK found in cache, skipping installation"
           fi
+          
+          # Ensure .NET is in PATH
+          export PATH="/usr/share/dotnet:$PATH"
           
           # Verify .NET installation
           dotnet --version
