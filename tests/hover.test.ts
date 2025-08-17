@@ -49,7 +49,7 @@ Greets a person by name
     
     expect(result.exitCode).toBe(1);
     const errorOutput = stripAnsi(result.stderr);
-    expect(errorOutput).toBe('Error communicating with daemon: File does not exist: /Users/elioshinsky/code/lspcli/tests/fixtures/typescript/nonexistent.ts');
+    expect(errorOutput).toBe('Error communicating with daemon: File does not exist: tests/fixtures/typescript/nonexistent.ts');
   }, 10000);
 
   test('should validate required arguments - missing symbol', async () => {

@@ -68,8 +68,9 @@ export class LSPManager {
 
     // Check if file exists
     if (!await Bun.file(absolutePath).exists()) {
+      const relativePath = path.relative(process.cwd(), absolutePath);
       log(`File does not exist: ${absolutePath}`);
-      throw new Error(`File does not exist: ${absolutePath}`);
+      throw new Error(`File does not exist: ${relativePath}`);
     }
 
     const applicableServers = await getApplicableServers(absolutePath);
@@ -195,7 +196,8 @@ export class LSPManager {
     const absolutePath = path.isAbsolute(filePath) ? filePath : path.resolve(process.cwd(), filePath);
     
     if (!await Bun.file(absolutePath).exists()) {
-      throw new Error(`File does not exist: ${absolutePath}`);
+      const relativePath = path.relative(process.cwd(), absolutePath);
+      throw new Error(`File does not exist: ${relativePath}`);
     }
     
     const applicableServers = await getApplicableServers(absolutePath);
