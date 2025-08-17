@@ -21,6 +21,7 @@ CLI tool for getting LSP diagnostics. Uses a background daemon to keep LSP serve
 | CSS | `vscode-css-language-server` | ✓ (via vscode-langservers-extracted) | `.css`, `.scss`, `.sass`, `.less` |
 | YAML | `yaml-language-server` | ✓ (via bunx) | `.yaml`, `.yml` - includes schema validation |
 | Bash/Shell | `bash-language-server` | ✓ (via bunx) | `.sh`, `.bash`, `.zsh` - **requires shellcheck** (`brew install shellcheck`) |
+| GraphQL | `graphql-language-service-cli` | ✓ (via bunx) | `.graphql`, `.gql` |
 | Go | `gopls` | ✗ | Requires manual install: `go install golang.org/x/tools/gopls@latest` |
 | Java | `jdtls` (Eclipse JDT) | ✗ | `.java` - see [Java Installation](#java-installation-guide) below |
 | Lua | `lua-language-server` | ✗ | `.lua` - requires manual install via package manager (brew, scoop) or from [releases](https://github.com/LuaLS/lua-language-server/releases) |
@@ -37,7 +38,7 @@ CLI tool for getting LSP diagnostics. Uses a background daemon to keep LSP serve
 
 ### Real-time Diagnostics Hook
 
-Get instant diagnostic feedback for TypeScript, Python, Go, JSON, CSS, YAML, Bash, Java, and Lua files as you edit in Claude Code.
+Get instant diagnostic feedback for TypeScript, Python, JSON, CSS, YAML, Bash, GraphQL, Go, Java, and Lua files as you edit in Claude Code.
 
 #### Setup
 
@@ -77,7 +78,7 @@ Configure Claude Code to use the built-in hook command:
 
 - **SessionStart**: Automatically starts LSP servers when Claude Code starts for faster initial diagnostics
 - **PostToolUse**: Runs diagnostics after each file edit (Edit, MultiEdit, Write tools)
-- Built-in file filtering for all supported languages (11 file types)
+- Built-in file filtering for all supported languages (14 file types)
 - Shows errors, warnings, and hints inline
 - Graceful error handling - never breaks your editing experience
 - Uses the same fast daemon as the regular diagnostics command
