@@ -14,10 +14,6 @@ async function findProjectRoot(
   // Determine if it's a file or directory
   let current: string;
 
-  // Debug logging for project root detection
-  log(`[DEBUG] findProjectRoot: starting with fileOrDirPath=${fileOrDirPath}`);
-  log(`[DEBUG] findProjectRoot: patterns=${JSON.stringify(patterns)}`);
-
   // Check if path exists and if it's a directory
   try {
     const fs = await import('fs/promises');
@@ -32,36 +28,25 @@ async function findProjectRoot(
     current = path.dirname(fileOrDirPath);
   }
 
-  log(`[DEBUG] findProjectRoot: starting search from current=${current}`);
-
   const root = path.parse(current).root;
 
   while (current !== root) {
-    log(`[DEBUG] findProjectRoot: checking directory ${current}`);
     for (const pattern of patterns) {
       const configPath = path.join(current, pattern);
-      log(`[DEBUG] findProjectRoot: checking for ${configPath}`);
       if (await Bun.file(configPath).exists()) {
-        log(`[DEBUG] findProjectRoot: FOUND ${configPath}, returning ${current}`);
         return current;
       }
     }
     current = path.dirname(current);
   }
 
-  log(`[DEBUG] findProjectRoot: no root found, using fallback`);
-
   // Fallback: if it's a directory, return it; if it's a file, return its directory
   try {
     const fs = await import('fs/promises');
     const stats = await fs.stat(fileOrDirPath);
-    const fallback = stats.isDirectory() ? fileOrDirPath : path.dirname(fileOrDirPath);
-    log(`[DEBUG] findProjectRoot: fallback=${fallback}`);
-    return fallback;
+    return stats.isDirectory() ? fileOrDirPath : path.dirname(fileOrDirPath);
   } catch {
-    const fallback = path.dirname(fileOrDirPath);
-    log(`[DEBUG] findProjectRoot: fallback (catch)=${fallback}`);
-    return fallback;
+    return path.dirname(fileOrDirPath);
   }
 }
 
