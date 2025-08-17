@@ -10,15 +10,20 @@ import { HELP_MESSAGE } from './constants.js';
 import { ensureDaemonRunning } from './utils.js';
 import packageJson from '../package.json' with { type: 'json' };
 
-// TODO: Fix this, the model is incorrect about where tool_input comes from
+// Schema for Claude Code PostToolUse hook payload
 const HookDataSchema = z.object({
+  session_id: z.string().optional(),
+  transcript_path: z.string().optional(),
+  cwd: z.string().optional(),
+  hook_event_name: z.string().optional(),
+  tool_name: z.string().optional(),
   tool_input: z
     .object({
       file_path: z.string().optional(),
+      content: z.string().optional(),
     })
     .optional(),
-  file_path: z.string().optional(),
-  filePath: z.string().optional(),
+  tool_response: z.any().optional(),
 });
 
 export async function handleClaudeCodeHook(
@@ -148,11 +153,8 @@ async function run(): Promise<void> {
         process.exit(0); // Invalid JSON format, silently exit
       }
       const hookData = parseResult.data;
-      // Handle both PostToolUse format (tool_input.file_path) and simple format (file_path)
-      const filePath =
-        hookData.tool_input?.file_path ||
-        hookData.file_path ||
-        hookData.filePath;
+      // Extract file_path from PostToolUse tool_input
+      const filePath = hookData.tool_input?.file_path;
 
       if (!filePath) {
         process.exit(0); // No file path, silently exit

@@ -28,7 +28,9 @@ async function runHookCommand(
 describe('Claude Code Hook', () => {
   test('should handle valid TypeScript file with errors', async () => {
     const input = JSON.stringify({
-      file_path: 'tests/fixtures/typescript/invalid/type-error.ts',
+      tool_input: {
+        file_path: 'tests/fixtures/typescript/invalid/type-error.ts',
+      },
     });
     const result = await runHookCommand(input);
 
@@ -42,7 +44,9 @@ describe('Claude Code Hook', () => {
 
   test('should handle valid TypeScript file without errors', async () => {
     const input = JSON.stringify({
-      file_path: 'tests/fixtures/typescript/valid/simple-function.ts',
+      tool_input: {
+        file_path: 'tests/fixtures/typescript/valid/simple-function.ts',
+      },
     });
     const result = await runHookCommand(input);
 
@@ -52,7 +56,9 @@ describe('Claude Code Hook', () => {
 
   test('should handle Python file with errors', async () => {
     const input = JSON.stringify({
-      file_path: 'tests/fixtures/python/invalid/syntax-error.py',
+      tool_input: {
+        file_path: 'tests/fixtures/python/invalid/syntax-error.py',
+      },
     });
     const result = await runHookCommand(input);
 
@@ -63,7 +69,9 @@ describe('Claude Code Hook', () => {
   });
 
   test('should ignore unsupported file types', async () => {
-    const input = JSON.stringify({ file_path: 'README.txt' });
+    const input = JSON.stringify({ 
+      tool_input: { file_path: 'README.txt' } 
+    });
     const result = await runHookCommand(input);
 
     expect(result.exitCode).toBe(0);
@@ -71,7 +79,9 @@ describe('Claude Code Hook', () => {
   });
 
   test('should handle non-existent files gracefully', async () => {
-    const input = JSON.stringify({ file_path: 'non-existent-file.ts' });
+    const input = JSON.stringify({ 
+      tool_input: { file_path: 'non-existent-file.ts' } 
+    });
     const result = await runHookCommand(input);
 
     expect(result.exitCode).toBe(0);
@@ -86,9 +96,12 @@ describe('Claude Code Hook', () => {
     expect(result.stderr).toBe('');
   });
 
-  test('should handle alternative file_path property names', async () => {
+  test('should handle tool_input with content field', async () => {
     const input = JSON.stringify({
-      filePath: 'tests/fixtures/typescript/invalid/type-error.ts',
+      tool_input: {
+        file_path: 'tests/fixtures/typescript/invalid/type-error.ts',
+        content: 'some content',
+      },
     });
     const result = await runHookCommand(input);
 
@@ -123,7 +136,9 @@ describe('Claude Code Hook', () => {
     ];
 
     for (const filePath of testFiles) {
-      const input = JSON.stringify({ file_path: filePath });
+      const input = JSON.stringify({ 
+        tool_input: { file_path: filePath } 
+      });
       const result = await runHookCommand(input);
 
       // Should process the file (exit code 0 for valid files)
