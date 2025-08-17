@@ -56,9 +56,18 @@ export async function detectProjectTypes(directory: string): Promise<LSPServer[]
   // Python
   detectionPromises.push(
     (async () => {
+      log('Checking for Python files...');
       if (await hasAnyFile(directory, ['pyproject.toml', 'requirements.txt', '**/*.py', '**/*.pyi'])) {
+        log('Python detected');
         const server = getServerById('pyright');
-        if (server) detectedServers.push(server);
+        if (server) {
+          log('Pyright server found, adding to list');
+          detectedServers.push(server);
+        } else {
+          log('WARNING: Pyright server not found in available servers!');
+        }
+      } else {
+        log('No Python files found');
       }
     })()
   );
@@ -174,7 +183,7 @@ export async function executeStart(directory?: string): Promise<string[]> {
       log(`Client key: ${clientKey}`);
       
       // Check if client already exists in manager
-      const existingClient = (lspManager as any).clients.get(clientKey);
+      const existingClient = lspManager.getClient(server.id, root);
       if (existingClient) {
         log(`Client already exists for ${clientKey}, skipping start`);
         log(`✓ ${server.id} already started`);
@@ -197,7 +206,7 @@ export async function executeStart(directory?: string): Promise<string[]> {
       log(`Client created for: ${server.id}`);
       
       // Store client in manager immediately
-      (lspManager as any).clients.set(clientKey, client);
+      lspManager.setClient(server.id, root, client);
       log(`Stored client in manager with key: ${clientKey}`);
       log(`✓ ${server.id} ready`);
       startedServers.push(server.id);

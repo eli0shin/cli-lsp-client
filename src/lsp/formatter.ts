@@ -1,3 +1,4 @@
+import { z } from 'zod';
 import type { Diagnostic, HoverResult, Hover } from './types.js';
 
 const SEVERITY_NAMES = {
@@ -142,8 +143,12 @@ function formatHoverContent(hover: Hover): string {
   content = content
     // Code blocks
     .replace(/\n?```(\w+)?\n([\s\S]*?)```/g, (_, lang, code) => {
+      // Safely parse the code parameter
+      const safeCode = z.string().safeParse(code);
+      const codeText = safeCode.success ? safeCode.data.trim() : String(code).trim();
+      
       return GRAY + '```' + (lang ? YELLOW + lang : '') + RESET_COLOR + '\n' + 
-             GREEN + code.trim() + RESET_COLOR + '\n' + 
+             GREEN + codeText + RESET_COLOR + '\n' + 
              GRAY + '```' + RESET_COLOR;
     })
     // Inline code (avoid matching code block backticks by requiring non-backtick boundaries)

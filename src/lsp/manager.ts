@@ -1,5 +1,5 @@
 import path from 'path';
-import type { LSPClient, Diagnostic, HoverResult, Position, LSPServer, Location, LocationLink, DocumentSymbol, SymbolInformation } from './types.js';
+import type { LSPClient, Diagnostic, HoverResult, Position, LSPServer, DocumentSymbol, SymbolInformation } from './types.js';
 import { createLSPClient } from './client.js';
 import { getApplicableServers, getProjectRoot, spawnServer } from './servers.js';
 import { log } from '../logger.js';
@@ -35,11 +35,29 @@ const SymbolKind = {
 } as const;
 
 export class LSPManager {
-  private clients = new Map<string, LSPClient>();
-  private broken = new Set<string>();
+  private readonly clients = new Map<string, LSPClient>();
+  private readonly broken = new Set<string>();
 
   private getClientKey(serverID: string, root: string): string {
     return `${serverID}:${root}`;
+  }
+
+  // Public method to check if a client exists
+  hasClient(serverID: string, root: string): boolean {
+    const clientKey = this.getClientKey(serverID, root);
+    return this.clients.has(clientKey);
+  }
+
+  // Public method to get an existing client
+  getClient(serverID: string, root: string): LSPClient | undefined {
+    const clientKey = this.getClientKey(serverID, root);
+    return this.clients.get(clientKey);
+  }
+
+  // Public method to set a client
+  setClient(serverID: string, root: string, client: LSPClient): void {
+    const clientKey = this.getClientKey(serverID, root);
+    this.clients.set(clientKey, client);
   }
 
   async getDiagnostics(filePath: string): Promise<Diagnostic[]> {
@@ -65,7 +83,16 @@ export class LSPManager {
     const allDiagnostics: Diagnostic[] = [];
 
     for (const server of applicableServers) {
-      const root = await getProjectRoot(absolutePath, server);
+      log(`Starting to process server: ${server.id}`);
+      let root;
+      try {
+        log(`About to call getProjectRoot for ${server.id}`);
+        root = await getProjectRoot(absolutePath, server);
+        log(`getProjectRoot returned for ${server.id}: ${root}`);
+      } catch (error) {
+        log(`Error getting project root for ${server.id}: ${error instanceof Error ? error.message : String(error)}`);
+        continue;
+      }
       const clientKey = this.getClientKey(server.id, root);
       log(`Processing server: ${server.id} with root: ${root}, key: ${clientKey}`);
 
@@ -81,14 +108,18 @@ export class LSPManager {
         if (!client) {
           log(`No existing client found for ${clientKey}, creating new client`);
           log(`Creating new LSP client for ${server.id} in ${root}`);
+          log(`About to call spawnServer for ${server.id}`);
           const serverHandle = await spawnServer(server, root);
+          log(`spawnServer returned for ${server.id}: ${serverHandle ? 'success' : 'failed'}`);
           if (!serverHandle) {
             log(`Failed to spawn server for ${server.id}`);
             this.broken.add(clientKey);
             continue;
           }
 
+          log(`About to call createLSPClient for ${server.id}`);
           client = await createLSPClient(server.id, serverHandle, root);
+          log(`createLSPClient returned for ${server.id}`);
           this.clients.set(clientKey, client);
           log(`Created and cached new client for ${clientKey}`);
         } else {
@@ -102,7 +133,7 @@ export class LSPManager {
           // Use pull diagnostics (request/response pattern - no timeout issues!)
           try {
             log(`Using pull diagnostics for: ${absolutePath}`);
-            diagnostics = await client.pullDiagnostics!(absolutePath);
+            diagnostics = await client.pullDiagnostics(absolutePath);
             log(`Retrieved ${diagnostics.length} diagnostics from ${server.id} via pull`);
           } catch (error) {
             log(`Pull diagnostics failed, falling back to push: ${error}`);
@@ -142,7 +173,7 @@ export class LSPManager {
         if (client) {
           try {
             await client.shutdown();
-          } catch (e) {
+          } catch (_e) {
             // Ignore shutdown errors
           }
           this.clients.delete(clientKey);
@@ -210,7 +241,7 @@ export class LSPManager {
               if (typeDefinitions && typeDefinitions.length > 0) {
                 const firstTypeDef = typeDefinitions[0];
                 if ('uri' in firstTypeDef) {
-                  const location = firstTypeDef as Location;
+                  const location = firstTypeDef;
                   const typeDefFile = new URL(location.uri).pathname;
                   const typeDefLocation = location.range.start;
                   
@@ -221,7 +252,7 @@ export class LSPManager {
                     log(`Using type definition at ${hoverFile}:${hoverLocation.line}:${hoverLocation.character}`);
                   }
                 } else if ('targetUri' in firstTypeDef) {
-                  const locationLink = firstTypeDef as LocationLink;
+                  const locationLink = firstTypeDef;
                   const typeDefFile = new URL(locationLink.targetUri).pathname;
                   const typeDefLocation = locationLink.targetSelectionRange?.start || locationLink.targetRange.start;
                   
@@ -241,7 +272,7 @@ export class LSPManager {
           }
           
           // Get hover at the appropriate location
-          let hover = await client.getHover(hoverFile, hoverLocation);
+          const hover = await client.getHover(hoverFile, hoverLocation);
           
           if (hover) {
             results.push({
@@ -386,11 +417,11 @@ export class LSPManager {
         return null;
       }
     }
-    
+
     return client;
   }
 
-  getRunningServers(): Array<{ serverID: string; root: string; uptime: number }> {
+  getRunningServers(): { serverID: string; root: string; uptime: number }[] {
     return Array.from(this.clients.values()).map(client => ({
       serverID: client.serverID,
       root: client.root,
@@ -404,7 +435,7 @@ export class LSPManager {
     const shutdownPromises = Array.from(this.clients.values()).map(async (client) => {
       try {
         await client.shutdown();
-      } catch (error) {
+      } catch (error) { 
         log(`Error shutting down LSP client ${client.serverID}: ${error instanceof Error ? error.message : String(error)}`);
       }
     });

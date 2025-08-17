@@ -46,7 +46,7 @@ describe('TypeScript Invalid Files', () => {
     expect(stderr).toContain('Unterminated string literal');
     
     // Count the number of error lines to ensure we got a substantial payload
-    const errorCount = (stderr.match(/\[typescript\] ERROR/g) || []).length;
+    const errorCount = (stderr.match(/\[typescript\] ERROR/g) ?? []).length;
     expect(errorCount).toBeGreaterThan(100); // Should have 100+ errors from our test file
   });
 });

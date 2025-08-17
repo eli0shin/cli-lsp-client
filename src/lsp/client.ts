@@ -1,9 +1,11 @@
 import path from 'path';
 import { createMessageConnection, StreamMessageReader, StreamMessageWriter } from 'vscode-jsonrpc/node';
-import type { LSPClient, Diagnostic, SymbolInformation, DocumentSymbol, Hover, Position, Location, LocationLink, ServerCapabilities } from './types.js';
+import type { LSPClient, Diagnostic, SymbolInformation, DocumentSymbol, Hover, Position, Location, LocationLink } from './types.js';
+import { InitializationResultSchema, DiagnosticReportSchema, PublishDiagnosticsSchema } from './types.js';
 import type { ServerHandle } from './servers.js';
 import { LANGUAGE_EXTENSIONS } from './language.js';
 import { log } from '../logger.js';
+
 
 export async function createLSPClient(
   serverID: string, 
@@ -23,9 +25,19 @@ export async function createLSPClient(
   // Listen for diagnostics
   log('REGISTERING publishDiagnostics handler');
   connection.onNotification("textDocument/publishDiagnostics", (params) => {
-    log(`>>> RECEIVED publishDiagnostics!!! uri: ${params.uri}, count: ${params.diagnostics?.length || 0}`);
-    const filePath = new URL(params.uri).pathname;
-    diagnostics.set(filePath, params.diagnostics);
+    const parseResult = PublishDiagnosticsSchema.safeParse(params);
+    if (!parseResult.success) {
+      log(`Invalid publishDiagnostics params: ${JSON.stringify(parseResult.error.issues)}`);
+      return;
+    }
+    
+    const { uri, diagnostics: rawDiagnostics } = parseResult.data;
+    const diagnosticsCount = rawDiagnostics?.length || 0;
+    log(`>>> RECEIVED publishDiagnostics!!! uri: ${uri}, count: ${diagnosticsCount}`);
+    
+    const filePath = new URL(uri).pathname;
+    // Cast to Diagnostic[] since we know the structure from LSP protocol
+    diagnostics.set(filePath, (rawDiagnostics as Diagnostic[]) || []);
   });
   log('publishDiagnostics handler REGISTERED');
 
@@ -87,7 +99,25 @@ export async function createLSPClient(
     },
   });
 
-  const serverCapabilities = (initResult as any).capabilities as ServerCapabilities;
+  // Log the raw result for debugging pyright issues
+  log(`Raw initialization result for ${serverID}: ${JSON.stringify(initResult)}`);
+  
+  let parseResult;
+  try {
+    parseResult = InitializationResultSchema.safeParse(initResult);
+  } catch (error) {
+    log(`Zod parse error for ${serverID}: ${error instanceof Error ? error.message : String(error)}`);
+    log(`Full error details: ${JSON.stringify(error)}`);
+    throw new Error(`Failed to parse initialization result for ${serverID}`);
+  }
+  
+  if (!parseResult.success) {
+    log(`Zod validation failed for ${serverID}: ${JSON.stringify(parseResult.error.issues)}`);
+    log(`Raw init result was: ${JSON.stringify(initResult)}`);
+    throw new Error(`Invalid initialization result for ${serverID}: ${JSON.stringify(parseResult.error.issues)}`);
+  }
+  
+  const serverCapabilities = parseResult.data.capabilities;
   log(`Server capabilities for ${serverID}: ${JSON.stringify(serverCapabilities.diagnosticProvider)}`);
 
   await connection.sendNotification("initialized", {});
@@ -112,7 +142,7 @@ export async function createLSPClient(
       const file = Bun.file(absolutePath);
       const text = await file.text();
       const extension = path.extname(absolutePath);
-      const languageId = LANGUAGE_EXTENSIONS[extension] ?? "plaintext";
+      const languageId = LANGUAGE_EXTENSIONS[extension] || "plaintext";
 
       log(`Sending didOpen for ${absolutePath} (${languageId})`);
       // Always use version 0 for didOpen
@@ -162,8 +192,8 @@ export async function createLSPClient(
     async waitForDiagnostics(filePath: string, timeoutMs = 3000): Promise<void> {
       const absolutePath = path.isAbsolute(filePath) ? filePath : path.resolve(process.cwd(), filePath);
       
-      return new Promise((resolve, reject) => {
-        let checkInterval: any;
+      return new Promise((resolve, _reject) => {
+        let checkInterval: NodeJS.Timeout | undefined = undefined;
         
         const timeout = setTimeout(() => {
           if (checkInterval) clearInterval(checkInterval);
@@ -195,7 +225,7 @@ export async function createLSPClient(
       });
     },
 
-    async triggerDiagnostics(filePath: string, timeoutMs: number = 5000): Promise<void> {
+    async triggerDiagnostics(filePath: string, timeoutMs = 5000): Promise<void> {
       log(`Getting diagnostics for ${filePath} with ${timeoutMs}ms timeout`);
 
       // Open the file to trigger diagnostics
@@ -304,9 +334,15 @@ export async function createLSPClient(
         });
         
         // Handle the response based on LSP spec
-        const diagnosticReport = result as any;
+        const parseResult = DiagnosticReportSchema.safeParse(result);
+        if (!parseResult.success) {
+          log(`Invalid diagnostic report: ${JSON.stringify(parseResult.error.issues)}`);
+          return [];
+        }
+        
+        const diagnosticReport = parseResult.data;
         if (diagnosticReport.kind === 'full') {
-          return diagnosticReport.items || [];
+          return (diagnosticReport.items as Diagnostic[]) || [];
         } else if (diagnosticReport.kind === 'unchanged') {
           // Return previously cached diagnostics
           return this.getDiagnostics(absolutePath);

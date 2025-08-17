@@ -21,13 +21,13 @@ export const { socketPath: SOCKET_PATH, pidFile: PID_FILE } = getDaemonPaths();
 export type Request = {
   command: string;
   args?: string[];
-};
+}
 
 export type StatusResult = {
   pid: number;
   uptime: number;
   memory: NodeJS.MemoryUsage;
-};
+}
 
 function formatUptime(uptimeMs: number): string {
   const seconds = Math.floor(uptimeMs / 1000);
@@ -43,11 +43,11 @@ function formatUptime(uptimeMs: number): string {
   }
 }
 
-export async function handleRequest(request: Request): Promise<string | number | StatusResult | any> {
+export async function handleRequest(request: Request): Promise<string | number | StatusResult | unknown> {
   const { command, args = [] } = request;
 
   switch (command) {
-    case 'status':
+    case 'status': {
       const runningServers = lspManager.getRunningServers();
       const daemonUptimeMs = process.uptime() * 1000;
       
@@ -68,14 +68,16 @@ export async function handleRequest(request: Request): Promise<string | number |
       }
       
       return output;
+    }
 
-    case 'diagnostics':
+    case 'diagnostics': {
       if (!args[0]) {
         throw new Error('diagnostics command requires a file path');
       }
       return await lspManager.getDiagnostics(args[0]);
+    }
 
-    case 'start':
+    case 'start': {
       const directory = args[0]; // Optional directory argument
       log(`=== DAEMON START - PID: ${process.pid} ===`);
       log(`Starting LSP servers for directory: ${directory || 'current'}`);
@@ -90,15 +92,18 @@ export async function handleRequest(request: Request): Promise<string | number |
         log(`=== DAEMON START ERROR: ${error} ===`);
         throw error;
       }
+    }
 
-    case 'logs':
+    case 'logs': {
       const { LOG_PATH } = await import('./logger.js');
       return LOG_PATH;
+    }
 
-    case 'pwd':
+    case 'pwd': {
       return process.cwd();
+    }
 
-    case 'hover':
+    case 'hover': {
       // Parse arguments - require both file and symbol
       if (args.length !== 2) {
         throw new Error('hover command requires: hover <file> <symbol>');
@@ -109,10 +114,12 @@ export async function handleRequest(request: Request): Promise<string | number |
       
       const hoverResults = await lspManager.getHover(targetSymbol, targetFile);
       return hoverResults;
+    }
 
-    case 'stop':
+    case 'stop': {
       setTimeout(async () => await shutdown(), 100);
       return 'Daemon stopping...';
+    }
 
     default:
       throw new Error(`Unknown command: ${command}`);
@@ -122,9 +129,9 @@ export async function handleRequest(request: Request): Promise<string | number |
 let server: net.Server | null = null;
 
 export async function startDaemon(): Promise<void> {
-  console.log('Starting daemon…');
+  process.stdout.write('Starting daemon…\n');
   const { LOG_PATH } = await import('./logger.js');
-  console.log(`Daemon log: ${LOG_PATH}`);
+  process.stdout.write(`Daemon log: ${LOG_PATH}\n`);
   log(`Daemon starting... PID: ${process.pid}`);
 
   await cleanup();
@@ -161,7 +168,7 @@ export async function startDaemon(): Promise<void> {
   });
 
   server.listen(SOCKET_PATH, async () => {
-    console.log(`Daemon listening on ${SOCKET_PATH}`);
+    process.stdout.write(`Daemon listening on ${SOCKET_PATH}\n`);
 
     await Bun.write(PID_FILE, process.pid.toString());
 
@@ -190,7 +197,7 @@ export async function startDaemon(): Promise<void> {
   });
 
   server.on('error', (error) => {
-    console.error('Server error:', error);
+    process.stderr.write(`Server error: ${error}\n`);
     process.exit(1);
   });
 }
@@ -218,11 +225,11 @@ export async function isDaemonRunning(): Promise<boolean> {
           resolve(false);
         });
       });
-    } catch (e) {
+    } catch (_e) {
       await cleanup();
       return false;
     }
-  } catch (e) {
+  } catch (_e) {
     return false;
   }
 }
@@ -237,13 +244,13 @@ export async function cleanup(): Promise<void> {
     if (pidExists) {
       await Bun.file(PID_FILE).unlink();
     }
-  } catch (e) {
+  } catch (_e) {
     // Ignore cleanup errors
   }
 }
 
 export async function shutdown(): Promise<void> {
-  console.log('Shutting down daemon…');
+  process.stdout.write('Shutting down daemon…\n');
   log(`=== DAEMON SHUTDOWN START - PID: ${process.pid} ===`);
 
   // Shutdown LSP manager first
@@ -251,7 +258,7 @@ export async function shutdown(): Promise<void> {
     await lspManager.shutdown();
     log('LSP manager shutdown completed');
   } catch (error) {
-    console.error('Error shutting down LSP manager:', error);
+    process.stderr.write(`Error shutting down LSP manager: ${error}\n`);
     log(`LSP manager shutdown error: ${error}`);
   }
 

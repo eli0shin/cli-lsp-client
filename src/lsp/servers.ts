@@ -49,7 +49,7 @@ async function findProjectRoot(fileOrDirPath: string, patterns: string[]): Promi
 
 export type ServerHandle = {
   process: ChildProcessWithoutNullStreams;
-  initialization?: Record<string, any>;
+  initialization?: Record<string, unknown>;
 }
 
 const ALL_SERVERS: LSPServer[] = [
@@ -215,6 +215,8 @@ export async function spawnServer(server: LSPServer, root: string): Promise<Serv
       command = [...command, ...server.dynamicArgs(root)];
     }
     
+    log(`Spawning ${server.id} with command: ${command.join(' ')} in ${root}`);
+    
     const childProcess = spawn(command[0], command.slice(1), {
       cwd: root,
       env: {
@@ -227,6 +229,14 @@ export async function spawnServer(server: LSPServer, root: string): Promise<Serv
     // Basic error handling
     childProcess.on('error', (error) => {
       log(`LSP server ${server.id} failed to start: ${error}`);
+    });
+    
+    childProcess.on('exit', (code, signal) => {
+      log(`LSP server ${server.id} exited with code ${code}, signal ${signal}`);
+    });
+    
+    childProcess.stderr.on('data', (data: Buffer) => {
+      log(`LSP server ${server.id} stderr: ${data.toString()}`);
     });
 
     return {
