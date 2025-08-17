@@ -24,13 +24,17 @@ jobs:
       - name: Install dependencies
         run: bun install
 
-      - name: Cache R packages
-        uses: actions/cache@v3
+      - name: Cache R installation and packages
+        uses: actions/cache@v4
         with:
-          path: /usr/local/lib/R/site-library
-          key: ${{ runner.os }}-r-packages-${{ hashFiles('**/*.R') }}
+          path: |
+            /usr/lib/R
+            /usr/local/lib/R
+            /usr/share/R
+          key: ${{ runner.os }}-r-complete-4.3.3-v1
           restore-keys: |
-            ${{ runner.os }}-r-packages-
+            ${{ runner.os }}-r-complete-4.3.3-
+            ${{ runner.os }}-r-complete-
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -45,14 +49,31 @@ jobs:
       - name: Install gopls
         run: go install golang.org/x/tools/gopls@latest
 
+      - name: Cache Lua language server
+        uses: actions/cache@v4
+        with:
+          path: /opt/lua-language-server
+          key: ${{ runner.os }}-lua-language-server-v1
+          restore-keys: |
+            ${{ runner.os }}-lua-language-server-
+
       - name: Install lua-language-server
         run: |
           sudo apt-get install -y lua5.4 lua5.4-dev
-          # Get the latest release info and extract the correct download URL
-          LATEST_URL=$(curl -s https://api.github.com/repos/LuaLS/lua-language-server/releases/latest | grep "browser_download_url.*linux-x64.tar.gz" | cut -d '"' -f 4)
-          wget -O lua-language-server.tar.gz "$LATEST_URL"
-          sudo mkdir -p /opt/lua-language-server
-          sudo tar -xzf lua-language-server.tar.gz -C /opt/lua-language-server
+          
+          # Check if lua-language-server is already installed (from cache)
+          if [ ! -f /opt/lua-language-server/bin/lua-language-server ]; then
+            echo "Installing Lua language server..."
+            # Get the latest release info and extract the correct download URL
+            LATEST_URL=$(curl -s https://api.github.com/repos/LuaLS/lua-language-server/releases/latest | grep "browser_download_url.*linux-x64.tar.gz" | cut -d '"' -f 4)
+            wget -O lua-language-server.tar.gz "$LATEST_URL"
+            sudo mkdir -p /opt/lua-language-server
+            sudo tar -xzf lua-language-server.tar.gz -C /opt/lua-language-server
+          else
+            echo "Lua language server found in cache, skipping installation"
+          fi
+          
+          # Ensure symlink exists
           sudo ln -sf /opt/lua-language-server/bin/lua-language-server /usr/local/bin/lua-language-server
 
       - name: Install shellcheck
@@ -60,35 +81,68 @@ jobs:
 
       - name: Setup R and R languageserver
         run: |
-          # Install R
-          sudo apt-get update
-          sudo apt-get install -y r-base r-base-dev
+          # Check if R is already installed (from cache)
+          if ! command -v R &> /dev/null; then
+            echo "Installing R..."
+            sudo apt-get update
+            sudo apt-get install -y r-base r-base-dev
+            
+            # Install system dependencies for R packages
+            sudo apt-get install -y libcurl4-openssl-dev libssl-dev libxml2-dev
+          else
+            echo "R found in cache, skipping installation"
+          fi
           
-          # Install system dependencies for R packages
-          sudo apt-get install -y libcurl4-openssl-dev libssl-dev libxml2-dev
-          
-          # Install R languageserver package (this may take several minutes)
-          sudo R --slave -e 'install.packages("languageserver", repos="https://cran.rstudio.com/", dependencies=TRUE, Ncpus=2)'
+          # Check if languageserver package is installed
+          if ! R --slave -e 'library(languageserver)' 2>/dev/null; then
+            echo "Installing R languageserver package..."
+            sudo R --slave -e 'install.packages("languageserver", repos="https://cran.rstudio.com/", dependencies=TRUE, Ncpus=2)'
+          else
+            echo "R languageserver found in cache, skipping installation"
+          fi
           
           # Verify R and languageserver installation
           R --version
           R --slave -e 'packageVersion("languageserver")'
 
+      - name: Cache .NET SDK and OmniSharp
+        uses: actions/cache@v4
+        with:
+          path: |
+            /usr/share/dotnet
+            ~/.omnisharp
+          key: ${{ runner.os }}-dotnet-omnisharp-8.0-v1
+          restore-keys: |
+            ${{ runner.os }}-dotnet-omnisharp-8.0-
+            ${{ runner.os }}-dotnet-omnisharp-
+
       - name: Setup .NET SDK and OmniSharp
         run: |
-          # Install .NET SDK
-          wget https://packages.microsoft.com/config/ubuntu/22.04/packages-microsoft-prod.deb -O packages-microsoft-prod.deb
-          sudo dpkg -i packages-microsoft-prod.deb
-          sudo apt-get update
-          sudo apt-get install -y dotnet-sdk-8.0
+          # Check if .NET SDK is already installed (from cache)
+          if ! command -v dotnet &> /dev/null; then
+            echo "Installing .NET SDK..."
+            wget https://packages.microsoft.com/config/ubuntu/22.04/packages-microsoft-prod.deb -O packages-microsoft-prod.deb
+            sudo dpkg -i packages-microsoft-prod.deb
+            sudo apt-get update
+            sudo apt-get install -y dotnet-sdk-8.0
+          else
+            echo ".NET SDK found in cache, skipping installation"
+          fi
           
           # Verify .NET installation
           dotnet --version
           
-          # Download and install OmniSharp
-          mkdir -p ~/.omnisharp
-          wget -O omnisharp.tar.gz https://github.com/OmniSharp/omnisharp-roslyn/releases/latest/download/omnisharp-linux-x64-net6.0.tar.gz
-          tar -xzf omnisharp.tar.gz -C ~/.omnisharp
+          # Check if OmniSharp is already installed (from cache)
+          if [ ! -f ~/.omnisharp/OmniSharp ]; then
+            echo "Installing OmniSharp..."
+            mkdir -p ~/.omnisharp
+            wget -O omnisharp.tar.gz https://github.com/OmniSharp/omnisharp-roslyn/releases/latest/download/omnisharp-linux-x64-net6.0.tar.gz
+            tar -xzf omnisharp.tar.gz -C ~/.omnisharp
+          else
+            echo "OmniSharp found in cache, skipping installation"
+          fi
+          
+          # Ensure symlink exists
           sudo ln -sf ~/.omnisharp/OmniSharp /usr/local/bin/omnisharp
           
           # Verify OmniSharp installation
