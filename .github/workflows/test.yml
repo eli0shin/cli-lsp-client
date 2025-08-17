@@ -118,5 +118,5 @@ jobs:
 
       - name: Run tests
         run: |
-          shopt -s extglob
-          bun test --timeout 30000 tests/!(java)/**/*.test.ts tests/*.test.ts
+          # Run all tests except java tests (which require more complex setup)
+          find tests -name "*.test.ts" -not -path "*/java/*" | xargs bun test --timeout 30000
