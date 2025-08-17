@@ -8,7 +8,7 @@ describe('Lua Invalid Files', () => {
     expect(proc.exitCode).toBe(2);
 
     expect(stripAnsi(proc.stderr.toString())).toBe(
-      '[Lua Syntax Check.] ERROR at line 2, column 7: Miss corresponding `end` . [miss-end]\n[Lua Syntax Check.] ERROR at line 14, column 35: Missed symbol `)`. [miss-symbol]\n[Lua Syntax Check.] ERROR at line 18, column 30: Missed symbol `"`. [miss-symbol]\n[Lua Syntax Check.] ERROR at line 21, column 14: Missed symbol `,`. [miss-symbol]\n[Lua Syntax Check.] ERROR at line 22, column 13: Missed symbol `do`. [miss-symbol]\n[Lua Syntax Check.] ERROR at line 23, column 4: Missed symbol `end`. [miss-symbol]\n[Lua Diagnostics.] WARNING at line 22, column 11: Undefined global `i`. [undefined-global]\n[Lua Diagnostics.] INFO at line 10, column 10: Global variable in lowercase initial, Did you miss `local` or misspell it? [lowercase-global]\n[Lua Diagnostics.] HINT at line 2, column 7: Unused functions. [unused-function]\n[Lua Diagnostics.] HINT at line 2, column 16: Unused local `broken_function`. [unused-local]\n[Lua Diagnostics.] HINT at line 10, column 10: Unreachable code. [unreachable-code]\n[Lua Diagnostics.] HINT at line 18, column 7: Unused local `message`. [unused-local]\n[Lua Diagnostics.] HINT at line 21, column 1: Empty block. [empty-block]\n[Lua Diagnostics.] HINT at line 21, column 5: Unused local `i`. [unused-local]'
+      '[Lua Syntax Check.] ERROR at line 4, column 1: Miss corresponding `end` . [miss-end]\n[Lua Syntax Check.] ERROR at line 8, column 13: Missed symbol `,`. [miss-symbol]\n[Lua Syntax Check.] ERROR at line 11, column 20: Missed symbol `"`. [miss-symbol]\n[Lua Syntax Check.] ERROR at line 11, column 20: Missed symbol `)`. [miss-symbol]'
     );
   });
 
