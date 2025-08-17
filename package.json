@@ -1,6 +1,6 @@
 {
   "name": "cli-lsp-client",
-  "version": "1.5.0",
+  "version": "1.6.0",
   "description": "CLI tool for fast LSP diagnostics with background daemon and multi-project support",
   "type": "module",
   "main": "src/cli.ts",
