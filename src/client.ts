@@ -2,30 +2,57 @@ import net from 'net';
 import os from 'os';
 import path from 'path';
 import { readdir } from 'node:fs/promises';
+import { z } from 'zod';
 import { SOCKET_PATH, type StatusResult } from './daemon.js';
 import { formatDiagnostics, formatHoverResults } from './lsp/formatter.js';
 import type { Diagnostic, HoverResult } from './lsp/types.js';
 import { HELP_MESSAGE } from './constants.js';
 import { ensureDaemonRunning } from './utils.js';
 
+// Zod schema for daemon responses
+const DaemonResponseSchema = z.union([
+  z.object({
+    success: z.literal(true),
+    result: z.unknown(),
+  }),
+  z.object({
+    success: z.literal(false),
+    error: z.string(),
+  }),
+]);
+
 function showHelpForUnknownCommand(command: string): void {
-  console.error(`Unknown command: ${command}\n`);
-  console.log(HELP_MESSAGE);
+  process.stderr.write(`Unknown command: ${command}\n`);
+  process.stdout.write(HELP_MESSAGE);
 }
 
-export async function sendToExistingDaemon(command: string, args: string[]): Promise<string | number | StatusResult> {
+export async function sendToExistingDaemon(
+  command: string,
+  args: string[]
+): Promise<string | number | StatusResult> {
   return new Promise((resolve, reject) => {
     const client = net.createConnection(SOCKET_PATH);
     let buffer = '';
     let resolved = false;
 
-    const handleResponse = (response: any) => {
+    const handleResponse = (rawResponse: unknown) => {
       if (resolved) return;
       resolved = true;
       client.end();
 
+      const parseResult = DaemonResponseSchema.safeParse(rawResponse);
+      if (!parseResult.success) {
+        reject(
+          new Error(
+            `Invalid response from daemon: ${JSON.stringify(rawResponse)}`
+          )
+        );
+        return;
+      }
+
+      const response = parseResult.data;
       if (response.success) {
-        resolve(response.result);
+        resolve(response.result as string | number | StatusResult);
       } else {
         reject(new Error(response.error));
       }
@@ -39,26 +66,30 @@ export async function sendToExistingDaemon(command: string, args: string[]): Pro
     client.on('data', (data) => {
       if (resolved) return;
       buffer += data.toString();
-      
+
       try {
-        const response = JSON.parse(buffer);
-        handleResponse(response);
-      } catch (error) {
+        const rawResponse = JSON.parse(buffer) as unknown;
+        handleResponse(rawResponse);
+      } catch (_error) {
         // JSON is incomplete, continue buffering
       }
     });
 
     client.on('end', () => {
       if (resolved) return;
-      
+
       // If connection ends without successful parse, try one final parse
       if (buffer) {
         try {
-          const response = JSON.parse(buffer);
-          handleResponse(response);
-        } catch (error) {
+          const rawResponse = JSON.parse(buffer) as unknown;
+          handleResponse(rawResponse);
+        } catch (_error) {
           resolved = true;
-          reject(new Error(`Failed to parse response: ${buffer.substring(0, 100)}...`));
+          reject(
+            new Error(
+              `Failed to parse response: ${buffer.substring(0, 100)}...`
+            )
+          );
         }
       }
     });
@@ -70,7 +101,6 @@ export async function sendToExistingDaemon(command: string, args: string[]): Pro
     });
   });
 }
-
 
 async function sendStopCommandToSocket(socketPath: string): Promise<void> {
   return new Promise((resolve, reject) => {
@@ -103,7 +133,8 @@ async function sendStopCommandToSocket(socketPath: string): Promise<void> {
       reject(error);
     });
 
-    // Timeout after 2 seconds
+    // Wait for actual connection end (daemon shutdown)
+    // Increase timeout to give daemon time to shut down properly
     setTimeout(() => {
       if (resolved) return;
       resolved = true;
@@ -115,27 +146,27 @@ async function sendStopCommandToSocket(socketPath: string): Promise<void> {
 
 export async function stopAllDaemons(): Promise<void> {
   const tempDir = os.tmpdir();
-  
+
   // Read all files from temp directory using Node.js fs API
   let allFiles: string[] = [];
   try {
     allFiles = await readdir(tempDir);
   } catch (error) {
-    console.log('Error reading temp directory:', error);
+    process.stderr.write(`Error reading temp directory: ${error}\n`);
     return;
   }
-  
+
   // Filter for our daemon files
   const socketFiles = allFiles
-    .filter(f => f.startsWith('cli-lsp-client-') && f.endsWith('.sock'))
-    .map(f => path.join(tempDir, f));
+    .filter((f) => f.startsWith('cli-lsp-client-') && f.endsWith('.sock'))
+    .map((f) => path.join(tempDir, f));
 
   if (socketFiles.length === 0) {
-    console.log('No daemons found to stop');
+    process.stdout.write('No daemons found to stop\n');
     return;
   }
 
-  console.log(`Found ${socketFiles.length} daemon(s) to stop...`);
+  process.stdout.write(`Found ${socketFiles.length} daemon(s) to stop...\n`);
 
   let stoppedCount = 0;
   let errorCount = 0;
@@ -145,8 +176,8 @@ export async function stopAllDaemons(): Promise<void> {
       // Try graceful shutdown via socket first
       await sendStopCommandToSocket(socketPath);
       stoppedCount++;
-      console.log(`✓ Stopped daemon: ${path.basename(socketPath)}`);
-    } catch (socketError) {
+      process.stdout.write(`✓ Stopped daemon: ${path.basename(socketPath)}\n`);
+    } catch (_socketError) {
       // If socket communication fails, try using PID file for forceful termination
       const pidFile = socketPath.replace('.sock', '.pid');
       try {
@@ -156,13 +187,19 @@ export async function stopAllDaemons(): Promise<void> {
           const pid = parseInt(pidContent.trim());
           process.kill(pid, 'SIGTERM');
           stoppedCount++;
-          console.log(`✓ Force stopped daemon: ${path.basename(socketPath)} (PID: ${pid})`);
+          process.stdout.write(
+            `✓ Force stopped daemon: ${path.basename(socketPath)} (PID: ${pid})\n`
+          );
         } else {
-          console.log(`! Daemon ${path.basename(socketPath)} already stopped`);
+          process.stdout.write(
+            `! Daemon ${path.basename(socketPath)} already stopped\n`
+          );
         }
-      } catch (pidError) {
+      } catch (_pidError) {
         errorCount++;
-        console.log(`✗ Failed to stop daemon: ${path.basename(socketPath)}`);
+        process.stderr.write(
+          `✗ Failed to stop daemon: ${path.basename(socketPath)}\n`
+        );
       }
     }
 
@@ -177,25 +214,41 @@ export async function stopAllDaemons(): Promise<void> {
       if (pidExists) {
         await Bun.file(pidFile).unlink();
       }
-    } catch (cleanupError) {
+    } catch (_cleanupError) {
       // Ignore cleanup errors
     }
   }
 
-  console.log(`\nStopped ${stoppedCount} daemon(s)${errorCount > 0 ? `, ${errorCount} error(s)` : ''}`);
+  process.stdout.write(
+    `\nStopped ${stoppedCount} daemon(s)${errorCount > 0 ? `, ${errorCount} error(s)` : ''}\n`
+  );
 }
 
-async function sendCommandToSocket(socketPath: string, command: string): Promise<any> {
+async function sendCommandToSocket(
+  socketPath: string,
+  command: string
+): Promise<unknown> {
   return new Promise((resolve, reject) => {
     const client = net.createConnection(socketPath);
     let buffer = '';
     let resolved = false;
 
-    const handleResponse = (response: any) => {
+    const handleResponse = (rawResponse: unknown) => {
       if (resolved) return;
       resolved = true;
       client.end();
 
+      const parseResult = DaemonResponseSchema.safeParse(rawResponse);
+      if (!parseResult.success) {
+        reject(
+          new Error(
+            `Invalid response from daemon: ${JSON.stringify(rawResponse)}`
+          )
+        );
+        return;
+      }
+
+      const response = parseResult.data;
       if (response.success) {
         resolve(response.result);
       } else {
@@ -211,26 +264,30 @@ async function sendCommandToSocket(socketPath: string, command: string): Promise
     client.on('data', (data) => {
       if (resolved) return;
       buffer += data.toString();
-      
+
       try {
-        const response = JSON.parse(buffer);
-        handleResponse(response);
-      } catch (error) {
+        const rawResponse = JSON.parse(buffer) as unknown;
+        handleResponse(rawResponse);
+      } catch (_error) {
         // JSON is incomplete, continue buffering
       }
     });
 
     client.on('end', () => {
       if (resolved) return;
-      
+
       // If connection ends without successful parse, try one final parse
       if (buffer) {
         try {
-          const response = JSON.parse(buffer);
-          handleResponse(response);
-        } catch (error) {
+          const rawResponse = JSON.parse(buffer) as unknown;
+          handleResponse(rawResponse);
+        } catch (_error) {
           resolved = true;
-          reject(new Error(`Failed to parse response: ${buffer.substring(0, 100)}...`));
+          reject(
+            new Error(
+              `Failed to parse response: ${buffer.substring(0, 100)}...`
+            )
+          );
         }
       }
     });
@@ -253,47 +310,47 @@ async function sendCommandToSocket(socketPath: string, command: string): Promise
 
 export async function listAllDaemons(): Promise<void> {
   const tempDir = os.tmpdir();
-  
+
   // Read all files from temp directory using Node.js fs API
   let allFiles: string[] = [];
   try {
     allFiles = await readdir(tempDir);
   } catch (error) {
-    console.log('Error reading temp directory:', error);
+    process.stderr.write(`Error reading temp directory: ${error}\n`);
     return;
   }
-  
+
   // Filter for socket files and only include those that also have corresponding PID files
   const socketFiles = allFiles
-    .filter(f => f.startsWith('cli-lsp-client-') && f.endsWith('.sock'))
-    .filter(f => {
+    .filter((f) => f.startsWith('cli-lsp-client-') && f.endsWith('.sock'))
+    .filter((f) => {
       // Only include if corresponding PID file also exists
       const pidFile = f.replace('.sock', '.pid');
       return allFiles.includes(pidFile);
     })
-    .map(f => path.join(tempDir, f));
+    .map((f) => path.join(tempDir, f));
 
   if (socketFiles.length === 0) {
-    console.log('No daemons found');
+    process.stdout.write('No daemons found\n');
     return;
   }
 
-  console.log('\nRunning Daemons:');
-  console.log('================');
-  
-  const results: Array<{
+  process.stdout.write('\nRunning Daemons:\n');
+  process.stdout.write('================\n');
+
+  const results: {
     hash: string;
     pid: number | string;
     workingDir: string;
     status: string;
-  }> = [];
+  }[] = [];
 
   for (const socketPath of socketFiles) {
     const hash = path.basename(socketPath, '.sock');
     const pidFile = socketPath.replace('.sock', '.pid');
-    
+
     let pid: number | string = 'Unknown';
-    let workingDir: string = 'Unknown';
+    let workingDir = 'Unknown';
     let status = 'Unknown';
 
     try {
@@ -302,27 +359,30 @@ export async function listAllDaemons(): Promise<void> {
       if (pidExists) {
         const pidContent = await Bun.file(pidFile).text();
         pid = parseInt(pidContent.trim());
-        
+
         // Check if process is running
         try {
-          process.kill(pid as number, 0);
+          process.kill(pid, 0);
           status = 'Running';
-          
+
           // Get working directory from daemon
           try {
-            workingDir = await sendCommandToSocket(socketPath, 'pwd') as string;
-          } catch (error) {
+            workingDir = (await sendCommandToSocket(
+              socketPath,
+              'pwd'
+            )) as string;
+          } catch (_error) {
             workingDir = 'Unresponsive';
             status = 'Unresponsive';
           }
-        } catch (error) {
+        } catch (_error) {
           status = 'Dead';
           workingDir = 'Process not found';
         }
       } else {
         status = 'No PID file';
       }
-    } catch (error) {
+    } catch (_error) {
       status = 'Error';
     }
 
@@ -330,44 +390,56 @@ export async function listAllDaemons(): Promise<void> {
       hash: hash.replace('cli-lsp-client-', ''),
       pid,
       workingDir,
-      status
+      status,
     });
   }
 
   // Display results in a table format
-  const maxHashLen = Math.max(4, ...results.map(r => r.hash.length));
-  const maxPidLen = Math.max(3, ...results.map(r => r.pid.toString().length));
-  const maxStatusLen = Math.max(6, ...results.map(r => r.status.length));
-  const maxDirLen = Math.max(15, ...results.map(r => r.workingDir.length));
+  const maxHashLen = Math.max(4, ...results.map((r) => r.hash.length));
+  const maxPidLen = Math.max(3, ...results.map((r) => r.pid.toString().length));
+  const maxStatusLen = Math.max(6, ...results.map((r) => r.status.length));
+  const maxDirLen = Math.max(15, ...results.map((r) => r.workingDir.length));
 
   // Header
-  console.log(
+  process.stdout.write(
     `${'Hash'.padEnd(maxHashLen)} | ` +
-    `${'PID'.padEnd(maxPidLen)} | ` +
-    `${'Status'.padEnd(maxStatusLen)} | ` +
-    `${'Working Directory'.padEnd(maxDirLen)}`
+      `${'PID'.padEnd(maxPidLen)} | ` +
+      `${'Status'.padEnd(maxStatusLen)} | ` +
+      `${'Working Directory'.padEnd(maxDirLen)}\n`
   );
-  console.log('-'.repeat(maxHashLen + maxPidLen + maxStatusLen + maxDirLen + 10));
+  process.stdout.write(
+    '-'.repeat(maxHashLen + maxPidLen + maxStatusLen + maxDirLen + 10) + '\n'
+  );
 
   // Rows
   for (const result of results) {
-    const statusIcon = result.status === 'Running' ? '●' : 
-                      result.status === 'Dead' ? '○' : 
-                      result.status === 'Unresponsive' ? '◐' : '?';
-    
-    console.log(
+    const statusIcon =
+      result.status === 'Running'
+        ? '●'
+        : result.status === 'Dead'
+          ? '○'
+          : result.status === 'Unresponsive'
+            ? '◐'
+            : '?';
+
+    process.stdout.write(
       `${result.hash.padEnd(maxHashLen)} | ` +
-      `${result.pid.toString().padEnd(maxPidLen)} | ` +
-      `${statusIcon} ${result.status.padEnd(maxStatusLen - 2)} | ` +
-      `${result.workingDir}`
+        `${result.pid.toString().padEnd(maxPidLen)} | ` +
+        `${statusIcon} ${result.status.padEnd(maxStatusLen - 2)} | ` +
+        `${result.workingDir}\n`
     );
   }
-  
-  const runningCount = results.filter(r => r.status === 'Running').length;
-  console.log(`\n${runningCount}/${results.length} daemon(s) running`);
+
+  const runningCount = results.filter((r) => r.status === 'Running').length;
+  process.stdout.write(
+    `\n${runningCount}/${results.length} daemon(s) running\n`
+  );
 }
 
-export async function runCommand(command: string, commandArgs: string[]): Promise<void> {
+export async function runCommand(
+  command: string,
+  commandArgs: string[]
+): Promise<void> {
   try {
     // Handle stop-all command without daemon communication
     if (command === 'stop-all') {
@@ -383,24 +455,24 @@ export async function runCommand(command: string, commandArgs: string[]): Promis
 
     // For all other commands: check if daemon running, start if needed, send command, exit
     const daemonStarted = await ensureDaemonRunning();
-    
+
     if (!daemonStarted) {
-      console.error('Failed to start daemon');
+      process.stderr.write('Failed to start daemon\n');
       process.exit(1);
     }
 
     // Send command to daemon and exit
     try {
       const result = await sendToExistingDaemon(command, commandArgs);
-      
+
       // Special formatting for diagnostics command
       if (command === 'diagnostics' && Array.isArray(result)) {
         const diagnostics = result as Diagnostic[];
         const filePath = commandArgs[0] || 'unknown';
         const output = formatDiagnostics(filePath, diagnostics);
-        
+
         if (output) {
-          console.error(output);
+          process.stderr.write(output + '\n');
           process.exit(2); // Exit with error code when diagnostics found
         } else {
           process.exit(0); // Exit with success code when no diagnostics
@@ -409,27 +481,28 @@ export async function runCommand(command: string, commandArgs: string[]): Promis
         // Special formatting for hover command
         const hoverResults = result as HoverResult[];
         const formatted = await formatHoverResults(hoverResults);
-        console.log(formatted);
+        process.stdout.write(formatted + '\n');
         process.exit(0);
       } else {
-        console.log(result);
+        process.stdout.write(`${result}\n`);
       }
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      
+      const errorMessage =
+        error instanceof Error ? error.message : 'Unknown error';
+
       // Check if it's an unknown command error
       if (errorMessage.startsWith('Unknown command:')) {
         showHelpForUnknownCommand(command);
         process.exit(1);
       }
-      
-      console.error('Error communicating with daemon:', errorMessage);
+
+      process.stderr.write(`${errorMessage}\n`);
       process.exit(1);
     }
-
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    console.error('Error:', errorMessage);
+    const errorMessage =
+      error instanceof Error ? error.message : 'Unknown error';
+    process.stderr.write(`Error: ${errorMessage}\n`);
     process.exit(1);
   }
 }

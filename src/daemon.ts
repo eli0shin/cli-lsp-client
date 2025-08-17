@@ -1,6 +1,7 @@
 import net from 'net';
 import os from 'os';
 import path from 'path';
+import { z } from 'zod';
 import { lspManager } from './lsp/manager.js';
 import { executeStart } from './lsp/start.js';
 import { log } from './logger.js';
@@ -9,19 +10,21 @@ import { hashPath } from './utils.js';
 function getDaemonPaths() {
   const cwd = process.cwd();
   const hashedCwd = hashPath(cwd);
-  
+
   return {
     socketPath: path.join(os.tmpdir(), `cli-lsp-client-${hashedCwd}.sock`),
-    pidFile: path.join(os.tmpdir(), `cli-lsp-client-${hashedCwd}.pid`)
+    pidFile: path.join(os.tmpdir(), `cli-lsp-client-${hashedCwd}.pid`),
   };
 }
 
 export const { socketPath: SOCKET_PATH, pidFile: PID_FILE } = getDaemonPaths();
 
-export type Request = {
-  command: string;
-  args?: string[];
-};
+const RequestSchema = z.object({
+  command: z.string(),
+  args: z.array(z.string()).optional(),
+});
+
+export type Request = z.infer<typeof RequestSchema>;
 
 export type StatusResult = {
   pid: number;
@@ -33,7 +36,7 @@ function formatUptime(uptimeMs: number): string {
   const seconds = Math.floor(uptimeMs / 1000);
   const minutes = Math.floor(seconds / 60);
   const hours = Math.floor(minutes / 60);
-  
+
   if (hours > 0) {
     return `${hours}h ${minutes % 60}m ${seconds % 60}s`;
   } else if (minutes > 0) {
@@ -43,19 +46,21 @@ function formatUptime(uptimeMs: number): string {
   }
 }
 
-export async function handleRequest(request: Request): Promise<string | number | StatusResult | any> {
+export async function handleRequest(
+  request: Request
+): Promise<string | number | StatusResult | unknown> {
   const { command, args = [] } = request;
 
   switch (command) {
-    case 'status':
+    case 'status': {
       const runningServers = lspManager.getRunningServers();
       const daemonUptimeMs = process.uptime() * 1000;
-      
+
       let output = 'LSP Daemon Status\n';
       output += '================\n';
       output += `PID: ${process.pid}\n`;
       output += `Uptime: ${formatUptime(daemonUptimeMs)}\n\n`;
-      
+
       if (runningServers.length === 0) {
         output += 'No language servers running\n';
       } else {
@@ -66,16 +71,18 @@ export async function handleRequest(request: Request): Promise<string | number |
         }
         output += `\nTotal: ${runningServers.length} language server${runningServers.length === 1 ? '' : 's'} running\n`;
       }
-      
-      return output;
 
-    case 'diagnostics':
+      return output;
+    }
+
+    case 'diagnostics': {
       if (!args[0]) {
         throw new Error('diagnostics command requires a file path');
       }
       return await lspManager.getDiagnostics(args[0]);
+    }
 
-    case 'start':
+    case 'start': {
       const directory = args[0]; // Optional directory argument
       log(`=== DAEMON START - PID: ${process.pid} ===`);
       log(`Starting LSP servers for directory: ${directory || 'current'}`);
@@ -90,29 +97,34 @@ export async function handleRequest(request: Request): Promise<string | number |
         log(`=== DAEMON START ERROR: ${error} ===`);
         throw error;
       }
+    }
 
-    case 'logs':
+    case 'logs': {
       const { LOG_PATH } = await import('./logger.js');
       return LOG_PATH;
+    }
 
-    case 'pwd':
+    case 'pwd': {
       return process.cwd();
+    }
 
-    case 'hover':
+    case 'hover': {
       // Parse arguments - require both file and symbol
       if (args.length !== 2) {
         throw new Error('hover command requires: hover <file> <symbol>');
       }
-      
+
       const targetFile = args[0];
       const targetSymbol = args[1];
-      
+
       const hoverResults = await lspManager.getHover(targetSymbol, targetFile);
       return hoverResults;
+    }
 
-    case 'stop':
+    case 'stop': {
       setTimeout(async () => await shutdown(), 100);
       return 'Daemon stopping...';
+    }
 
     default:
       throw new Error(`Unknown command: ${command}`);
@@ -122,9 +134,9 @@ export async function handleRequest(request: Request): Promise<string | number |
 let server: net.Server | null = null;
 
 export async function startDaemon(): Promise<void> {
-  console.log('Starting daemon…');
+  process.stdout.write('Starting daemon…\n');
   const { LOG_PATH } = await import('./logger.js');
-  console.log(`Daemon log: ${LOG_PATH}`);
+  process.stdout.write(`Daemon log: ${LOG_PATH}\n`);
   log(`Daemon starting... PID: ${process.pid}`);
 
   await cleanup();
@@ -134,23 +146,42 @@ export async function startDaemon(): Promise<void> {
 
     socket.on('data', async (data) => {
       try {
-        const request = JSON.parse(data.toString()) as Request;
+        const rawRequest = JSON.parse(data.toString()) as unknown;
+        const parseResult = RequestSchema.safeParse(rawRequest);
+
+        if (!parseResult.success) {
+          socket.write(
+            JSON.stringify({
+              success: false,
+              error: `Invalid request format: ${parseResult.error.message}`,
+            })
+          );
+          socket.end();
+          return;
+        }
+
+        const request = parseResult.data;
         log(`Received request: ${JSON.stringify(request)}`);
 
         const result = await handleRequest(request);
 
-        socket.write(JSON.stringify({
-          success: true,
-          result: result,
-          timestamp: new Date().toISOString()
-        }));
+        socket.write(
+          JSON.stringify({
+            success: true,
+            result: result,
+            timestamp: new Date().toISOString(),
+          })
+        );
         socket.end();
       } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-        socket.write(JSON.stringify({
-          success: false,
-          error: errorMessage
-        }));
+        const errorMessage =
+          error instanceof Error ? error.message : 'Unknown error';
+        socket.write(
+          JSON.stringify({
+            success: false,
+            error: errorMessage,
+          })
+        );
         socket.end();
       }
     });
@@ -161,7 +192,7 @@ export async function startDaemon(): Promise<void> {
   });
 
   server.listen(SOCKET_PATH, async () => {
-    console.log(`Daemon listening on ${SOCKET_PATH}`);
+    process.stdout.write(`Daemon listening on ${SOCKET_PATH}\n`);
 
     await Bun.write(PID_FILE, process.pid.toString());
 
@@ -173,24 +204,24 @@ export async function startDaemon(): Promise<void> {
       log('Received SIGTERM signal');
       await shutdown();
     });
-    
+
     // Log unexpected exits
     process.on('exit', async (code) => {
       log(`Process exiting with code: ${code}`);
     });
-    
+
     process.on('uncaughtException', async (error) => {
       log(`Uncaught exception: ${error.message}`);
       await shutdown();
     });
-    
+
     process.on('unhandledRejection', async (reason, promise) => {
       log(`Unhandled rejection at: ${promise}, reason: ${reason}`);
     });
   });
 
   server.on('error', (error) => {
-    console.error('Server error:', error);
+    process.stderr.write(`Server error: ${error}\n`);
     process.exit(1);
   });
 }
@@ -218,11 +249,11 @@ export async function isDaemonRunning(): Promise<boolean> {
           resolve(false);
         });
       });
-    } catch (e) {
+    } catch (_e) {
       await cleanup();
       return false;
     }
-  } catch (e) {
+  } catch (_e) {
     return false;
   }
 }
@@ -237,13 +268,13 @@ export async function cleanup(): Promise<void> {
     if (pidExists) {
       await Bun.file(PID_FILE).unlink();
     }
-  } catch (e) {
+  } catch (_e) {
     // Ignore cleanup errors
   }
 }
 
 export async function shutdown(): Promise<void> {
-  console.log('Shutting down daemon…');
+  process.stdout.write('Shutting down daemon…\n');
   log(`=== DAEMON SHUTDOWN START - PID: ${process.pid} ===`);
 
   // Shutdown LSP manager first
@@ -251,7 +282,7 @@ export async function shutdown(): Promise<void> {
     await lspManager.shutdown();
     log('LSP manager shutdown completed');
   } catch (error) {
-    console.error('Error shutting down LSP manager:', error);
+    process.stderr.write(`Error shutting down LSP manager: ${error}\n`);
     log(`LSP manager shutdown error: ${error}`);
   }
 

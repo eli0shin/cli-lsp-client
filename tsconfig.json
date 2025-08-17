@@ -12,6 +12,6 @@
     "forceConsistentCasingInFileNames": true,
     "types": ["bun-types"]
   },
-  "include": ["src/**/*", "tests/**/*"],
+  "include": ["src/**/*", "tests/**/*", "test-setup.ts"],
   "exclude": ["tests/fixtures/**/*", "node_modules/**/*"]
 }

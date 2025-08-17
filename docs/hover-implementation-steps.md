@@ -1,9 +1,11 @@
 # Hover Command Implementation Steps
 
 ## Overview
+
 This document provides step-by-step instructions for implementing the hover command feature in the CLI LSP client.
 
 ## Prerequisites
+
 - Familiarity with TypeScript and the existing codebase
 - Understanding of LSP protocol (see hover-command-spec.md)
 - Development environment set up with Bun
@@ -16,22 +18,22 @@ Add new type definitions for symbol and hover operations:
 
 ```typescript
 // Add to types.ts
-import type { 
-  SymbolInformation, 
-  DocumentSymbol, 
+import type {
+  SymbolInformation,
+  DocumentSymbol,
   WorkspaceSymbol,
   Hover,
   Position,
-  MarkupContent 
-} from "vscode-languageserver-types";
+  MarkupContent,
+} from 'vscode-languageserver-types';
 
-export type { 
-  SymbolInformation, 
-  DocumentSymbol, 
+export type {
+  SymbolInformation,
+  DocumentSymbol,
   WorkspaceSymbol,
   Hover,
   Position,
-  MarkupContent 
+  MarkupContent,
 };
 
 export interface HoverResult {
@@ -72,10 +74,10 @@ async searchWorkspaceSymbols(query: string): Promise<SymbolInformation[]> {
 async getDocumentSymbols(filePath: string): Promise<DocumentSymbol[] | SymbolInformation[]> {
   const absolutePath = path.isAbsolute(filePath) ? filePath : path.resolve(process.cwd(), filePath);
   log(`Getting document symbols for: ${absolutePath}`);
-  
+
   // Ensure file is open
   await this.openFile(absolutePath);
-  
+
   try {
     const result = await connection.sendRequest("textDocument/documentSymbol", {
       textDocument: {
@@ -92,10 +94,10 @@ async getDocumentSymbols(filePath: string): Promise<DocumentSymbol[] | SymbolInf
 async getHover(filePath: string, position: Position): Promise<Hover | null> {
   const absolutePath = path.isAbsolute(filePath) ? filePath : path.resolve(process.cwd(), filePath);
   log(`Getting hover for ${absolutePath} at ${position.line}:${position.character}`);
-  
+
   // Ensure file is open
   await this.openFile(absolutePath);
-  
+
   try {
     const result = await connection.sendRequest("textDocument/hover", {
       textDocument: {
@@ -147,31 +149,31 @@ Add the main hover method to LSPManager:
 async getHover(symbolName: string, filePath?: string): Promise<HoverResult[]> {
   log(`=== HOVER REQUEST START ===`);
   log(`Symbol: ${symbolName}, File: ${filePath || 'workspace'}`);
-  
+
   const results: HoverResult[] = [];
-  
+
   if (filePath) {
     // File-scoped search
     const absolutePath = path.isAbsolute(filePath) ? filePath : path.resolve(process.cwd(), filePath);
-    
+
     if (!await Bun.file(absolutePath).exists()) {
       throw new Error(`File does not exist: ${absolutePath}`);
     }
-    
+
     const applicableServers = await getApplicableServers(absolutePath);
-    
+
     for (const server of applicableServers) {
       const root = await getProjectRoot(absolutePath, server);
       const client = await this.getOrCreateClient(server, root);
-      
+
       if (!client) continue;
-      
+
       // Get document symbols
       const symbols = await client.getDocumentSymbols(absolutePath);
-      
+
       // Find matching symbol
       const matches = this.findMatchingSymbols(symbols, symbolName);
-      
+
       // Get hover for each match
       for (const match of matches) {
         const hover = await client.getHover(absolutePath, match.position);
@@ -193,12 +195,12 @@ async getHover(symbolName: string, filePath?: string): Promise<HoverResult[]> {
     // Get all clients (may need to warm up first)
     for (const [key, client] of this.clients) {
       const symbols = await client.searchWorkspaceSymbols(symbolName);
-      
+
       for (const symbol of symbols) {
         const uri = new URL(symbol.location.uri);
         const filePath = uri.pathname;
         const position = symbol.location.range.start;
-        
+
         const hover = await client.getHover(filePath, position);
         if (hover) {
           results.push({
@@ -214,7 +216,7 @@ async getHover(symbolName: string, filePath?: string): Promise<HoverResult[]> {
       }
     }
   }
-  
+
   log(`=== HOVER REQUEST COMPLETE - Found ${results.length} results ===`);
   return results;
 }
@@ -222,7 +224,7 @@ async getHover(symbolName: string, filePath?: string): Promise<HoverResult[]> {
 // Helper method to find matching symbols
 private findMatchingSymbols(symbols: DocumentSymbol[] | SymbolInformation[], query: string): Array<{position: Position}> {
   const matches: Array<{position: Position}> = [];
-  
+
   // Handle both DocumentSymbol and SymbolInformation formats
   for (const symbol of symbols) {
     if ('location' in symbol) {
@@ -241,20 +243,20 @@ private findMatchingSymbols(symbols: DocumentSymbol[] | SymbolInformation[], que
       }
     }
   }
-  
+
   return matches;
 }
 
 // Helper to get or create client
 private async getOrCreateClient(server: LSPServer, root: string): Promise<LSPClient | null> {
   const clientKey = this.getClientKey(server.id, root);
-  
+
   if (this.broken.has(clientKey)) {
     return null;
   }
-  
+
   let client = this.clients.get(clientKey);
-  
+
   if (!client) {
     try {
       const serverHandle = await spawnServer(server, root);
@@ -262,7 +264,7 @@ private async getOrCreateClient(server: LSPServer, root: string): Promise<LSPCli
         this.broken.add(clientKey);
         return null;
       }
-      
+
       client = await createLSPClient(server.id, serverHandle, root);
       this.clients.set(clientKey, client);
     } catch (error) {
@@ -271,7 +273,7 @@ private async getOrCreateClient(server: LSPServer, root: string): Promise<LSPCli
       return null;
     }
   }
-  
+
   return client;
 }
 ```
@@ -280,60 +282,69 @@ private async getOrCreateClient(server: LSPServer, root: string): Promise<LSPCli
 
 Create formatting functions for hover output:
 
-```typescript
+````typescript
 export function formatHoverResults(results: HoverResult[]): string {
   if (results.length === 0) {
-    return "No hover information found for the symbol.";
+    return 'No hover information found for the symbol.';
   }
-  
+
   const output: string[] = [];
-  
+
   for (const result of results) {
     output.push(`${chalk.cyan('Symbol:')} ${result.symbol}`);
-    output.push(`${chalk.gray('Location:')} ${result.location.file}:${result.location.line + 1}:${result.location.column + 1}`);
+    output.push(
+      `${chalk.gray('Location:')} ${result.location.file}:${result.location.line + 1}:${result.location.column + 1}`
+    );
     output.push('');
-    
+
     // Format hover content
     const content = formatHoverContent(result.hover);
     output.push(content);
-    
+
     if (results.length > 1) {
       output.push(chalk.gray('─'.repeat(60)));
     }
   }
-  
+
   return output.join('\n');
 }
 
 function formatHoverContent(hover: Hover): string {
   if (!hover.contents) {
-    return "No documentation available.";
+    return 'No documentation available.';
   }
-  
+
   let content = '';
-  
+
   if (typeof hover.contents === 'string') {
     content = hover.contents;
   } else if (Array.isArray(hover.contents)) {
-    content = hover.contents.map(c => typeof c === 'string' ? c : c.value).join('\n\n');
+    content = hover.contents
+      .map((c) => (typeof c === 'string' ? c : c.value))
+      .join('\n\n');
   } else if ('kind' in hover.contents) {
     content = hover.contents.value;
   }
-  
+
   // Simple markdown to terminal formatting
   content = content
     .replace(/```(\w+)?\n([\s\S]*?)```/g, (_, lang, code) => {
-      return chalk.gray('```') + (lang ? chalk.yellow(lang) : '') + '\n' + 
-             chalk.green(code.trim()) + '\n' + 
-             chalk.gray('```');
+      return (
+        chalk.gray('```') +
+        (lang ? chalk.yellow(lang) : '') +
+        '\n' +
+        chalk.green(code.trim()) +
+        '\n' +
+        chalk.gray('```')
+      );
     })
     .replace(/`([^`]+)`/g, (_, code) => chalk.green(code))
     .replace(/\*\*([^*]+)\*\*/g, (_, text) => chalk.bold(text))
     .replace(/\*([^*]+)\*/g, (_, text) => chalk.italic(text));
-  
+
   return content;
 }
-```
+````
 
 ### Step 6: Update Daemon Handler (src/daemon.ts)
 
@@ -344,7 +355,7 @@ case 'hover':
   // Parse arguments
   let targetFile: string | undefined;
   let targetSymbol: string;
-  
+
   if (args.length === 1) {
     // Global search: hover <symbol>
     targetSymbol = args[0];
@@ -355,7 +366,7 @@ case 'hover':
   } else {
     throw new Error('hover command requires: hover <symbol> or hover <file> <symbol>');
   }
-  
+
   const hoverResults = await lspManager.getHover(targetSymbol, targetFile);
   return hoverResults;
 ```
@@ -369,7 +380,7 @@ Handle hover command display:
 if (command === 'hover') {
   try {
     const result = await sendToExistingDaemon(command, commandArgs);
-    
+
     if (Array.isArray(result)) {
       const formatted = formatHoverResults(result as HoverResult[]);
       console.log(formatted);
@@ -411,33 +422,34 @@ Examples:
 Create test file `tests/hover.test.ts`:
 
 ```typescript
-import { expect, test, describe } from "bun:test";
-import { spawn } from "child_process";
-import { stripAnsi } from "./test-utils";
+import { expect, test, describe } from 'bun:test';
+import { spawn } from 'child_process';
+import { stripAnsi } from './test-utils';
 
-describe("hover command", () => {
-  test("should get hover info for a symbol", async () => {
+describe('hover command', () => {
+  test('should get hover info for a symbol', async () => {
     const result = await $`./cli-lsp-client hover Promise`.nothrow();
-    
+
     expect(result.exitCode).toBe(0);
     const output = stripAnsi(result.stdout.toString());
-    expect(output).toContain("Symbol: Promise");
+    expect(output).toContain('Symbol: Promise');
   });
-  
-  test("should get hover info for file-scoped symbol", async () => {
-    const result = await $`./cli-lsp-client hover tests/fixtures/example.ts testFunction`.nothrow();
-    
+
+  test('should get hover info for file-scoped symbol', async () => {
+    const result =
+      await $`./cli-lsp-client hover tests/fixtures/example.ts testFunction`.nothrow();
+
     expect(result.exitCode).toBe(0);
     const output = stripAnsi(result.stdout.toString());
-    expect(output).toContain("Symbol: testFunction");
-    expect(output).toContain("example.ts");
+    expect(output).toContain('Symbol: testFunction');
+    expect(output).toContain('example.ts');
   });
-  
-  test("should handle symbol not found", async () => {
+
+  test('should handle symbol not found', async () => {
     const result = await $`./cli-lsp-client hover NonExistentSymbol`.nothrow();
-    
+
     const output = stripAnsi(result.stdout.toString());
-    expect(output).toContain("No hover information found");
+    expect(output).toContain('No hover information found');
   });
 });
 ```
@@ -498,6 +510,7 @@ bun run build
 ## Next Steps
 
 After basic implementation:
+
 1. Add fuzzy matching for symbol names
 2. Implement caching for faster repeated searches
 3. Add support for partial symbol names

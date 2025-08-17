@@ -14,7 +14,7 @@ export function hashPath(dirPath: string): string {
   let hash = 0;
   for (let i = 0; i < dirPath.length; i++) {
     const char = dirPath.charCodeAt(i);
-    hash = ((hash << 5) - hash) + char;
+    hash = (hash << 5) - hash + char;
     hash = hash & hash; // Convert to 32bit integer
   }
   return Math.abs(hash).toString(36);
@@ -36,16 +36,16 @@ export async function ensureDaemonRunning(): Promise<boolean> {
     stdio: 'ignore',
     env: {
       ...process.env,
-      LSPCLI_DAEMON_MODE: '1'
-    }
+      LSPCLI_DAEMON_MODE: '1',
+    },
   });
-  
+
   child.unref();
 
   // Wait for daemon to be ready
   let attempts = 0;
   while (attempts < 50 && !(await isDaemonRunning())) {
-    await new Promise(resolve => setTimeout(resolve, 100));
+    await new Promise((resolve) => setTimeout(resolve, 100));
     attempts++;
   }
 

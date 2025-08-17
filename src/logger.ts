@@ -1,6 +1,7 @@
 import path from 'path';
 import os from 'os';
 import { hashPath } from './utils.js';
+import fs from 'fs';
 
 function getLogPath(): string {
   const cwd = process.cwd();
@@ -15,18 +16,16 @@ export async function log(message: string): Promise<void> {
   const logEntry = `[${timestamp}] ${message}\n`;
 
   try {
-    // Use fs to append to file properly
-    const fs = require('fs');
     fs.appendFileSync(LOG_PATH, logEntry);
-  } catch (error) {
+  } catch (_error) {
     // Ignore logging errors to not break functionality
   }
 }
 
-export function clearLog(): void {
+export async function clearLog(): Promise<void> {
   try {
-    Bun.write(LOG_PATH, '', { createPath: true });
-  } catch (error) {
+    await Bun.write(LOG_PATH, '', { createPath: true });
+  } catch (_error) {
     // Ignore errors
   }
 }
