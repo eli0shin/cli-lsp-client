@@ -72,8 +72,13 @@ jobs:
           # Check if lua-language-server is already installed (from cache)
           if [ ! -f "${{ github.workspace }}/.local/lua-language-server/bin/lua-language-server" ]; then
             echo "Installing Lua language server to user directory..."
-            # Get the latest release info and extract the correct download URL
-            LATEST_URL=$(curl -s https://api.github.com/repos/LuaLS/lua-language-server/releases/latest | grep "browser_download_url.*linux-x64.tar.gz" | cut -d '"' -f 4)
+            # Get the latest release info with error handling
+            LATEST_URL=$(curl -s https://api.github.com/repos/LuaLS/lua-language-server/releases/latest | jq -r '.assets[] | select(.name | contains("linux-x64")) | .browser_download_url')
+            if [ -z "$LATEST_URL" ] || [ "$LATEST_URL" = "null" ]; then
+              echo "Failed to get latest release URL, using fallback"
+              LATEST_URL="https://github.com/LuaLS/lua-language-server/releases/download/3.9.3/lua-language-server-3.9.3-linux-x64.tar.gz"
+            fi
+            echo "Downloading from: $LATEST_URL"
             wget -O lua-language-server.tar.gz "$LATEST_URL"
             mkdir -p "${{ github.workspace }}/.local/lua-language-server"
             tar -xzf lua-language-server.tar.gz -C "${{ github.workspace }}/.local/lua-language-server"
