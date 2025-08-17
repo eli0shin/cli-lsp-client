@@ -120,3 +120,16 @@ jobs:
         run: |
           # Run all tests except java tests (which require more complex setup)
           find tests -name "*.test.ts" -not -path "*/java/*" | xargs bun test --timeout 30000
+          
+      - name: Debug Lua LSP logs on failure
+        if: failure()
+        run: |
+          echo "=== Debug: Checking Lua project root detection ==="
+          LOG_PATH=$(./cli-lsp-client logs)
+          echo "Log path: $LOG_PATH"
+          if [ -f "$LOG_PATH" ]; then
+            echo "=== Last 50 lines of LSP logs ==="
+            tail -50 "$LOG_PATH" | grep -E "(findProjectRoot|getProjectRoot|lua_ls|diagnostics)" || echo "No relevant log entries found"
+          else
+            echo "Log file not found at $LOG_PATH"
+          fi
