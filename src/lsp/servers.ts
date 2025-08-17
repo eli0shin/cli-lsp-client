@@ -171,6 +171,35 @@ const ALL_SERVERS: LSPServer[] = [
     ],
     env: { BUN_BE_BUN: '1' },
   },
+  {
+    id: 'r_language_server',
+    extensions: ['.r', '.R', '.rmd', '.Rmd'],
+    rootPatterns: [
+      'DESCRIPTION',
+      'NAMESPACE',
+      '.Rproj',
+      'renv.lock',
+      'packrat/packrat.lock',
+      '.here',
+    ],
+    command: ['R', '--slave', '-e', 'languageserver::run()'],
+    env: {},
+  },
+  {
+    id: 'omnisharp',
+    extensions: ['.cs'],
+    rootPatterns: [
+      '*.sln',
+      '*.csproj',
+      'project.json',
+      'global.json',
+      'Directory.Build.props',
+      'Directory.Build.targets',
+    ],
+    command: ['omnisharp', '--languageserver'],
+    env: {},
+    dynamicArgs: (root: string) => ['--source', root],
+  },
 ];
 
 // Ensure vscode-langservers-extracted is installed globally
@@ -213,6 +242,21 @@ async function getAvailableServers(): Promise<LSPServer[]> {
     // Auto-installable servers (via bunx) are always available
     if (server.command[0] === 'bunx') {
       availableServers.push(server);
+      continue;
+    }
+
+    // Special handling for OmniSharp - requires DOTNET_ROOT
+    if (server.id === 'omnisharp') {
+      if (process.env.DOTNET_ROOT) {
+        try {
+          const result = Bun.which(server.command[0]);
+          if (result) {
+            availableServers.push(server);
+          }
+        } catch {
+          // OmniSharp not found in PATH, skip it
+        }
+      }
       continue;
     }
 

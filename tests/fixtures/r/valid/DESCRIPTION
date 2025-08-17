@@ -1,0 +1,11 @@
+Package: TestRProject
+Type: Package
+Title: Test R Project for LSP Testing
+Version: 0.1.0
+Author: Test Author
+Maintainer: Test Author <test@example.com>
+Description: A simple R package for testing the R language server integration.
+License: MIT
+Encoding: UTF-8
+LazyData: true
+RoxygenNote: 7.1.0

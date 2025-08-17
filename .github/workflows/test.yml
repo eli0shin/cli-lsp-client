@@ -9,6 +9,8 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
+    env:
+      DOTNET_ROOT: /usr/share/dotnet
 
     steps:
       - name: Checkout code
@@ -21,6 +23,14 @@ jobs:
 
       - name: Install dependencies
         run: bun install
+
+      - name: Cache R packages
+        uses: actions/cache@v3
+        with:
+          path: /usr/local/lib/R/site-library
+          key: ${{ runner.os }}-r-packages-${{ hashFiles('**/*.R') }}
+          restore-keys: |
+            ${{ runner.os }}-r-packages-
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -48,6 +58,42 @@ jobs:
       - name: Install shellcheck
         run: sudo apt-get install -y shellcheck
 
+      - name: Setup R and R languageserver
+        run: |
+          # Install R
+          sudo apt-get update
+          sudo apt-get install -y r-base r-base-dev
+          
+          # Install system dependencies for R packages
+          sudo apt-get install -y libcurl4-openssl-dev libssl-dev libxml2-dev
+          
+          # Install R languageserver package (this may take several minutes)
+          sudo R --slave -e 'install.packages("languageserver", repos="https://cran.rstudio.com/", dependencies=TRUE, Ncpus=2)'
+          
+          # Verify R and languageserver installation
+          R --version
+          R --slave -e 'packageVersion("languageserver")'
+
+      - name: Setup .NET SDK and OmniSharp
+        run: |
+          # Install .NET SDK
+          wget https://packages.microsoft.com/config/ubuntu/22.04/packages-microsoft-prod.deb -O packages-microsoft-prod.deb
+          sudo dpkg -i packages-microsoft-prod.deb
+          sudo apt-get update
+          sudo apt-get install -y dotnet-sdk-8.0
+          
+          # Verify .NET installation
+          dotnet --version
+          
+          # Download and install OmniSharp
+          mkdir -p ~/.omnisharp
+          wget -O omnisharp.tar.gz https://github.com/OmniSharp/omnisharp-roslyn/releases/latest/download/omnisharp-linux-x64-net6.0.tar.gz
+          tar -xzf omnisharp.tar.gz -C ~/.omnisharp
+          sudo ln -sf ~/.omnisharp/OmniSharp /usr/local/bin/omnisharp
+          
+          # Verify OmniSharp installation
+          omnisharp --help
+
       - name: Run type checking
         run: bun run typecheck
 
@@ -60,7 +106,17 @@ jobs:
       - name: Verify CLI works
         run: ./cli-lsp-client status
 
+      - name: Verify R language server
+        run: |
+          # Test that R and languageserver are working
+          R --slave -e 'library(languageserver); cat("R languageserver loaded successfully\n")'
+
+      - name: Verify C# language server
+        run: |
+          # Test that OmniSharp is working with DOTNET_ROOT
+          omnisharp --help | head -5
+
       - name: Run tests
         run: |
           shopt -s extglob
-          bun test --timeout 15000 tests/!(java)/**/*.test.ts tests/*.test.ts
+          bun test --timeout 30000 tests/!(java)/**/*.test.ts tests/*.test.ts
