@@ -451,7 +451,7 @@ export async function runCommand(command: string, commandArgs: string[]): Promis
         process.exit(1);
       }
 
-      process.stderr.write(`Error communicating with daemon: ${errorMessage}\n`);
+      process.stderr.write(`${errorMessage}\n`);
       process.exit(1);
     }
 

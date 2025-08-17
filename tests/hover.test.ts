@@ -49,7 +49,7 @@ Greets a person by name
     
     expect(result.exitCode).toBe(1);
     const errorOutput = stripAnsi(result.stderr);
-    expect(errorOutput).toBe('Error communicating with daemon: File does not exist: tests/fixtures/typescript/nonexistent.ts');
+    expect(errorOutput).toBe('File does not exist: tests/fixtures/typescript/nonexistent.ts');
   }, 10000);
 
   test('should validate required arguments - missing symbol', async () => {
@@ -58,7 +58,7 @@ Greets a person by name
     
     expect(result.exitCode).toBe(1);
     const errorOutput = stripAnsi(result.stderr);
-    expect(errorOutput).toBe('Error communicating with daemon: hover command requires: hover <file> <symbol>');
+    expect(errorOutput).toBe('hover command requires: hover <file> <symbol>');
   }, 10000);
 
   test('should validate required arguments - no arguments', async () => {
@@ -67,7 +67,7 @@ Greets a person by name
     
     expect(result.exitCode).toBe(1);
     const errorOutput = stripAnsi(result.stderr);
-    expect(errorOutput).toBe('Error communicating with daemon: hover command requires: hover <file> <symbol>');
+    expect(errorOutput).toBe('hover command requires: hover <file> <symbol>');
   }, 10000);
 
   test('should get hover info for imported symbols', async () => {
