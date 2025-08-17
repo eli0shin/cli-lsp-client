@@ -73,7 +73,7 @@ jobs:
           if [ ! -f "${{ github.workspace }}/.local/lua-language-server/bin/lua-language-server" ]; then
             echo "Installing Lua language server to user directory..."
             # Get the latest release info with error handling
-            LATEST_URL=$(curl -s https://api.github.com/repos/LuaLS/lua-language-server/releases/latest | jq -r '.assets[] | select(.name | contains("linux-x64")) | .browser_download_url')
+            LATEST_URL=$(curl -s https://api.github.com/repos/LuaLS/lua-language-server/releases/latest | jq -r '.assets[] | select(.name | contains("linux-x64") and (contains("musl") | not)) | .browser_download_url' | head -1)
             if [ -z "$LATEST_URL" ] || [ "$LATEST_URL" = "null" ]; then
               echo "Failed to get latest release URL, using fallback"
               LATEST_URL="https://github.com/LuaLS/lua-language-server/releases/download/3.9.3/lua-language-server-3.9.3-linux-x64.tar.gz"
