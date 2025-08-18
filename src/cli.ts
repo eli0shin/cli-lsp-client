@@ -110,10 +110,46 @@ function showHelp(): void {
   process.stdout.write(HELP_MESSAGE + '\n');
 }
 
+type ParsedArgs = {
+  command: string;
+  commandArgs: string[];
+  configFile?: string;
+};
+
+function parseArgs(args: string[]): ParsedArgs {
+  let configFile: string | undefined;
+  const filteredArgs: string[] = [];
+  
+  for (let i = 0; i < args.length; i++) {
+    const arg = args[i];
+    
+    if (arg === '--config-file') {
+      if (i + 1 >= args.length) {
+        process.stderr.write('Error: --config-file requires a path argument\n');
+        process.exit(1);
+      }
+      configFile = args[i + 1];
+      i++; // Skip the next argument since it's the config file path
+    } else if (arg.startsWith('--config-file=')) {
+      configFile = arg.split('=', 2)[1];
+      if (!configFile) {
+        process.stderr.write('Error: --config-file= requires a path after the equals sign\n');
+        process.exit(1);
+      }
+    } else {
+      filteredArgs.push(arg);
+    }
+  }
+  
+  const command = filteredArgs[0] || 'status';
+  const commandArgs = filteredArgs.slice(1);
+  
+  return { command, commandArgs, configFile };
+}
+
 async function run(): Promise<void> {
-  const args = process.argv.slice(2);
-  const command = args[0] || 'status';
-  const commandArgs = args.slice(1);
+  const rawArgs = process.argv.slice(2);
+  const { command, commandArgs, configFile } = parseArgs(rawArgs);
 
   // Check if we're being invoked to run as daemon
   if (process.env.LSPCLI_DAEMON_MODE === '1') {
@@ -183,7 +219,7 @@ async function run(): Promise<void> {
   }
 
   // All other user commands are handled by the client (which auto-starts daemon if needed)
-  await runCommand(command, commandArgs);
+  await runCommand(command, commandArgs, configFile);
 }
 
 export { run };
