@@ -4,6 +4,7 @@ import type { LSPServer } from './types.js';
 import { exec } from 'child_process';
 import { promisify } from 'util';
 import { log } from '../logger.js';
+import { loadConfigFile, configServerToLSPServer } from './config.js';
 
 const execAsync = promisify(exec);
 
@@ -275,6 +276,36 @@ async function getAvailableServers(): Promise<LSPServer[]> {
 }
 
 let cachedServers: LSPServer[] | null = null;
+
+// Initialize servers by loading config file and merging with built-in servers
+// This should be called once at daemon startup
+export async function initializeServers(): Promise<void> {
+  try {
+    const configFile = await loadConfigFile();
+    
+    if (configFile?.servers) {
+      log(`Loading ${configFile.servers.length} servers from config file`);
+      const configServers = configFile.servers.map(configServerToLSPServer);
+      
+      // Check for ID conflicts and handle them
+      for (const configServer of configServers) {
+        const existingIndex = ALL_SERVERS.findIndex(s => s.id === configServer.id);
+        if (existingIndex >= 0) {
+          log(`Config server '${configServer.id}' overrides built-in server`);
+          ALL_SERVERS[existingIndex] = configServer; // Replace built-in with config
+        } else {
+          log(`Adding new server '${configServer.id}' from config`);
+          ALL_SERVERS.push(configServer);
+        }
+      }
+    } else {
+      log('No config file found, using built-in servers only');
+    }
+  } catch (error) {
+    log(`Error loading config file: ${error instanceof Error ? error.message : String(error)}`);
+    log('Continuing with built-in servers only');
+  }
+}
 
 export async function getApplicableServers(
   filePath: string

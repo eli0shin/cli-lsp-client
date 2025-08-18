@@ -4,6 +4,7 @@ import path from 'path';
 import { z } from 'zod';
 import { lspManager } from './lsp/manager.js';
 import { executeStart } from './lsp/start.js';
+import { initializeServers } from './lsp/servers.js';
 import { log } from './logger.js';
 import { hashPath } from './utils.js';
 
@@ -138,6 +139,9 @@ export async function startDaemon(): Promise<void> {
   const { LOG_PATH } = await import('./logger.js');
   process.stdout.write(`Daemon log: ${LOG_PATH}\n`);
   log(`Daemon starting... PID: ${process.pid}`);
+
+  // Initialize servers with config file
+  await initializeServers();
 
   await cleanup();
 
