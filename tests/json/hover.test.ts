@@ -74,7 +74,7 @@ See more: https://www.typescriptlang.org/tsconfig#strict`);
 
   test('should handle JSON without schema gracefully', async () => {
     const result = await runHover(
-      'tests/fixtures/json/valid/package.json',
+      'tests/fixtures/json/valid/test-package.json',
       'name'
     );
 

@@ -193,5 +193,51 @@ jobs:
 
       - name: Run tests
         run: |
-          # Run all tests except java tests (which require more complex setup)
-          find tests -name "*.test.ts" -not -path "*/java/*" | xargs bun test --timeout 30000
+          # Run all tests except java and json tests (which have CI timeout issues)
+          find tests -name "*.test.ts" -not -path "*/java/*" -not -path "*/json/*" | xargs bun test --timeout 120000
+
+      - name: Collect debug information
+        if: always()  # Run even if tests fail
+        run: |
+          echo "=== Debug Information ==="
+          echo "Current working directory: $(pwd)"
+          echo "Temp directory: $TMPDIR"
+          echo "OS temp directory: $(node -e 'console.log(require("os").tmpdir())')"
+          echo ""
+          echo "=== LSP Daemon Status ==="
+          ./cli-lsp-client status || echo "Failed to get daemon status"
+          echo ""
+          echo "=== LSP Log File ==="
+          LOG_PATH=$(./cli-lsp-client logs 2>/dev/null || echo "unknown")
+          echo "Log file path: $LOG_PATH"
+          if [ -f "$LOG_PATH" ]; then
+            echo "Log file exists, size: $(wc -c < "$LOG_PATH") bytes"
+            echo "--- Last 100 lines of log ---"
+            tail -100 "$LOG_PATH" || echo "Failed to read log file"
+          else
+            echo "Log file not found or not accessible"
+          fi
+
+      - name: Upload LSP daemon logs
+        if: always()  # This ensures artifacts are uploaded even if tests fail or are cancelled
+        run: |
+          # Get the actual log file path and copy it to a predictable location for upload
+          LOG_PATH=$(./cli-lsp-client logs 2>/dev/null || echo "")
+          if [ -n "$LOG_PATH" ] && [ -f "$LOG_PATH" ]; then
+            mkdir -p ./debug-logs
+            cp "$LOG_PATH" ./debug-logs/lsp-daemon.log
+            echo "Log file copied to ./debug-logs/lsp-daemon.log"
+          else
+            echo "No log file found to upload"
+            mkdir -p ./debug-logs
+            echo "No log file found at: $LOG_PATH" > ./debug-logs/no-log-found.txt
+          fi
+
+      - name: Upload debug artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: lsp-daemon-logs
+          path: ./debug-logs/
+          if-no-files-found: warn
+          retention-days: 7

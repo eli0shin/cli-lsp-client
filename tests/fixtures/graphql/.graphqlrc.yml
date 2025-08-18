@@ -1,2 +1,2 @@
-schema: "./valid/schema.graphql"
+schema: "./valid/test-schema.graphql"
 documents: "./**/*.{graphql,gql}"

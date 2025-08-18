@@ -46,7 +46,7 @@ describe('YAML Hover Command', () => {
 
   test('should handle YAML without schema - limited hover support', async () => {
     const result = await runHover(
-      'tests/fixtures/yaml/valid/docker-compose.yml',
+      'tests/fixtures/yaml/valid/docker-compose-example.yml',
       'services'
     );
 
@@ -60,7 +60,7 @@ describe('YAML Hover Command', () => {
 
   test('should handle YAML property hover without schema', async () => {
     const result = await runHover(
-      'tests/fixtures/yaml/valid/docker-compose.yml',
+      'tests/fixtures/yaml/valid/docker-compose-example.yml',
       'image'
     );
 
