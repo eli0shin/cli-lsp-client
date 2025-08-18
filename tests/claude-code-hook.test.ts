@@ -137,8 +137,8 @@ describe('Claude Code Hook', () => {
       'tests/fixtures/typescript/valid/simple-function.ts',
       'tests/fixtures/javascript/valid/simple-module.js',
       'tests/fixtures/python/valid/simple-module.py',
-      'tests/fixtures/json/valid/package.json',
-      'tests/fixtures/yaml/valid/docker-compose.yml',
+      'tests/fixtures/json/valid/test-package.json',
+      'tests/fixtures/yaml/valid/docker-compose-example.yml',
       'tests/fixtures/bash/valid/script.sh',
     ];
 

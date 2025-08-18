@@ -4,7 +4,7 @@ import { runHover, stripAnsi } from '../test-utils.js';
 describe('GraphQL Hover Command', () => {
   test('should get hover info for GraphQL User type', async () => {
     const result = await runHover(
-      'tests/fixtures/graphql/valid/schema.graphql',
+      'tests/fixtures/graphql/valid/test-schema.graphql',
       'User'
     );
 
@@ -13,52 +13,52 @@ describe('GraphQL Hover Command', () => {
     // TODO: Fix flaky test - GraphQL LSP returns different User occurrences
     // inconsistently (type definition vs references). Should be deterministic.
     expect(output).toMatch(
-      /^Location: tests\/fixtures\/graphql\/valid\/schema\.graphql:\d+:\d+\nNo documentation available\.$/
+      /^Location: tests\/fixtures\/graphql\/valid\/test-schema\.graphql:\d+:\d+\nNo documentation available\.$/
     );
   }, 10000);
 
   test('should get hover info for GraphQL Query type', async () => {
     const result = await runHover(
-      'tests/fixtures/graphql/valid/schema.graphql',
+      'tests/fixtures/graphql/valid/test-schema.graphql',
       'Query'
     );
 
     expect(result.exitCode).toBe(0);
     const output = stripAnsi(result.stdout.toString());
     expect(output)
-      .toBe(`Location: tests/fixtures/graphql/valid/schema.graphql:4:6
+      .toBe(`Location: tests/fixtures/graphql/valid/test-schema.graphql:4:6
 No documentation available.`);
   }, 10000);
 
   test('should get hover info for GraphQL name field', async () => {
     const result = await runHover(
-      'tests/fixtures/graphql/valid/schema.graphql',
+      'tests/fixtures/graphql/valid/test-schema.graphql',
       'name'
     );
 
     expect(result.exitCode).toBe(0);
     const output = stripAnsi(result.stdout.toString());
     expect(output)
-      .toBe(`Location: tests/fixtures/graphql/valid/schema.graphql:19:9
+      .toBe(`Location: tests/fixtures/graphql/valid/test-schema.graphql:19:9
 No documentation available.`);
   }, 10000);
 
   test('should get hover info for GraphQL CreateUserInput type', async () => {
     const result = await runHover(
-      'tests/fixtures/graphql/valid/schema.graphql',
+      'tests/fixtures/graphql/valid/test-schema.graphql',
       'CreateUserInput'
     );
 
     expect(result.exitCode).toBe(0);
     const output = stripAnsi(result.stdout.toString());
     expect(output)
-      .toBe(`Location: tests/fixtures/graphql/valid/schema.graphql:48:21
+      .toBe(`Location: tests/fixtures/graphql/valid/test-schema.graphql:48:21
 No documentation available.`);
   }, 10000);
 
   test('should handle symbol not found gracefully', async () => {
     const result = await runHover(
-      'tests/fixtures/graphql/valid/schema.graphql',
+      'tests/fixtures/graphql/valid/test-schema.graphql',
       'NonExistentType'
     );
 

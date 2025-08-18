@@ -13,7 +13,13 @@ async function findProjectRoot(
   fileOrDirPath: string,
   patterns: string[]
 ): Promise<string> {
-  // Determine if it's a file or directory
+  // If LSP_SINGLE_ROOT is set, always use CWD as the root
+  // This forces all files to share the same LSP instance per language
+  if (process.env.LSP_SINGLE_ROOT === 'true') {
+    return process.cwd();
+  }
+  
+  // Standard behavior: search for root patterns
   let current: string;
 
   // Check if path exists and if it's a directory
@@ -32,6 +38,7 @@ async function findProjectRoot(
 
   const root = path.parse(current).root;
 
+  // Search upward for root patterns
   while (current !== root) {
     for (const pattern of patterns) {
       const configPath = path.join(current, pattern);
@@ -39,17 +46,14 @@ async function findProjectRoot(
         return current;
       }
     }
-    current = path.dirname(current);
+    const parent = path.dirname(current);
+    if (parent === current) break; // Prevent infinite loop at root
+    current = parent;
   }
 
-  // Fallback: if it's a directory, return it; if it's a file, return its directory
-  try {
-    const fs = await import('fs/promises');
-    const stats = await fs.stat(fileOrDirPath);
-    return stats.isDirectory() ? fileOrDirPath : path.dirname(fileOrDirPath);
-  } catch {
-    return path.dirname(fileOrDirPath);
-  }
+  // Fallback: Use the current working directory as the project root
+  // This ensures that files in the same working directory share the same LSP instance
+  return process.cwd();
 }
 
 export type ServerHandle = {
