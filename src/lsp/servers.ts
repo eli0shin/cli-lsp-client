@@ -18,7 +18,7 @@ async function findProjectRoot(
   if (process.env.LSP_SINGLE_ROOT === 'true') {
     return process.cwd();
   }
-  
+
   // Standard behavior: search for root patterns
   let current: string;
 
@@ -251,11 +251,7 @@ async function getAvailableServers(): Promise<LSPServer[]> {
 
     // Auto-installable servers (via which(), bunx, or npx) are always available
     const firstCommand = server.command[0];
-    if (
-      firstCommand === which() ||
-      firstCommand === 'bunx' ||
-      firstCommand === 'npx'
-    ) {
+    if (firstCommand === which()) {
       availableServers.push(server);
       continue;
     }
