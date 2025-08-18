@@ -15,10 +15,11 @@ function getDaemonPaths() {
   return {
     socketPath: path.join(os.tmpdir(), `cli-lsp-client-${hashedCwd}.sock`),
     pidFile: path.join(os.tmpdir(), `cli-lsp-client-${hashedCwd}.pid`),
+    configFile: path.join(os.tmpdir(), `cli-lsp-client-${hashedCwd}.config`),
   };
 }
 
-export const { socketPath: SOCKET_PATH, pidFile: PID_FILE } = getDaemonPaths();
+export const { socketPath: SOCKET_PATH, pidFile: PID_FILE, configFile: CONFIG_METADATA_FILE } = getDaemonPaths();
 
 const RequestSchema = z.object({
   command: z.string(),
@@ -32,6 +33,97 @@ export type StatusResult = {
   uptime: number;
   memory: NodeJS.MemoryUsage;
 };
+
+// Functions to manage daemon config metadata
+export async function saveCurrentConfig(configPath?: string): Promise<void> {
+  try {
+    const metadata = {
+      configPath: configPath || null,
+      startedAt: new Date().toISOString(),
+    };
+    await Bun.write(CONFIG_METADATA_FILE, JSON.stringify(metadata));
+  } catch (error) {
+    log(`Error saving config metadata: ${error instanceof Error ? error.message : String(error)}`);
+  }
+}
+
+export async function getCurrentConfig(): Promise<string | null> {
+  try {
+    const metadataExists = await Bun.file(CONFIG_METADATA_FILE).exists();
+    if (!metadataExists) {
+      return null;
+    }
+    const metadataText = await Bun.file(CONFIG_METADATA_FILE).text();
+    const metadata: unknown = JSON.parse(metadataText);
+    
+    if (typeof metadata === 'object' && metadata !== null && 'configPath' in metadata) {
+      const configPath = (metadata as { configPath: unknown }).configPath;
+      return typeof configPath === 'string' ? configPath : null;
+    }
+    return null;
+  } catch (_error) {
+    return null;
+  }
+}
+
+export function configPathsEqual(path1?: string, path2?: string): boolean {
+  // Both null/undefined = equal
+  if (!path1 && !path2) return true;
+  // One null, one not = not equal
+  if (!path1 || !path2) return false;
+  // Compare resolved absolute paths
+  return path.resolve(path1) === path.resolve(path2);
+}
+
+export async function hasConfigConflict(requestedConfigPath?: string): Promise<boolean> {
+  if (!(await isDaemonRunning())) {
+    return false; // No daemon running, no conflict
+  }
+  
+  const currentConfigPath = await getCurrentConfig();
+  return !configPathsEqual(currentConfigPath || undefined, requestedConfigPath);
+}
+
+export async function stopDaemon(): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const client = net.createConnection(SOCKET_PATH);
+    let resolved = false;
+
+    const handleResponse = () => {
+      if (resolved) return;
+      resolved = true;
+      client.end();
+      resolve();
+    };
+
+    client.on('connect', () => {
+      const request = JSON.stringify({ command: 'stop', args: [] });
+      client.write(request);
+    });
+
+    client.on('data', () => {
+      handleResponse();
+    });
+
+    client.on('end', () => {
+      handleResponse();
+    });
+
+    client.on('error', (error) => {
+      if (resolved) return;
+      resolved = true;
+      reject(error);
+    });
+
+    // Timeout after 2 seconds
+    setTimeout(() => {
+      if (resolved) return;
+      resolved = true;
+      client.end();
+      reject(new Error('Timeout waiting for daemon to stop'));
+    }, 2000);
+  });
+}
 
 function formatUptime(uptimeMs: number): string {
   const seconds = Math.floor(uptimeMs / 1000);
@@ -140,10 +232,17 @@ export async function startDaemon(): Promise<void> {
   process.stdout.write(`Daemon log: ${LOG_PATH}\n`);
   log(`Daemon starting... PID: ${process.pid}`);
 
+  // Clean up any stale files first
+  await cleanup();
+
+  // Get config file from environment variable
+  const configPath = process.env.LSPCLI_CONFIG_FILE;
+  
+  // Save current config metadata
+  await saveCurrentConfig(configPath);
+
   // Initialize servers with config file
   await initializeServers();
-
-  await cleanup();
 
   server = net.createServer((socket) => {
     log('Client connected');
@@ -271,6 +370,10 @@ export async function cleanup(): Promise<void> {
     const pidExists = await Bun.file(PID_FILE).exists();
     if (pidExists) {
       await Bun.file(PID_FILE).unlink();
+    }
+    const configExists = await Bun.file(CONFIG_METADATA_FILE).exists();
+    if (configExists) {
+      await Bun.file(CONFIG_METADATA_FILE).unlink();
     }
   } catch (_e) {
     // Ignore cleanup errors

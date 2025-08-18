@@ -1,0 +1,16 @@
+{
+  "servers": [
+    {
+      "id": "svelte",
+      "extensions": [".svelte"],
+      "rootPatterns": ["svelte.config.js", "package.json"],
+      "command": ["bunx", "svelte-language-server", "--stdio"],
+      "env": {
+        "NODE_ENV": "development"
+      }
+    }
+  ],
+  "languageExtensions": {
+    ".svelte": "svelte"
+  }
+}

@@ -72,9 +72,11 @@ function resolveConfigPath(configPath: string): string {
 }
 
 // Function to load config file from filesystem
-export async function loadConfigFile(configPath: string = DEFAULT_CONFIG_PATH): Promise<ConfigFile | null> {
+export async function loadConfigFile(configPath?: string): Promise<ConfigFile | null> {
+  // Use provided path, or environment variable, or default path
+  const actualConfigPath = configPath || process.env.LSPCLI_CONFIG_FILE || DEFAULT_CONFIG_PATH;
   try {
-    const resolvedPath = resolveConfigPath(configPath);
+    const resolvedPath = resolveConfigPath(actualConfigPath);
     const configFile = Bun.file(resolvedPath);
     
     if (!(await configFile.exists())) {

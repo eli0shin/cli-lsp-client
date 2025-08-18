@@ -10,6 +10,7 @@ CLI tool for getting LSP diagnostics. Uses a background daemon to keep LSP serve
 - Built in Claude Code hook to provide feedback on file edit tool calls
 - Comprehensive daemon management (`list`, `stop-all` commands)
 - Multi-project support with isolated daemon instances per directory
+- [Custom language server support via config files](#custom-language-servers-config-file)
 
 ## Supported Languages
 
@@ -96,6 +97,70 @@ ERROR at line 3, column 9:
   Source: typescript
   Code: 2322
 ```
+
+## Custom Language Servers (Config File)
+
+You can extend the built-in language servers by creating a custom configuration file. This allows you to add support for any LSP server not included by default.
+
+### Configuration File
+
+Create a config file at `~/.config/cli-lsp-client/settings.json` (default location) or use `--config-file` to specify a custom path:
+
+```json
+{
+  "servers": [
+    {
+      "id": "svelte",
+      "extensions": [".svelte"],
+      "rootPatterns": ["svelte.config.js", "package.json"],
+      "command": ["bunx", "svelte-language-server", "--stdio"],
+      "env": {
+        "NODE_ENV": "development"
+      },
+      "initialization": {
+        "settings": {
+          "svelte": {
+            "compilerWarnings": true
+          }
+        }
+      }
+    }
+  ],
+  "languageExtensions": {
+    ".svelte": "svelte"
+  }
+}
+```
+
+### Using Custom Config
+
+**Default config file location:**
+```bash
+# Uses ~/.config/cli-lsp-client/settings.json automatically
+npx cli-lsp-client diagnostics Component.svelte
+```
+
+**Custom config file location:**
+```bash
+# Specify custom config file path
+npx cli-lsp-client --config-file ./my-config.json diagnostics Component.svelte
+npx cli-lsp-client --config-file ./my-config.json hover Component.svelte myFunction
+npx cli-lsp-client --config-file ./my-config.json status
+```
+
+**Important:** When using `--config-file`, you must include it on every command. The CLI automatically restarts the daemon when switching between different config files to ensure the correct language servers are loaded.
+
+### Config File Schema
+
+- `servers`: Array of custom language server definitions
+  - `id`: Unique identifier for the server  
+  - `extensions`: File extensions this server handles (e.g. `[".svelte"]`)
+  - `rootPatterns`: Files/patterns used to detect project root (e.g. `["package.json"]`)
+  - `command`: Command array to start the LSP server (e.g. `["bunx", "svelte-language-server", "--stdio"]`)
+  - `env`: Optional environment variables for the server process
+  - `initialization`: Optional LSP initialization parameters
+
+- `languageExtensions`: Maps file extensions to LSP language identifiers
 
 ## Usage
 

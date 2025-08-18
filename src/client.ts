@@ -438,7 +438,8 @@ export async function listAllDaemons(): Promise<void> {
 
 export async function runCommand(
   command: string,
-  commandArgs: string[]
+  commandArgs: string[],
+  configFile?: string
 ): Promise<void> {
   try {
     // Handle stop-all command without daemon communication
@@ -454,7 +455,7 @@ export async function runCommand(
     }
 
     // For all other commands: check if daemon running, start if needed, send command, exit
-    const daemonStarted = await ensureDaemonRunning();
+    const daemonStarted = await ensureDaemonRunning(configFile);
 
     if (!daemonStarted) {
       process.stderr.write('Failed to start daemon\n');
