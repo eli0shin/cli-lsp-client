@@ -1,36 +1,5 @@
 import { test, describe, expect } from 'bun:test';
-import { spawn } from 'child_process';
-import { CLI_PATH, stripAnsi } from './test-utils.js';
-
-async function runHookCommand(
-  input: string
-): Promise<{ exitCode: number; stdout: string; stderr: string }> {
-  return new Promise((resolve, reject) => {
-    const proc = spawn(CLI_PATH, ['claude-code-hook'], {
-      stdio: ['pipe', 'pipe', 'pipe'],
-    });
-
-    let stdout = '';
-    let stderr = '';
-
-    proc.stdout?.on('data', (data: Buffer) => {
-      stdout += data.toString();
-    });
-
-    proc.stderr?.on('data', (data: Buffer) => {
-      stderr += data.toString();
-    });
-
-    proc.stdin?.write(input);
-    proc.stdin?.end();
-
-    proc.on('error', reject);
-
-    proc.on('close', (code) => {
-      resolve({ exitCode: code ?? 0, stdout, stderr });
-    });
-  });
-}
+import { stripAnsi, runHookCommand } from './test-utils.js';
 
 describe('Claude Code Hook', () => {
   test('should handle valid TypeScript file with errors', async () => {
