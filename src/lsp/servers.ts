@@ -5,6 +5,7 @@ import { exec } from 'child_process';
 import { promisify } from 'util';
 import { log } from '../logger.js';
 import { loadConfigFile, configServerToLSPServer } from './config.js';
+import { bunxCommand, which } from '../bun/index.js';
 
 const execAsync = promisify(exec);
 
@@ -61,7 +62,7 @@ const ALL_SERVERS: LSPServer[] = [
     id: 'typescript',
     extensions: ['.ts', '.tsx', '.js', '.jsx', '.mjs', '.cjs', '.mts', '.cts'],
     rootPatterns: ['tsconfig.json', 'package.json', 'jsconfig.json'],
-    command: ['bunx', 'typescript-language-server', '--stdio'],
+    command: bunxCommand('typescript-language-server', '--stdio'),
     env: { BUN_BE_BUN: '1' },
   },
   {
@@ -75,7 +76,7 @@ const ALL_SERVERS: LSPServer[] = [
       'Pipfile',
       'pyrightconfig.json',
     ],
-    command: ['bunx', 'pyright-langserver', '--stdio'],
+    command: bunxCommand('pyright-langserver', '--stdio'),
     env: { BUN_BE_BUN: '1' },
   },
   {
@@ -89,14 +90,14 @@ const ALL_SERVERS: LSPServer[] = [
     id: 'json',
     extensions: ['.json', '.jsonc'],
     rootPatterns: ['package.json', 'tsconfig.json', '.vscode'],
-    command: ['bunx', 'vscode-json-language-server', '--stdio'],
+    command: bunxCommand('vscode-json-language-server', '--stdio'),
     env: { BUN_BE_BUN: '1' },
   },
   {
     id: 'css',
     extensions: ['.css', '.scss', '.sass', '.less'],
     rootPatterns: ['package.json', '.vscode'],
-    command: ['bunx', 'vscode-css-language-server', '--stdio'],
+    command: bunxCommand('vscode-css-language-server', '--stdio'),
     env: { BUN_BE_BUN: '1' },
   },
   {
@@ -110,14 +111,14 @@ const ALL_SERVERS: LSPServer[] = [
       'k8s',
       'kubernetes',
     ],
-    command: ['bunx', 'yaml-language-server', '--stdio'],
+    command: bunxCommand('yaml-language-server', '--stdio'),
     env: { BUN_BE_BUN: '1' },
   },
   {
     id: 'bash',
     extensions: ['.sh', '.bash', '.zsh'],
     rootPatterns: ['Makefile', '.shellcheckrc'],
-    command: ['bunx', 'bash-language-server', 'start'],
+    command: bunxCommand('bash-language-server', 'start'),
     env: { BUN_BE_BUN: '1' },
   },
   {
@@ -163,13 +164,12 @@ const ALL_SERVERS: LSPServer[] = [
       'schema.graphql',
       'package.json',
     ],
-    command: [
-      'bunx',
+    command: bunxCommand(
       'graphql-language-service-cli',
       'server',
       '--method',
-      'stream',
-    ],
+      'stream'
+    ),
     env: { BUN_BE_BUN: '1' },
   },
   {
@@ -207,15 +207,20 @@ const ALL_SERVERS: LSPServer[] = [
 async function ensureVscodeExtracted(): Promise<boolean> {
   try {
     // Check if already installed by trying to run one of the servers
-    await execAsync('bunx vscode-css-language-server --help', {
-      timeout: 5000,
-    });
+    await execAsync(
+      `${bunxCommand('vscode-css-language-server', '--help').join(' ')}`,
+      {
+        env: { BUN_BE_BUN: '1' },
+        timeout: 5000,
+      }
+    );
     return true;
   } catch {
     // Try to install it
     try {
       log('Installing vscode-langservers-extracted...');
-      await execAsync('bun add -g vscode-langservers-extracted', {
+      await execAsync(`${which} add -g vscode-langservers-extracted`, {
+        env: { BUN_BE_BUN: '1' },
         timeout: 30000,
       });
       return true;
@@ -240,8 +245,13 @@ async function getAvailableServers(): Promise<LSPServer[]> {
       continue;
     }
 
-    // Auto-installable servers (via bunx) are always available
-    if (server.command[0] === 'bunx') {
+    // Auto-installable servers (via which(), bunx, or npx) are always available
+    const firstCommand = server.command[0];
+    if (
+      firstCommand === which() ||
+      firstCommand === 'bunx' ||
+      firstCommand === 'npx'
+    ) {
       availableServers.push(server);
       continue;
     }
@@ -282,14 +292,16 @@ let cachedServers: LSPServer[] | null = null;
 export async function initializeServers(): Promise<void> {
   try {
     const configFile = await loadConfigFile();
-    
+
     if (configFile?.servers) {
       log(`Loading ${configFile.servers.length} servers from config file`);
       const configServers = configFile.servers.map(configServerToLSPServer);
-      
+
       // Check for ID conflicts and handle them
       for (const configServer of configServers) {
-        const existingIndex = ALL_SERVERS.findIndex(s => s.id === configServer.id);
+        const existingIndex = ALL_SERVERS.findIndex(
+          (s) => s.id === configServer.id
+        );
         if (existingIndex >= 0) {
           log(`Config server '${configServer.id}' overrides built-in server`);
           ALL_SERVERS[existingIndex] = configServer; // Replace built-in with config
@@ -302,7 +314,9 @@ export async function initializeServers(): Promise<void> {
       log('No config file found, using built-in servers only');
     }
   } catch (error) {
-    log(`Error loading config file: ${error instanceof Error ? error.message : String(error)}`);
+    log(
+      `Error loading config file: ${error instanceof Error ? error.message : String(error)}`
+    );
     log('Continuing with built-in servers only');
   }
 }
