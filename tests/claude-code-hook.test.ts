@@ -1,28 +1,35 @@
 import { test, describe, expect } from 'bun:test';
-import { spawn } from 'bun';
+import { spawn } from 'child_process';
 import { CLI_PATH, stripAnsi } from './test-utils.js';
 
 async function runHookCommand(
   input: string
 ): Promise<{ exitCode: number; stdout: string; stderr: string }> {
-  const proc = spawn([CLI_PATH, 'claude-code-hook'], {
-    stdin: 'pipe',
-    stdout: 'pipe',
-    stderr: 'pipe',
+  return new Promise((resolve, reject) => {
+    const proc = spawn(CLI_PATH, ['claude-code-hook'], {
+      stdio: ['pipe', 'pipe', 'pipe'],
+    });
+
+    let stdout = '';
+    let stderr = '';
+
+    proc.stdout?.on('data', (data: Buffer) => {
+      stdout += data.toString();
+    });
+
+    proc.stderr?.on('data', (data: Buffer) => {
+      stderr += data.toString();
+    });
+
+    proc.stdin?.write(input);
+    proc.stdin?.end();
+
+    proc.on('error', reject);
+
+    proc.on('close', (code) => {
+      resolve({ exitCode: code ?? 0, stdout, stderr });
+    });
   });
-
-  proc.stdin?.write(input);
-  proc.stdin?.end();
-
-  const output = await new Response(proc.stdout).text();
-  const error = await new Response(proc.stderr).text();
-  const result = await proc.exited;
-
-  return {
-    exitCode: result,
-    stdout: output,
-    stderr: error,
-  };
 }
 
 describe('Claude Code Hook', () => {
