@@ -9,6 +9,7 @@ export const ConfigLSPServerSchema = z.object({
   extensions: z.array(z.string().min(1)).min(1, 'At least one extension is required'),
   rootPatterns: z.array(z.string().min(1)).min(1, 'At least one root pattern is required'),
   command: z.array(z.string().min(1)).min(1, 'Command must have at least one element'),
+  packageName: z.string().optional(), // Optional: npm package name when it differs from command
   env: z.record(z.string(), z.string()).optional(),
   initialization: z.record(z.string(), z.unknown()).optional(),
 });
@@ -37,6 +38,7 @@ export function configServerToLSPServer(configServer: ConfigLSPServer): LSPServe
     extensions: configServer.extensions,
     rootPatterns: configServer.rootPatterns,
     command: configServer.command,
+    packageName: configServer.packageName,
     env: configServer.env,
     initialization: configServer.initialization,
     // dynamicArgs is not supported in config files

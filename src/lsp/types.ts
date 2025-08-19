@@ -40,6 +40,7 @@ export type LSPServer = {
   extensions: string[];
   rootPatterns: string[];
   command: string[];
+  packageName?: string; // Optional: npm package name when it differs from command
   env?: Record<string, string>;
   initialization?: Record<string, unknown>;
   dynamicArgs?: (root: string) => string[];

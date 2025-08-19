@@ -48,7 +48,7 @@ Greet a person by name.`);
     expect(result.exitCode).toBe(0);
     const output = stripAnsi(result.stdout.toString());
     expect(output)
-      .toBe(`Location: node_modules/pyright/dist/typeshed-fallback/stdlib/builtins.pyi:353:7
+      .toBe(`Location: ../../.lsp-cli-client/packages/node_modules/pyright/dist/typeshed-fallback/stdlib/builtins.pyi:353:7
 \`\`\`python
 (class) float
 \`\`\``);
