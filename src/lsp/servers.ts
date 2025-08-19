@@ -249,12 +249,18 @@ async function getAvailableServers(): Promise<LSPServer[]> {
 }
 
 let cachedServers: LSPServer[] | null = null;
+let configLanguageExtensions: Record<string, string> | null = null;
 
 // Initialize servers by loading config file and merging with built-in servers
 // This should be called once at daemon startup
 export async function initializeServers(): Promise<void> {
   try {
     const configFile = await loadConfigFile();
+
+    if (configFile?.languageExtensions) {
+      log(`Loading language extensions from config file`);
+      configLanguageExtensions = configFile.languageExtensions;
+    }
 
     if (configFile?.servers) {
       log(`Loading ${configFile.servers.length} servers from config file`);
@@ -293,6 +299,10 @@ export async function getApplicableServers(
 
   const ext = path.extname(filePath);
   return cachedServers.filter((server) => server.extensions.includes(ext));
+}
+
+export function getConfigLanguageExtensions(): Record<string, string> | null {
+  return configLanguageExtensions;
 }
 
 export async function getAllAvailableServers(): Promise<LSPServer[]> {

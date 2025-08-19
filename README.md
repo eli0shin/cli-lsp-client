@@ -25,6 +25,7 @@ CLI tool for getting LSP diagnostics. Uses a background daemon to keep LSP serve
 | GraphQL               | `graphql-language-service-cli` | ✓ (via bunx)                         | `.graphql`, `.gql`                                                                                                                           |
 | **R**                 | **R languageserver**           | **✗**                                | **`.r`, `.R`, `.rmd`, `.Rmd` - see [R Installation](#r-installation-guide) below**                                                           |
 | **C#**                | **OmniSharp-Roslyn**           | **✗**                                | **`.cs` - see [C# Installation](#c-installation-guide) below**                                                                               |
+| **Swift**             | **SourceKit-LSP**              | **✗**                                | **`.swift` - see [Swift Configuration](#swift-configuration) below**                                                                         |
 | Go                    | `gopls`                        | ✗                                    | Requires manual install: `go install golang.org/x/tools/gopls@latest`                                                                        |
 | Java                  | `jdtls` (Eclipse JDT)          | ✗                                    | `.java` - see [Java Installation](#java-installation-guide) below                                                                            |
 | Lua                   | `lua-language-server`          | ✗                                    | `.lua` - requires manual install via package manager (brew, scoop) or from [releases](https://github.com/LuaLS/lua-language-server/releases) |
@@ -40,7 +41,7 @@ CLI tool for getting LSP diagnostics. Uses a background daemon to keep LSP serve
 
 ### Real-time Diagnostics Hook
 
-Get instant diagnostic feedback for TypeScript, Python, JSON, CSS, YAML, Bash, GraphQL, R, C#, Go, Java, and Lua files as you edit in Claude Code.
+Get instant diagnostic feedback for TypeScript, Python, JSON, CSS, YAML, Bash, GraphQL, R, C#, Swift, Go, Java, and Lua files as you edit in Claude Code.
 
 #### Setup
 
@@ -135,12 +136,14 @@ Create a config file at `~/.config/cli-lsp-client/settings.json` (default locati
 ### Using Custom Config
 
 **Default config file location:**
+
 ```bash
 # Uses ~/.config/cli-lsp-client/settings.json automatically
 npx cli-lsp-client diagnostics Component.svelte
 ```
 
 **Custom config file location:**
+
 ```bash
 # Specify custom config file path
 npx cli-lsp-client --config-file ./my-config.json diagnostics Component.svelte
@@ -153,7 +156,7 @@ npx cli-lsp-client --config-file ./my-config.json status
 ### Config File Schema
 
 - `servers`: Array of custom language server definitions
-  - `id`: Unique identifier for the server  
+  - `id`: Unique identifier for the server
   - `extensions`: File extensions this server handles (e.g. `[".svelte"]`)
   - `rootPatterns`: Files/patterns used to detect project root (e.g. `["package.json"]`)
   - `command`: Command array to start the LSP server (e.g. `["bunx", "svelte-language-server", "--stdio"]`)
@@ -175,6 +178,9 @@ npx cli-lsp-client diagnostics app.py
 npx cli-lsp-client diagnostics main.go
 npx cli-lsp-client diagnostics analysis.R
 npx cli-lsp-client diagnostics Program.cs
+
+# Check Swift files (requires config file)
+npx cli-lsp-client diagnostics Sources/App/main.swift
 ```
 
 Exit codes: 0 for no issues, 2 for issues found.
@@ -197,6 +203,9 @@ npx cli-lsp-client hover src/main.ts myFunction
 npx cli-lsp-client hover app.py MyClass
 npx cli-lsp-client hover analysis.R mean
 npx cli-lsp-client hover Program.cs Console
+
+# Get hover info for Swift symbols (requires config file)
+npx cli-lsp-client hover Sources/App/main.swift greetUser
 ```
 
 ````bash
@@ -320,11 +329,13 @@ The R language server requires R runtime and the `languageserver` package:
 1. **Install R**: Download and install R from [CRAN](https://cran.r-project.org/) or use a package manager:
 
    **macOS (Homebrew)**:
+
    ```bash
    brew install r
    ```
 
    **Ubuntu/Debian**:
+
    ```bash
    sudo apt-get update
    sudo apt-get install r-base
@@ -333,11 +344,13 @@ The R language server requires R runtime and the `languageserver` package:
    **Windows**: Download installer from [CRAN Windows](https://cran.r-project.org/bin/windows/base/)
 
 2. **Install R languageserver package**: Open R and run:
+
    ```r
    install.packages("languageserver")
    ```
 
    Or from command line:
+
    ```bash
    R --slave -e 'install.packages("languageserver", repos="https://cran.rstudio.com/")'
    ```
@@ -345,6 +358,7 @@ The R language server requires R runtime and the `languageserver` package:
 ### Verification
 
 Test that the language server works:
+
 ```bash
 R --slave -e 'languageserver::run()'
 ```
@@ -352,8 +366,9 @@ R --slave -e 'languageserver::run()'
 ### Project Detection
 
 The R LSP automatically detects R projects based on these files:
+
 - `DESCRIPTION` (R packages)
-- `NAMESPACE` (R packages) 
+- `NAMESPACE` (R packages)
 - `.Rproj` (RStudio projects)
 - `renv.lock` (renv dependency management)
 - Any `.r`, `.R`, `.rmd`, `.Rmd` files
@@ -369,11 +384,13 @@ The C# language server requires .NET SDK and OmniSharp-Roslyn:
 1. **Install .NET SDK**: Download .NET 6.0+ from [Microsoft .NET](https://dotnet.microsoft.com/download) or use a package manager:
 
    **macOS (Homebrew)**:
+
    ```bash
    brew install dotnet
    ```
 
    **Ubuntu/Debian**:
+
    ```bash
    # Add Microsoft package repository
    wget https://packages.microsoft.com/config/ubuntu/$(lsb_release -rs)/packages-microsoft-prod.deb -O packages-microsoft-prod.deb
@@ -387,11 +404,12 @@ The C# language server requires .NET SDK and OmniSharp-Roslyn:
 2. **Install OmniSharp-Roslyn**: Download the latest release from [OmniSharp releases](https://github.com/OmniSharp/omnisharp-roslyn/releases):
 
    **Automatic script** (recommended):
+
    ```bash
    # Download and extract OmniSharp to ~/.omnisharp/
    mkdir -p ~/.omnisharp
    curl -L https://github.com/OmniSharp/omnisharp-roslyn/releases/latest/download/omnisharp-osx-arm64-net6.0.tar.gz | tar -xz -C ~/.omnisharp/
-   
+
    # Create symlink to make omnisharp available in PATH
    sudo ln -sf ~/.omnisharp/OmniSharp /usr/local/bin/omnisharp
    ```
@@ -404,11 +422,13 @@ The C# language server requires .NET SDK and OmniSharp-Roslyn:
 3. **Set environment variables**:
 
    **Fish shell**:
+
    ```bash
    set -Ux DOTNET_ROOT ~/.dotnet
    ```
 
    **Bash/Zsh**:
+
    ```bash
    echo 'export DOTNET_ROOT=~/.dotnet' >> ~/.bashrc  # or ~/.zshrc
    source ~/.bashrc  # or ~/.zshrc
@@ -419,6 +439,7 @@ The C# language server requires .NET SDK and OmniSharp-Roslyn:
 ### Verification
 
 Test that OmniSharp works:
+
 ```bash
 # Verify DOTNET_ROOT is set
 echo $DOTNET_ROOT
@@ -430,6 +451,7 @@ omnisharp --help
 ### Project Detection
 
 The C# LSP automatically detects C# projects based on these files:
+
 - `*.sln` (Solution files)
 - `*.csproj` (Project files)
 - `project.json` (Legacy project files)
@@ -437,6 +459,48 @@ The C# LSP automatically detects C# projects based on these files:
 - Any `.cs` files
 
 For more information, see the [OmniSharp documentation](https://github.com/OmniSharp/omnisharp-roslyn).
+
+## Swift Configuration
+
+Swift language support is available through SourceKit-LSP, which is included with Xcode Command Line Tools. Support for swift and other LSPs can be added via a config file.
+
+### Prerequisites
+
+**macOS (with Xcode Command Line Tools)**:
+
+```bash
+# Check if SourceKit-LSP is available
+xcrun --find sourcekit-lsp
+```
+
+**Alternative toolchains**: If using Swift toolchains from swift.org, SourceKit-LSP is included and can be run with:
+
+```bash
+xcrun --toolchain swift sourcekit-lsp
+```
+
+### Configuration
+
+Create a config file at `~/.config/cli-lsp-client/settings.json`:
+
+```json
+{
+  "servers": [
+    {
+      "id": "sourcekit_lsp",
+      "extensions": [".swift"],
+      "rootPatterns": ["Package.swift", ".xcodeproj", ".xcworkspace"],
+      "command": ["xcrun", "sourcekit-lsp"],
+      "env": {}
+    }
+  ],
+  "languageExtensions": {
+    ".swift": "swift"
+  }
+}
+```
+
+For more information about SourceKit-LSP, see the [official documentation](https://github.com/swiftlang/sourcekit-lsp).
 
 ### Additional Commands
 
@@ -447,7 +511,7 @@ npx cli-lsp-client start
 # Start servers for specific directory
 npx cli-lsp-client start /path/to/project
 
-# View daemon logs
+# View daemon log file path
 npx cli-lsp-client logs
 ```
 

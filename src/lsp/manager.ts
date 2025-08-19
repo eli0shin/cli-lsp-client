@@ -13,6 +13,7 @@ import {
   getApplicableServers,
   getProjectRoot,
   spawnServer,
+  getConfigLanguageExtensions,
 } from './servers.js';
 import { log } from '../logger.js';
 
@@ -141,7 +142,7 @@ export class LSPManager {
           }
 
           log(`About to call createLSPClient for ${server.id}`);
-          client = await createLSPClient(server.id, serverHandle, root);
+          client = await createLSPClient(server.id, serverHandle, root, getConfigLanguageExtensions() || undefined);
           log(`createLSPClient returned for ${server.id}`);
           this.clients.set(clientKey, client);
           log(`Created and cached new client for ${clientKey}`);
@@ -491,7 +492,7 @@ export class LSPManager {
           return null;
         }
 
-        client = await createLSPClient(server.id, serverHandle, root);
+        client = await createLSPClient(server.id, serverHandle, root, getConfigLanguageExtensions() || undefined);
         this.clients.set(clientKey, client);
       } catch (error) {
         log(

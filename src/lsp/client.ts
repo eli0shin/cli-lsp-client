@@ -22,11 +22,13 @@ import {
 import type { ServerHandle } from './servers.js';
 import { LANGUAGE_EXTENSIONS } from './language.js';
 import { log } from '../logger.js';
+import type { LanguageExtensionMapping } from './config.js';
 
 export async function createLSPClient(
   serverID: string,
   serverHandle: ServerHandle,
-  root: string
+  root: string,
+  configLanguageExtensions?: LanguageExtensionMapping
 ): Promise<LSPClient> {
   log(`=== ENTERING createLSPClient for ${serverID} ===`);
   log(`Creating LSP client for ${serverID}`);
@@ -174,7 +176,10 @@ export async function createLSPClient(
       const file = Bun.file(absolutePath);
       const text = await file.text();
       const extension = path.extname(absolutePath);
-      const languageId = LANGUAGE_EXTENSIONS[extension] || 'plaintext';
+      // Use config language extensions if available, otherwise fall back to defaults
+      const languageId = configLanguageExtensions?.[extension] || 
+                        LANGUAGE_EXTENSIONS[extension] || 
+                        'plaintext';
 
       log(`Sending didOpen for ${absolutePath} (${languageId})`);
       // Always use version 0 for didOpen
