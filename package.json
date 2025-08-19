@@ -29,7 +29,8 @@
     "format:fix": "prettier --write .",
     "test": "bun test",
     "test:watch": "bun test tests/ --watch",
-    "prepublish": "bun test && bun run build"
+    "prepublishOnly": "bun test && bun run build",
+    "postinstall": "node scripts/postinstall.js"
   },
   "devDependencies": {
     "@eslint/js": "^9.33.0",
@@ -44,14 +45,5 @@
     "prettier": "3.6.2",
     "typescript": "latest",
     "typescript-eslint": "^8.39.1"
-  },
-  "peerDependencies": {
-    "typescript": "^5.0.0"
-  },
-  "dependencies": {
-    "pyright": "^1.1.403",
-    "vscode-jsonrpc": "^8.2.1",
-    "vscode-languageserver-types": "^3.17.5",
-    "zod": "^4.0.17"
   }
 }

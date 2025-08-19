@@ -16,6 +16,7 @@ export default tseslint.config(
       'coverage/',
       '*.js',
       'tests/fixtures/**/*',
+      'scripts/',
     ],
   },
 
