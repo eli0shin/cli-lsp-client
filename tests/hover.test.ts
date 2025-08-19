@@ -117,7 +117,7 @@ type HoverResult = {
     expect(result.exitCode).toBe(0);
     const output = stripAnsi(result.stdout);
     // When hovering over an import, we follow to the actual type definition
-    expect(output).toBe(`Location: src/lsp/types.ts:15:13
+    expect(output).toBe(`Location: src/lsp/types.ts:16:13
 \`\`\`typescript
 type Diagnostic = VSCodeDiagnostic
 \`\`\``);
