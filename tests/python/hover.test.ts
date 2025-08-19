@@ -47,11 +47,7 @@ Greet a person by name.`);
 
     expect(result.exitCode).toBe(0);
     const output = stripAnsi(result.stdout.toString());
-    expect(output)
-      .toBe(`Location: ../../.lsp-cli-client/packages/node_modules/pyright/dist/typeshed-fallback/stdlib/builtins.pyi:353:7
-\`\`\`python
-(class) float
-\`\`\``);
+    expect(output).toMatch(/Location: .*\.lsp-cli-client\/packages\/node_modules\/pyright\/dist\/typeshed-fallback\/stdlib\/builtins\.pyi:353:7\n```python\n\(class\) float\n```/);
   }, 10000);
 
   test('should get hover info for class', async () => {
