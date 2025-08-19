@@ -25,6 +25,7 @@ CLI tool for getting LSP diagnostics. Uses a background daemon to keep LSP serve
 | GraphQL               | `graphql-language-service-cli` | ✓ (via bunx)                         | `.graphql`, `.gql`                                                                                                                           |
 | **R**                 | **R languageserver**           | **✗**                                | **`.r`, `.R`, `.rmd`, `.Rmd` - see [R Installation](#r-installation-guide) below**                                                           |
 | **C#**                | **OmniSharp-Roslyn**           | **✗**                                | **`.cs` - see [C# Installation](#c-installation-guide) below**                                                                               |
+| **Swift**             | **SourceKit-LSP**              | **✗**                                | **`.swift` - see [Swift Configuration](#swift-configuration) below**                                                                         |
 | Go                    | `gopls`                        | ✗                                    | Requires manual install: `go install golang.org/x/tools/gopls@latest`                                                                        |
 | Java                  | `jdtls` (Eclipse JDT)          | ✗                                    | `.java` - see [Java Installation](#java-installation-guide) below                                                                            |
 | Lua                   | `lua-language-server`          | ✗                                    | `.lua` - requires manual install via package manager (brew, scoop) or from [releases](https://github.com/LuaLS/lua-language-server/releases) |
@@ -40,7 +41,7 @@ CLI tool for getting LSP diagnostics. Uses a background daemon to keep LSP serve
 
 ### Real-time Diagnostics Hook
 
-Get instant diagnostic feedback for TypeScript, Python, JSON, CSS, YAML, Bash, GraphQL, R, C#, Go, Java, and Lua files as you edit in Claude Code.
+Get instant diagnostic feedback for TypeScript, Python, JSON, CSS, YAML, Bash, GraphQL, R, C#, Swift, Go, Java, and Lua files as you edit in Claude Code.
 
 #### Setup
 
@@ -175,6 +176,9 @@ npx cli-lsp-client diagnostics app.py
 npx cli-lsp-client diagnostics main.go
 npx cli-lsp-client diagnostics analysis.R
 npx cli-lsp-client diagnostics Program.cs
+
+# Check Swift files (requires config file)
+npx cli-lsp-client diagnostics Sources/App/main.swift
 ```
 
 Exit codes: 0 for no issues, 2 for issues found.
@@ -197,6 +201,9 @@ npx cli-lsp-client hover src/main.ts myFunction
 npx cli-lsp-client hover app.py MyClass
 npx cli-lsp-client hover analysis.R mean
 npx cli-lsp-client hover Program.cs Console
+
+# Get hover info for Swift symbols (requires config file)
+npx cli-lsp-client hover Sources/App/main.swift greetUser
 ```
 
 ````bash
@@ -437,6 +444,74 @@ The C# LSP automatically detects C# projects based on these files:
 - Any `.cs` files
 
 For more information, see the [OmniSharp documentation](https://github.com/OmniSharp/omnisharp-roslyn).
+
+## Swift Configuration
+
+Swift language support is available through SourceKit-LSP, which is included with Xcode Command Line Tools. Since Swift projects can have complex build requirements, Swift support is provided via custom configuration files.
+
+### Prerequisites
+
+**macOS (with Xcode Command Line Tools)**:
+```bash
+# Check if SourceKit-LSP is available
+xcrun --find sourcekit-lsp
+```
+
+**Alternative toolchains**: If using Swift toolchains from swift.org, SourceKit-LSP is included and can be run with:
+```bash
+xcrun --toolchain swift sourcekit-lsp
+```
+
+### Configuration
+
+Create a config file at `~/.config/cli-lsp-client/settings.json`:
+
+```json
+{
+  "servers": [
+    {
+      "id": "sourcekit_lsp",
+      "extensions": [".swift"],
+      "rootPatterns": ["Package.swift", ".xcodeproj", ".xcworkspace"],
+      "command": ["xcrun", "sourcekit-lsp"],
+      "env": {}
+    }
+  ],
+  "languageExtensions": {
+    ".swift": "swift"
+  }
+}
+```
+
+### Project Structure
+
+SourceKit-LSP works best with proper Swift package structure:
+
+```
+MySwiftProject/
+├── Package.swift
+└── Sources/
+    └── MySwiftProject/
+        ├── main.swift
+        └── other-files.swift
+```
+
+### Important Notes
+
+- **Build Dependencies**: SourceKit-LSP provides the most comprehensive diagnostics for projects that have been built with `swift build`
+- **Project Root Detection**: The language server uses `Package.swift`, `.xcodeproj`, or `.xcworkspace` files to detect project roots
+- **Language Identifier**: The config file ensures Swift files are properly identified as `"swift"` language instead of `"plaintext"`
+- **Cross-Module Features**: Advanced features like cross-module jump-to-definition work best after building the project
+
+### Verification
+
+Test that SourceKit-LSP is working:
+```bash
+# Check basic syntax error detection
+npx cli-lsp-client diagnostics broken.swift
+```
+
+For more information about SourceKit-LSP, see the [official documentation](https://github.com/swiftlang/sourcekit-lsp).
 
 ### Additional Commands
 

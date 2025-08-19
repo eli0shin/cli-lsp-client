@@ -40,4 +40,5 @@ export const LANGUAGE_EXTENSIONS: Record<string, string> = {
   '.R': 'r',
   '.rmd': 'rmd',
   '.Rmd': 'rmd',
+  '.swift': 'swift',
 };

@@ -1,0 +1,14 @@
+{
+  "servers": [
+    {
+      "id": "sourcekit_lsp",
+      "extensions": [".swift"],
+      "rootPatterns": ["Package.swift", ".xcodeproj", ".xcworkspace"],
+      "command": ["xcrun", "sourcekit-lsp"],
+      "env": {}
+    }
+  ],
+  "languageExtensions": {
+    ".swift": "swift"
+  }
+}

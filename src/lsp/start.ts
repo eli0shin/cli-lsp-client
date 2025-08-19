@@ -1,5 +1,5 @@
 import type { LSPServer } from './types.js';
-import { getServerById, spawnServer, getProjectRoot } from './servers.js';
+import { getServerById, spawnServer, getProjectRoot, getConfigLanguageExtensions } from './servers.js';
 import { createLSPClient } from './client.js';
 import { log } from '../logger.js';
 import { lspManager } from './manager.js';
@@ -292,7 +292,7 @@ export async function executeStart(directory?: string): Promise<string[]> {
       log(`Server spawned: ${server.id}`);
       log(`About to call createLSPClient for ${server.id} with root ${root}`);
       log(`ServerHandle process PID: ${serverHandle.process.pid}`);
-      const client = await createLSPClient(server.id, serverHandle, root);
+      const client = await createLSPClient(server.id, serverHandle, root, getConfigLanguageExtensions() || undefined);
       log(`Client created for: ${server.id}`);
 
       // Store client in manager immediately
