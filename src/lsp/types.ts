@@ -8,6 +8,7 @@ import type {
   MarkupContent,
   Location,
   LocationLink,
+  MarkedString,
 } from 'vscode-languageserver-types';
 import type { MessageConnection } from 'vscode-jsonrpc/node';
 import { z } from 'zod';
@@ -22,6 +23,7 @@ export type {
   MarkupContent,
   Location,
   LocationLink,
+  MarkedString,
 };
 
 export type Request = {
@@ -40,6 +42,7 @@ export type LSPServer = {
   extensions: string[];
   rootPatterns: string[];
   command: string[];
+  packageName?: string; // Optional: npm package name when it differs from command
   env?: Record<string, string>;
   initialization?: Record<string, unknown>;
   dynamicArgs?: (root: string) => string[];

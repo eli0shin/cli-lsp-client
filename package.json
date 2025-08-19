@@ -1,36 +1,11 @@
 {
   "name": "cli-lsp-client",
   "version": "1.6.0",
-  "description": "CLI tool for fast LSP diagnostics with background daemon and multi-project support",
-  "type": "module",
-  "main": "src/cli.ts",
-  "license": "MIT",
-  "bin": {
-    "cli-lsp-client": "cli-lsp-client"
-  },
-  "files": [
-    "cli-lsp-client"
-  ],
   "repository": {
     "type": "git",
     "url": "git+https://github.com/eli0shin/cli-lsp-client.git"
   },
-  "homepage": "https://github.com/eli0shin/cli-lsp-client#readme",
-  "bugs": {
-    "url": "https://github.com/eli0shin/cli-lsp-client/issues"
-  },
-  "scripts": {
-    "build": "bun build src/cli.ts --compile --outfile cli-lsp-client",
-    "dev": "bun run src/cli.ts",
-    "typecheck": "bun --bun tsc --noEmit",
-    "lint": "eslint .",
-    "lint:fix": "eslint . --fix",
-    "format": "prettier --check .",
-    "format:fix": "prettier --write .",
-    "test": "bun test",
-    "test:watch": "bun test tests/ --watch",
-    "prepublish": "bun test && bun run build"
-  },
+  "main": "src/cli.ts",
   "devDependencies": {
     "@eslint/js": "^9.33.0",
     "@types/bun": "latest",
@@ -43,15 +18,35 @@
     "globals": "^16.3.0",
     "prettier": "3.6.2",
     "typescript": "latest",
-    "typescript-eslint": "^8.39.1"
-  },
-  "peerDependencies": {
-    "typescript": "^5.0.0"
-  },
-  "dependencies": {
-    "pyright": "^1.1.403",
+    "typescript-eslint": "^8.39.1",
     "vscode-jsonrpc": "^8.2.1",
     "vscode-languageserver-types": "^3.17.5",
     "zod": "^4.0.17"
-  }
+  },
+  "bin": {
+    "cli-lsp-client": "cli-lsp-client"
+  },
+  "bugs": {
+    "url": "https://github.com/eli0shin/cli-lsp-client/issues"
+  },
+  "description": "CLI tool supporting claude code hooks for fast LSP diagnostics with background daemon and multi-project support",
+  "files": [
+    "cli-lsp-client"
+  ],
+  "homepage": "https://github.com/eli0shin/cli-lsp-client#readme",
+  "license": "MIT",
+  "scripts": {
+    "build": "bun build src/cli.ts --compile --outfile cli-lsp-client",
+    "dev": "bun run src/cli.ts",
+    "typecheck": "bun tsc --noEmit",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --check .",
+    "format:fix": "prettier --write .",
+    "test": "bun test",
+    "test:watch": "bun test tests/ --watch",
+    "prepublishOnly": "bun test && bun run build",
+    "postinstall": "node scripts/postinstall.js"
+  },
+  "type": "module"
 }

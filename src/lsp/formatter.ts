@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import type { Diagnostic, HoverResult, Hover } from './types.js';
+import type { Diagnostic, HoverResult, Hover, MarkedString } from './types.js';
 
 const SEVERITY_NAMES = {
   1: 'ERROR',
@@ -152,7 +152,7 @@ function formatHoverContent(hover: Hover): string {
     content = hover.contents;
   } else if (Array.isArray(hover.contents)) {
     content = hover.contents
-      .map((c) => (typeof c === 'string' ? c : c.value))
+      .map((c: string | MarkedString) => (typeof c === 'string' ? c : c.value))
       .join('\n\n');
   } else if ('kind' in hover.contents) {
     content = hover.contents.value;

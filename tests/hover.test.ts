@@ -90,17 +90,17 @@ Greets a person by name
   }, 10000);
 
   test('should get hover info for imported symbols', async () => {
-    // Test with HoverResult which is imported in formatter.ts
-    const result = await runHover('src/lsp/formatter.ts', 'HoverResult');
+    // Test with HoverResult which is imported in import-example.ts
+    const result = await runHover('tests/fixtures/typescript/valid/import-example.ts', 'HoverResult');
 
     expect(result.exitCode).toBe(0);
     const output = stripAnsi(result.stdout);
     // When hovering over an import, we follow to the actual type definition
-    expect(output).toBe(`Location: src/lsp/types.ts:48:13
+    expect(output).toBe(`Location: tests/fixtures/typescript/valid/types.ts:1:13
 \`\`\`typescript
 type HoverResult = {
     symbol: string;
-    hover: Hover;
+    hover: string;
     location: {
         file: string;
         line: number;
@@ -117,7 +117,7 @@ type HoverResult = {
     expect(result.exitCode).toBe(0);
     const output = stripAnsi(result.stdout);
     // When hovering over an import, we follow to the actual type definition
-    expect(output).toBe(`Location: src/lsp/types.ts:15:13
+    expect(output).toBe(`Location: src/lsp/types.ts:16:13
 \`\`\`typescript
 type Diagnostic = VSCodeDiagnostic
 \`\`\``);
