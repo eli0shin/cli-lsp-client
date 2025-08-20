@@ -222,6 +222,120 @@ const config: {
 \`\`\``);
   }, 10000);
 
+  test('should expand interface properties instead of showing just interface name', async () => {
+    const result = await runHover(
+      'tests/fixtures/typescript/valid/interface-expansion.ts',
+      'Person'
+    );
+
+    expect(result.exitCode).toBe(0);
+    const output = stripAnsi(result.stdout);
+    // Should show expanded interface with all properties and their types
+    expect(output)
+      .toBe(`Location: tests/fixtures/typescript/valid/interface-expansion.ts:6:11
+interface Person {
+  address: {
+    street: string;
+    city: string;
+    country: string;
+}
+  age: number;
+  createdAt: Date;
+  email: string;
+  id: number;
+  isActive: boolean;
+  metadata: Record<string, unknown> | undefined;
+  name: string;
+  tags: string[]
+}`);
+  }, 10000);
+
+  test('should handle large truncated types by showing full structure', async () => {
+    const result = await runHover(
+      'tests/fixtures/typescript/valid/truncated-type.ts',
+      'ServerCapabilities'
+    );
+
+    expect(result.exitCode).toBe(0);
+    const output = stripAnsi(result.stdout);
+    // TypeScript LSP server truncates very large types with "... N more ..."
+    // This is a limitation of the TypeScript language server itself
+    expect(output)
+      .toBe(`Location: tests/fixtures/typescript/valid/truncated-type.ts:6:6
+\`\`\`typescript
+type ServerCapabilities = {
+    textDocumentSync?: number | {
+        openClose?: boolean;
+        change?: number;
+        willSave?: boolean;
+        willSaveWaitUntil?: boolean;
+        save?: boolean | {
+            includeText?: boolean;
+        };
+    };
+    diagnosticProvider?: boolean | {
+        interFileDependencies?: boolean;
+        workspaceDiagnostics?: boolean;
+        workDoneProgress?: boolean;
+    };
+    completionProvider?: {
+        triggerCharacters?: string[];
+        allCommitCharacters?: string[];
+        resolveProvider?: boolean;
+        completionItem?: {
+            labelDetailsSupport?: boolean;
+        };
+    };
+    ... 18 more ...;
+    workspace?: {
+        workspaceFolders?: {
+            supported?: boolean;
+            changeNotifications?: string | boolean;
+        };
+        fileOperations?: {
+            didCreate?: {
+                filters: Array<{
+                    glob: string;
+                    matches?: string;
+                }>;
+            };
+            willCreate?: {
+                filters: Array<{
+                    glob: string;
+                    matches?: string;
+                }>;
+            };
+            didRename?: {
+                filters: Array<{
+                    glob: string;
+                    matches?: string;
+                }>;
+            };
+            willRename?: {
+                filters: Array<{
+                    glob: string;
+                    matches?: string;
+                }>;
+            };
+            didDelete?: {
+                filters: Array<{
+                    glob: string;
+                    matches?: string;
+                }>;
+            };
+            willDelete?: {
+                filters: Array<{
+                    glob: string;
+                    matches?: string;
+                }>;
+            };
+        };
+    };
+}
+\`\`\`
+A large type that might get truncated by the language server`);
+  }, 10000);
+
   test('should get hover info for variable with imported type', async () => {
     const result = await runHover(
       'tests/fixtures/typescript/valid/simple-function.ts',
