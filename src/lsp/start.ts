@@ -246,17 +246,10 @@ export async function detectProjectTypes(
   return detectedServers;
 }
 
-export async function executeStart(directory?: string): Promise<string[]> {
-  log(`=== START FUNCTION CALLED ===`);
-  const targetDir = directory || process.cwd();
-  log(`Target directory: ${targetDir}`);
-
-  const projectServers = await detectProjectTypes(targetDir);
-
-  log(
-    `Detected ${projectServers.length} servers: ${projectServers.map((s) => s.id).join(', ')}`
-  );
-
+export async function initializeDetectedServers(
+  projectServers: LSPServer[],
+  targetDir: string
+): Promise<string[]> {
   log(`Starting ${projectServers.length} LSP servers for ${targetDir}...`);
   log(`Detected servers: ${projectServers.map((s) => s.id).join(', ')}`);
 
@@ -338,3 +331,4 @@ export async function executeStart(directory?: string): Promise<string[]> {
   log('Start complete');
   return startedServers;
 }
+

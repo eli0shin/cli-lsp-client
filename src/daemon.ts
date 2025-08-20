@@ -3,7 +3,7 @@ import os from 'os';
 import path from 'path';
 import { z } from 'zod';
 import { lspManager } from './lsp/manager.js';
-import { executeStart } from './lsp/start.js';
+import { detectProjectTypes, initializeDetectedServers } from './lsp/start.js';
 import { initializeServers } from './lsp/servers.js';
 import { log } from './logger.js';
 import { hashPath } from './utils.js';
@@ -177,24 +177,32 @@ export async function handleRequest(
 
     case 'start': {
       const directory = args[0]; // Optional directory argument
+      const targetDir = directory || process.cwd();
       log(`=== DAEMON START - PID: ${process.pid} ===`);
-      log(`Starting LSP servers for directory: ${directory || 'current'}`);
+      log(`Starting LSP servers for directory: ${targetDir}`);
+      
+      // Detect which servers are needed (fast operation)
+      const detectedServers = await detectProjectTypes(targetDir);
+      const serverNames = detectedServers.map(s => s.id);
       
       // Start LSP servers asynchronously in the background
-      executeStart(directory)
-        .then(startedServers => {
+      initializeDetectedServers(detectedServers, targetDir)
+        .then((startedServers: string[]) => {
           log('=== DAEMON START SUCCESS ===');
           if (startedServers.length > 0) {
             log(`Successfully started LSP servers: ${startedServers.join(',')}`);
           }
         })
-        .catch(error => {
+        .catch((error: unknown) => {
           log(`=== DAEMON START ERROR: ${error} ===`);
           log(`LSP server initialization failed: ${error}`);
         });
       
-      // Return immediately to unblock the client
-      return 'Started LSP daemon (initializing servers in background...)';
+      // Return immediately with the list of servers that will be started
+      if (serverNames.length === 0) {
+        return '';
+      }
+      return `Starting LSPs for ${serverNames.join(', ')}`;
     }
 
     case 'logs': {
