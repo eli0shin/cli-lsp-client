@@ -16,6 +16,8 @@ import {
   getConfigLanguageExtensions,
 } from './servers.js';
 import { log } from '../logger.js';
+import { TypeEnhancer } from './type-enhancer.js';
+import { LANGUAGE_EXTENSIONS } from './language.js';
 
 // SymbolKind enum values from LSP spec
 const SymbolKind = {
@@ -374,6 +376,44 @@ export class LSPManager {
           const hover = await client.getHover(hoverFile, hoverLocation);
 
           if (hover) {
+            // Get language ID from file extension
+            const fileExt = path.extname(hoverFile);
+            const configLanguageExtensions = await getConfigLanguageExtensions();
+            const languageId = configLanguageExtensions?.[fileExt] || 
+                              LANGUAGE_EXTENSIONS[fileExt] || 
+                              'plaintext';
+
+            log(`Enhancing hover for language: ${languageId}, symbolKind: ${symbolKind}`);
+
+            // Create TypeEnhancer and enhance the hover result
+            const typeEnhancer = new TypeEnhancer(client);
+            const enhancedHover = await typeEnhancer.enhanceHover(
+              hoverFile,
+              hoverLocation,
+              hover,
+              symbolKind,
+              languageId
+            );
+
+            log(`Enhanced hover has expandedType: ${!!enhancedHover.expandedType}, functionSignature: ${!!enhancedHover.functionSignature}`);
+
+            // Format the enhanced hover for better output
+            const formattedContent = typeEnhancer.formatEnhancedHover(
+              enhancedHover,
+              languageId
+            );
+
+            log(`Formatted content length: ${formattedContent.length}`);
+
+            // Update hover contents with enhanced information
+            if (typeof hover.contents === 'string') {
+              hover.contents = formattedContent;
+            } else if (Array.isArray(hover.contents)) {
+              hover.contents = [formattedContent];
+            } else if (hover.contents && typeof hover.contents === 'object' && 'value' in hover.contents) {
+              hover.contents.value = formattedContent;
+            }
+
             results.push({
               symbol: symbolName,
               hover: hover,

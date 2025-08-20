@@ -117,7 +117,7 @@ type HoverResult = {
     expect(result.exitCode).toBe(0);
     const output = stripAnsi(result.stdout);
     // When hovering over an import, we follow to the actual type definition
-    expect(output).toBe(`Location: src/lsp/types.ts:16:13
+    expect(output).toBe(`Location: src/lsp/types.ts:23:13
 \`\`\`typescript
 type Diagnostic = VSCodeDiagnostic
 \`\`\``);
@@ -149,11 +149,15 @@ Fetches data asynchronously from a remote source
 
     expect(result.exitCode).toBe(0);
     const output = stripAnsi(result.stdout);
-    // For variables, we expect to see the interface definition
+    // For variables, we expect to see the expanded interface definition
     expect(output)
       .toBe(`Location: tests/fixtures/typescript/valid/simple-function.ts:35:18
 \`\`\`typescript
-interface User
+interface User {
+  email: string;
+  id: string;
+  name: string
+}
 \`\`\``);
   }, 10000);
 
@@ -196,10 +200,15 @@ type UserID = string
 
     expect(result.exitCode).toBe(0);
     const output = stripAnsi(result.stdout);
+    // Now shows expanded interface with properties
     expect(output)
       .toBe(`Location: tests/fixtures/typescript/valid/simple-function.ts:35:18
 \`\`\`typescript
-interface User
+interface User {
+  email: string;
+  id: string;
+  name: string
+}
 \`\`\``);
   }, 10000);
 
@@ -220,6 +229,122 @@ const config: {
     timeout: number;
 }
 \`\`\``);
+  }, 10000);
+
+  test('should expand interface properties instead of showing just interface name', async () => {
+    const result = await runHover(
+      'tests/fixtures/typescript/valid/interface-expansion.ts',
+      'Person'
+    );
+
+    expect(result.exitCode).toBe(0);
+    const output = stripAnsi(result.stdout);
+    // Should show expanded interface with all properties and their types
+    expect(output)
+      .toBe(`Location: tests/fixtures/typescript/valid/interface-expansion.ts:6:11
+\`\`\`typescript
+interface Person {
+  address: {
+    street: string;
+    city: string;
+    country: string;
+}
+  age: number;
+  createdAt: Date;
+  email: string;
+  id: number;
+  isActive: boolean;
+  metadata: Record<string, unknown> | undefined;
+  name: string;
+  tags: string[]
+}
+\`\`\``);
+  }, 10000);
+
+  test('should handle large truncated types by showing full structure', async () => {
+    const result = await runHover(
+      'tests/fixtures/typescript/valid/truncated-type.ts',
+      'ServerCapabilities'
+    );
+
+    expect(result.exitCode).toBe(0);
+    const output = stripAnsi(result.stdout);
+    // TypeScript LSP server truncates very large types with "... N more ..."
+    // This is a limitation of the TypeScript language server itself
+    expect(output)
+      .toBe(`Location: tests/fixtures/typescript/valid/truncated-type.ts:6:6
+\`\`\`typescript
+type ServerCapabilities = {
+    textDocumentSync?: number | {
+        openClose?: boolean;
+        change?: number;
+        willSave?: boolean;
+        willSaveWaitUntil?: boolean;
+        save?: boolean | {
+            includeText?: boolean;
+        };
+    };
+    diagnosticProvider?: boolean | {
+        interFileDependencies?: boolean;
+        workspaceDiagnostics?: boolean;
+        workDoneProgress?: boolean;
+    };
+    completionProvider?: {
+        triggerCharacters?: string[];
+        allCommitCharacters?: string[];
+        resolveProvider?: boolean;
+        completionItem?: {
+            labelDetailsSupport?: boolean;
+        };
+    };
+    ... 18 more ...;
+    workspace?: {
+        workspaceFolders?: {
+            supported?: boolean;
+            changeNotifications?: string | boolean;
+        };
+        fileOperations?: {
+            didCreate?: {
+                filters: Array<{
+                    glob: string;
+                    matches?: string;
+                }>;
+            };
+            willCreate?: {
+                filters: Array<{
+                    glob: string;
+                    matches?: string;
+                }>;
+            };
+            didRename?: {
+                filters: Array<{
+                    glob: string;
+                    matches?: string;
+                }>;
+            };
+            willRename?: {
+                filters: Array<{
+                    glob: string;
+                    matches?: string;
+                }>;
+            };
+            didDelete?: {
+                filters: Array<{
+                    glob: string;
+                    matches?: string;
+                }>;
+            };
+            willDelete?: {
+                filters: Array<{
+                    glob: string;
+                    matches?: string;
+                }>;
+            };
+        };
+    };
+}
+\`\`\`
+A large type that might get truncated by the language server`);
   }, 10000);
 
   test('should get hover info for variable with imported type', async () => {

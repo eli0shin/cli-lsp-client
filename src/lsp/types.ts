@@ -9,6 +9,13 @@ import type {
   Location,
   LocationLink,
   MarkedString,
+  CompletionItem,
+  CompletionList,
+  SignatureHelp,
+  SignatureInformation,
+  ParameterInformation,
+  Declaration,
+  DeclarationLink,
 } from 'vscode-languageserver-types';
 import type { MessageConnection } from 'vscode-jsonrpc/node';
 import { z } from 'zod';
@@ -24,6 +31,13 @@ export type {
   Location,
   LocationLink,
   MarkedString,
+  CompletionItem,
+  CompletionList,
+  SignatureHelp,
+  SignatureInformation,
+  ParameterInformation,
+  Declaration,
+  DeclarationLink,
 };
 
 export type Request = {
@@ -271,5 +285,17 @@ export type LSPClient = {
     position: Position
   ): Promise<Location[] | LocationLink[] | null>;
   getHover(filePath: string, position: Position): Promise<Hover | null>;
+  getCompletion(
+    filePath: string,
+    position: Position
+  ): Promise<CompletionItem[] | CompletionList | null>;
+  getSignatureHelp(
+    filePath: string,
+    position: Position
+  ): Promise<SignatureHelp | null>;
+  getDeclaration(
+    filePath: string,
+    position: Position
+  ): Promise<Declaration | DeclarationLink[] | null>;
   shutdown(): Promise<void>;
 };

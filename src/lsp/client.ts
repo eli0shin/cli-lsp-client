@@ -13,6 +13,11 @@ import type {
   Position,
   Location,
   LocationLink,
+  CompletionItem,
+  CompletionList,
+  SignatureHelp,
+  Declaration,
+  DeclarationLink,
 } from './types.js';
 import {
   InitializationResultSchema,
@@ -113,6 +118,29 @@ export async function createLSPClient(
         hover: {
           dynamicRegistration: false,
           contentFormat: ['markdown', 'plaintext'],
+        },
+        completion: {
+          dynamicRegistration: false,
+          completionItem: {
+            snippetSupport: false,
+            documentationFormat: ['markdown', 'plaintext'],
+            resolveSupport: {
+              properties: ['documentation', 'detail'],
+            },
+          },
+        },
+        signatureHelp: {
+          dynamicRegistration: false,
+          signatureInformation: {
+            documentationFormat: ['markdown', 'plaintext'],
+            parameterInformation: {
+              labelOffsetSupport: true,
+            },
+          },
+        },
+        declaration: {
+          dynamicRegistration: false,
+          linkSupport: true,
         },
         diagnostic: {
           dynamicRegistration: false,
@@ -398,6 +426,90 @@ export async function createLSPClient(
         return result as Hover | null;
       } catch (error) {
         log(`hover request failed: ${error}`);
+        return null;
+      }
+    },
+
+    async getCompletion(
+      filePath: string,
+      position: Position
+    ): Promise<CompletionItem[] | CompletionList | null> {
+      const absolutePath = path.isAbsolute(filePath)
+        ? filePath
+        : path.resolve(process.cwd(), filePath);
+      log(
+        `Getting completion for ${absolutePath} at ${position.line}:${position.character}`
+      );
+
+      // Ensure file is open
+      await this.openFile(absolutePath);
+
+      try {
+        const result = await connection.sendRequest('textDocument/completion', {
+          textDocument: {
+            uri: `file://${absolutePath}`,
+          },
+          position: position,
+        });
+        return result as CompletionItem[] | CompletionList | null;
+      } catch (error) {
+        log(`completion request failed: ${error}`);
+        return null;
+      }
+    },
+
+    async getSignatureHelp(
+      filePath: string,
+      position: Position
+    ): Promise<SignatureHelp | null> {
+      const absolutePath = path.isAbsolute(filePath)
+        ? filePath
+        : path.resolve(process.cwd(), filePath);
+      log(
+        `Getting signature help for ${absolutePath} at ${position.line}:${position.character}`
+      );
+
+      // Ensure file is open
+      await this.openFile(absolutePath);
+
+      try {
+        const result = await connection.sendRequest('textDocument/signatureHelp', {
+          textDocument: {
+            uri: `file://${absolutePath}`,
+          },
+          position: position,
+        });
+        return result as SignatureHelp | null;
+      } catch (error) {
+        log(`signatureHelp request failed: ${error}`);
+        return null;
+      }
+    },
+
+    async getDeclaration(
+      filePath: string,
+      position: Position
+    ): Promise<Declaration | DeclarationLink[] | null> {
+      const absolutePath = path.isAbsolute(filePath)
+        ? filePath
+        : path.resolve(process.cwd(), filePath);
+      log(
+        `Getting declaration for ${absolutePath} at ${position.line}:${position.character}`
+      );
+
+      // Ensure file is open
+      await this.openFile(absolutePath);
+
+      try {
+        const result = await connection.sendRequest('textDocument/declaration', {
+          textDocument: {
+            uri: `file://${absolutePath}`,
+          },
+          position: position,
+        });
+        return result as Declaration | DeclarationLink[] | null;
+      } catch (error) {
+        log(`declaration request failed: ${error}`);
         return null;
       }
     },
