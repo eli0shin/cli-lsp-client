@@ -260,53 +260,77 @@ export async function executeStart(directory?: string): Promise<string[]> {
   log(`Starting ${projectServers.length} LSP servers for ${targetDir}...`);
   log(`Detected servers: ${projectServers.map((s) => s.id).join(', ')}`);
 
+  // Start all servers in parallel using Promise.allSettled
+  const serverPromises = projectServers.map(async (server) => {
+    const root = await getProjectRoot(targetDir, server);
+    const clientKey = `${server.id}:${root}`;
+    
+    // Check if client already exists or is initializing
+    const existingClient = lspManager.getClient(server.id, root);
+    if (existingClient) {
+      log(`Client already exists for ${clientKey}, skipping start`);
+      log(`✓ ${server.id} already started`);
+      return { success: true, serverId: server.id };
+    }
+    
+    if (lspManager.isInitializing(server.id, root)) {
+      log(`Client is already initializing for ${clientKey}, waiting...`);
+      const client = await lspManager.waitForInitialization(server.id, root);
+      return { success: !!client, serverId: server.id };
+    }
+
+    // Create initialization promise and track it
+    const initPromise = (async () => {
+      try {
+        log(`Starting server: ${server.id}`);
+        log(`Project root for ${server.id}: ${root}`);
+        log(`Client key: ${clientKey}`);
+
+        const serverHandle = await spawnServer(server, root);
+
+        if (!serverHandle) {
+          log(`Failed to spawn server: ${server.id}`);
+          log(`⚠ ${server.id} failed to spawn`);
+          return null;
+        }
+
+        log(`Server spawned: ${server.id}`);
+        log(`About to call createLSPClient for ${server.id} with root ${root}`);
+        log(`ServerHandle process PID: ${serverHandle.process.pid}`);
+        const client = await createLSPClient(server.id, serverHandle, root, getConfigLanguageExtensions() || undefined);
+        log(`Client created for: ${server.id}`);
+
+        // Store client in manager immediately
+        lspManager.setClient(server.id, root, client);
+        log(`Stored client in manager with key: ${clientKey}`);
+        log(`✓ ${server.id} ready`);
+        return client;
+      } catch (error) {
+        log(
+          `Start failed for ${server.id}: ${error instanceof Error ? error.message : String(error)}`
+        );
+        log(
+          `⚠ ${server.id} start failed: ${error instanceof Error ? error.message : String(error)}`
+        );
+        return null;
+      }
+    })();
+
+    // Track the initialization promise
+    lspManager.setInitializing(server.id, root, initPromise);
+    
+    const client = await initPromise;
+    return { success: !!client, serverId: server.id };
+  });
+
+  // Wait for all servers to complete initialization
+  const results = await Promise.allSettled(serverPromises);
+  
+  // Collect successfully started servers
   const startedServers: string[] = [];
-
-  for (const server of projectServers) {
-    try {
-      log(`Starting server: ${server.id}`);
-      const root = await getProjectRoot(targetDir, server);
-      log(`Project root for ${server.id}: ${root}`);
-
-      // Use the same client key format as the manager
-      const clientKey = `${server.id}:${root}`;
-      log(`Client key: ${clientKey}`);
-
-      // Check if client already exists in manager
-      const existingClient = lspManager.getClient(server.id, root);
-      if (existingClient) {
-        log(`Client already exists for ${clientKey}, skipping start`);
-        log(`✓ ${server.id} already started`);
-        startedServers.push(server.id);
-        continue;
-      }
-
-      const serverHandle = await spawnServer(server, root);
-
-      if (!serverHandle) {
-        log(`Failed to spawn server: ${server.id}`);
-        log(`⚠ ${server.id} failed to spawn`);
-        continue;
-      }
-
-      log(`Server spawned: ${server.id}`);
-      log(`About to call createLSPClient for ${server.id} with root ${root}`);
-      log(`ServerHandle process PID: ${serverHandle.process.pid}`);
-      const client = await createLSPClient(server.id, serverHandle, root, getConfigLanguageExtensions() || undefined);
-      log(`Client created for: ${server.id}`);
-
-      // Store client in manager immediately
-      lspManager.setClient(server.id, root, client);
-      log(`Stored client in manager with key: ${clientKey}`);
-      log(`✓ ${server.id} ready`);
-      startedServers.push(server.id);
-    } catch (error) {
-      log(
-        `Start failed for ${server.id}: ${error instanceof Error ? error.message : String(error)}`
-      );
-      log(
-        `⚠ ${server.id} start failed: ${error instanceof Error ? error.message : String(error)}`
-      );
+  for (const result of results) {
+    if (result.status === 'fulfilled' && result.value.success) {
+      startedServers.push(result.value.serverId);
     }
   }
 

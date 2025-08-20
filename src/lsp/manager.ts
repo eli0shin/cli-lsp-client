@@ -50,6 +50,7 @@ const SymbolKind = {
 export class LSPManager {
   private readonly clients = new Map<string, LSPClient>();
   private readonly broken = new Set<string>();
+  private readonly initializing = new Map<string, Promise<LSPClient | null>>();
 
   private getClientKey(serverID: string, root: string): string {
     return `${serverID}:${root}`;
@@ -71,6 +72,30 @@ export class LSPManager {
   setClient(serverID: string, root: string, client: LSPClient): void {
     const clientKey = this.getClientKey(serverID, root);
     this.clients.set(clientKey, client);
+    // Remove from initializing map once client is set
+    this.initializing.delete(clientKey);
+  }
+
+  // Public method to track initialization
+  setInitializing(serverID: string, root: string, promise: Promise<LSPClient | null>): void {
+    const clientKey = this.getClientKey(serverID, root);
+    this.initializing.set(clientKey, promise);
+  }
+
+  // Public method to check if server is initializing
+  isInitializing(serverID: string, root: string): boolean {
+    const clientKey = this.getClientKey(serverID, root);
+    return this.initializing.has(clientKey);
+  }
+
+  // Public method to wait for initialization
+  async waitForInitialization(serverID: string, root: string): Promise<LSPClient | null> {
+    const clientKey = this.getClientKey(serverID, root);
+    const initPromise = this.initializing.get(clientKey);
+    if (initPromise) {
+      return await initPromise;
+    }
+    return this.clients.get(clientKey) || null;
   }
 
   async getDiagnostics(filePath: string): Promise<Diagnostic[]> {
@@ -126,6 +151,18 @@ export class LSPManager {
 
       try {
         let client = this.clients.get(clientKey);
+
+        // Check if server is still initializing
+        if (!client && this.initializing.has(clientKey)) {
+          log(`Server ${clientKey} is still initializing, waiting...`);
+          const initResult = await this.waitForInitialization(server.id, root);
+          if (!initResult) {
+            log(`Server ${clientKey} failed to initialize`);
+            this.broken.add(clientKey);
+            continue;
+          }
+          client = initResult;
+        }
 
         if (!client) {
           log(`No existing client found for ${clientKey}, creating new client`);
@@ -482,6 +519,18 @@ export class LSPManager {
     }
 
     let client = this.clients.get(clientKey);
+
+    // Check if server is still initializing
+    if (!client && this.initializing.has(clientKey)) {
+      log(`Server ${clientKey} is still initializing, waiting...`);
+      const initResult = await this.waitForInitialization(server.id, root);
+      if (!initResult) {
+        log(`Server ${clientKey} failed to initialize`);
+        this.broken.add(clientKey);
+        return null;
+      }
+      return initResult;
+    }
 
     if (!client) {
       try {

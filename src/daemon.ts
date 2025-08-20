@@ -179,17 +179,22 @@ export async function handleRequest(
       const directory = args[0]; // Optional directory argument
       log(`=== DAEMON START - PID: ${process.pid} ===`);
       log(`Starting LSP servers for directory: ${directory || 'current'}`);
-      try {
-        const startedServers = await executeStart(directory);
-        log('=== DAEMON START SUCCESS ===');
-        if (startedServers.length === 0) {
-          return 'Started LSP daemon';
-        }
-        return `Started LSP servers for ${startedServers.join(',')}`;
-      } catch (error) {
-        log(`=== DAEMON START ERROR: ${error} ===`);
-        throw error;
-      }
+      
+      // Start LSP servers asynchronously in the background
+      executeStart(directory)
+        .then(startedServers => {
+          log('=== DAEMON START SUCCESS ===');
+          if (startedServers.length > 0) {
+            log(`Successfully started LSP servers: ${startedServers.join(',')}`);
+          }
+        })
+        .catch(error => {
+          log(`=== DAEMON START ERROR: ${error} ===`);
+          log(`LSP server initialization failed: ${error}`);
+        });
+      
+      // Return immediately to unblock the client
+      return 'Started LSP daemon (initializing servers in background...)';
     }
 
     case 'logs': {
