@@ -96,10 +96,10 @@ const languageStrategies: Record<string, LanguageStrategy> = {
       if (/^interface \w+$/m.test(original)) {
         // If expanded already contains "interface", use it as-is
         if (expanded.startsWith('interface ')) {
-          return expanded;
+          return `\`\`\`typescript\n${expanded}\n\`\`\``;
         }
         const interfaceName = original.match(/^interface (\w+)$/m)?.[1] || '';
-        return `interface ${interfaceName} ${expanded}`;
+        return `\`\`\`typescript\ninterface ${interfaceName} ${expanded}\n\`\`\``;
       }
       // Replace truncated parts with expanded version
       if (original.includes('...')) {

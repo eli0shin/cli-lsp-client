@@ -117,7 +117,7 @@ type HoverResult = {
     expect(result.exitCode).toBe(0);
     const output = stripAnsi(result.stdout);
     // When hovering over an import, we follow to the actual type definition
-    expect(output).toBe(`Location: src/lsp/types.ts:16:13
+    expect(output).toBe(`Location: src/lsp/types.ts:23:13
 \`\`\`typescript
 type Diagnostic = VSCodeDiagnostic
 \`\`\``);
@@ -149,11 +149,15 @@ Fetches data asynchronously from a remote source
 
     expect(result.exitCode).toBe(0);
     const output = stripAnsi(result.stdout);
-    // For variables, we expect to see the interface definition
+    // For variables, we expect to see the expanded interface definition
     expect(output)
       .toBe(`Location: tests/fixtures/typescript/valid/simple-function.ts:35:18
 \`\`\`typescript
-interface User
+interface User {
+  email: string;
+  id: string;
+  name: string
+}
 \`\`\``);
   }, 10000);
 
@@ -196,10 +200,15 @@ type UserID = string
 
     expect(result.exitCode).toBe(0);
     const output = stripAnsi(result.stdout);
+    // Now shows expanded interface with properties
     expect(output)
       .toBe(`Location: tests/fixtures/typescript/valid/simple-function.ts:35:18
 \`\`\`typescript
-interface User
+interface User {
+  email: string;
+  id: string;
+  name: string
+}
 \`\`\``);
   }, 10000);
 
@@ -233,6 +242,7 @@ const config: {
     // Should show expanded interface with all properties and their types
     expect(output)
       .toBe(`Location: tests/fixtures/typescript/valid/interface-expansion.ts:6:11
+\`\`\`typescript
 interface Person {
   address: {
     street: string;
@@ -247,7 +257,8 @@ interface Person {
   metadata: Record<string, unknown> | undefined;
   name: string;
   tags: string[]
-}`);
+}
+\`\`\``);
   }, 10000);
 
   test('should handle large truncated types by showing full structure', async () => {
