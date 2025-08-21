@@ -9,25 +9,60 @@ async function hasAnyFile(
   patterns: string[]
 ): Promise<boolean> {
   try {
-    // Use simple file existence check instead of complex find command
-    for (const pattern of patterns) {
-      if (pattern.includes('*')) {
-        // For glob patterns, use Bun's glob functionality
-        const glob = new Bun.Glob(pattern);
-        const matches = glob.scan(directory);
-        if ((await matches.next()).value) {
-          log(`Found files matching ${pattern} in ${directory}`);
-          return true;
+    // Check if we're in a git repository
+    const isGitRepo = await Bun.file(`${directory}/.git/HEAD`).exists();
+    
+    if (isGitRepo) {
+      // Use git ls-files to respect gitignore
+      for (const pattern of patterns) {
+        if (pattern.includes('*')) {
+          // For glob patterns, use git ls-files to only check tracked files
+          const gitPattern = pattern.replace('**/', ''); // Convert **/*.ts to *.ts for git
+          
+          // Use git ls-files to check if any tracked files match
+          const proc = Bun.spawn(['git', 'ls-files', gitPattern], {
+            cwd: directory,
+            stdout: 'pipe',
+            stderr: 'pipe'
+          });
+          
+          const output = await new Response(proc.stdout).text();
+          await proc.exited;
+          
+          // Only return true if we actually found files (non-empty output)
+          if (output.trim().length > 0) {
+            log(`Found tracked files matching ${pattern} in ${directory}`);
+            return true;
+          }
+        } else {
+          // For exact file names, check if file exists in current directory
+          const filePath = `${directory}/${pattern}`;
+          if (await Bun.file(filePath).exists()) {
+            log(`Found exact file: ${filePath}`);
+            return true;
+          }
         }
-      } else {
-        // For exact file names, check if file exists
-        const filePath = `${directory}/${pattern}`;
-        if (await Bun.file(filePath).exists()) {
-          log(`Found exact file: ${filePath}`);
-          return true;
+      }
+    } else {
+      // Not a git repo, use original Bun.Glob logic
+      for (const pattern of patterns) {
+        if (pattern.includes('*')) {
+          const glob = new Bun.Glob(pattern);
+          const matches = glob.scan(directory);
+          if ((await matches.next()).value) {
+            log(`Found files matching ${pattern} in ${directory}`);
+            return true;
+          }
+        } else {
+          const filePath = `${directory}/${pattern}`;
+          if (await Bun.file(filePath).exists()) {
+            log(`Found exact file: ${filePath}`);
+            return true;
+          }
         }
       }
     }
+    
     log(`No files found for patterns: ${patterns.join(', ')} in ${directory}`);
     return false;
   } catch (error) {
