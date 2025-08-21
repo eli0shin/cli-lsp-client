@@ -39,6 +39,14 @@ CLI tool for getting LSP diagnostics. Uses a background daemon to keep LSP serve
 
 ## Claude Code Integration
 
+### MCP Server
+
+Add as an MCP server to enable Claude to access symbol definitions and hover information:
+
+```bash
+claude mcp add lsp --scope user -- bunx cli-lsp-client mcp-server
+```
+
 ### Real-time Diagnostics Hook
 
 Get instant diagnostic feedback for TypeScript, Python, JSON, CSS, YAML, Bash, GraphQL, R, C#, Swift, Go, Java, and Lua files as you edit in Claude Code.
