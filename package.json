@@ -20,8 +20,7 @@
     "typescript": "latest",
     "typescript-eslint": "^8.39.1",
     "vscode-jsonrpc": "^8.2.1",
-    "vscode-languageserver-types": "^3.17.5",
-    "zod": "^4.0.17"
+    "vscode-languageserver-types": "^3.17.5"
   },
   "bin": {
     "cli-lsp-client": "cli-lsp-client"
@@ -48,5 +47,9 @@
     "prepublishOnly": "bun test && bun run build",
     "postinstall": "node scripts/postinstall.js"
   },
-  "type": "module"
+  "type": "module",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.17.3",
+    "zod": "3.25"
+  }
 }
