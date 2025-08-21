@@ -6,7 +6,7 @@ import { ensureDaemonRunning } from '../utils.js';
 import type { HoverResult } from '../lsp/types.js';
 
 const server = new McpServer({
-  name: 'cli-lsp-hover',
+  name: 'lsp-code-intelligence',
   version: '1.0.0',
 });
 
@@ -50,13 +50,28 @@ function formatHoverResultsPlain(hoverResults: HoverResult[]): string {
 }
 
 server.registerTool(
-  'hover',
+  'get-symbol-definition',
   {
-    title: 'Hover Tool',
-    description: 'Get hover information for a symbol in a file',
+    title: 'Get Symbol Definition and Documentation',
+    description: `Retrieves comprehensive information about a symbol's definition, type signature, and documentation from a Language Server Protocol (LSP) provider.
+
+Use this tool when you need to:
+- Understand what a function, variable, class, or type does
+- Get the type signature or function parameters of a symbol
+- Read documentation or comments associated with a symbol
+- Investigate unfamiliar code symbols in a codebase
+- Verify the expected behavior or contract of an API
+
+This tool performs the equivalent of "hovering" over a symbol in an IDE, providing rich contextual information that helps understand code without navigating to the definition.`,
     inputSchema: {
-      file: z.string().describe('The file path containing the symbol'),
-      symbol: z.string().describe('The symbol to get hover information for'),
+      file: z.string().describe('The absolute or relative file path containing the symbol (e.g., "src/utils.ts", "/home/user/project/main.py")'),
+      symbol: z.string().describe('The exact symbol name to look up (e.g., "calculateTotal", "MyClass", "MAX_SIZE"). Case-sensitive.'),
+    },
+    annotations: {
+      readOnlyHint: true,
+      destructiveHint: false,
+      idempotentHint: true,
+      openWorldHint: false,
     },
   },
   async ({ file, symbol }) => {
@@ -72,7 +87,15 @@ server.registerTool(
           content: [
             {
               type: 'text',
-              text: 'No hover information found for the symbol.',
+              text: `No definition found for symbol "${symbol}" in file "${file}". 
+
+Possible reasons:
+- The symbol name might be misspelled (check exact spelling and case)
+- The file path might be incorrect
+- The symbol might be defined in a different file
+- The Language Server for this file type might not be running
+
+Try using a more specific symbol name or verifying the file path.`,
             },
           ],
         };

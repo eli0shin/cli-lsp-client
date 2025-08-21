@@ -99,7 +99,7 @@ describe('MCP Server', () => {
             }
           },
           serverInfo: {
-            name: 'cli-lsp-hover',
+            name: 'lsp-code-intelligence',
             version: '1.0.0',
           }
         },
@@ -132,24 +132,39 @@ describe('MCP Server', () => {
     expect(responses[1]).toEqual({
       result: {
         tools: [{
-          name: 'hover',
-          title: 'Hover Tool',
-          description: 'Get hover information for a symbol in a file',
+          name: 'get-symbol-definition',
+          title: 'Get Symbol Definition and Documentation',
+          description: `Retrieves comprehensive information about a symbol's definition, type signature, and documentation from a Language Server Protocol (LSP) provider.
+
+Use this tool when you need to:
+- Understand what a function, variable, class, or type does
+- Get the type signature or function parameters of a symbol
+- Read documentation or comments associated with a symbol
+- Investigate unfamiliar code symbols in a codebase
+- Verify the expected behavior or contract of an API
+
+This tool performs the equivalent of "hovering" over a symbol in an IDE, providing rich contextual information that helps understand code without navigating to the definition.`,
           inputSchema: {
             '$schema': 'http://json-schema.org/draft-07/schema#',
             type: 'object',
             properties: {
               file: {
                 type: 'string',
-                description: 'The file path containing the symbol'
+                description: 'The absolute or relative file path containing the symbol (e.g., "src/utils.ts", "/home/user/project/main.py")'
               },
               symbol: {
                 type: 'string',
-                description: 'The symbol to get hover information for'
+                description: 'The exact symbol name to look up (e.g., "calculateTotal", "MyClass", "MAX_SIZE"). Case-sensitive.'
               }
             },
             required: ['file', 'symbol'],
             additionalProperties: false
+          },
+          annotations: {
+            readOnlyHint: true,
+            destructiveHint: false,
+            idempotentHint: true,
+            openWorldHint: false
           }
         }]
       },
@@ -158,7 +173,7 @@ describe('MCP Server', () => {
     });
   }, 15000);
 
-  test('should call hover tool successfully', async () => {
+  test('should call get-symbol-definition tool successfully', async () => {
     const responses = await runMcpServer([
       {
         jsonrpc: '2.0',
@@ -174,7 +189,7 @@ describe('MCP Server', () => {
         jsonrpc: '2.0',
         method: 'tools/call',
         params: {
-          name: 'hover',
+          name: 'get-symbol-definition',
           arguments: {
             file: 'tests/fixtures/typescript/valid/simple-function.ts',
             symbol: 'add',
@@ -184,7 +199,7 @@ describe('MCP Server', () => {
       },
     ]);
 
-    // The hover text without ANSI color codes (tool now returns plain text)
+    // The symbol definition text without ANSI color codes (tool now returns plain text)
     const expectedHoverText = `Location: tests/fixtures/typescript/valid/simple-function.ts:6:16
 
 \`\`\`typescript
@@ -226,7 +241,7 @@ Adds two numbers together
         jsonrpc: '2.0',
         method: 'tools/call',
         params: {
-          name: 'hover',
+          name: 'get-symbol-definition',
           arguments: {
             file: 'tests/fixtures/nonexistent.ts',
             symbol: 'foo',
@@ -281,7 +296,7 @@ Adds two numbers together
     });
   }, 15000);
 
-  test('should validate hover tool arguments', async () => {
+  test('should validate get-symbol-definition tool arguments', async () => {
     const responses = await runMcpServer([
       {
         jsonrpc: '2.0',
@@ -297,7 +312,7 @@ Adds two numbers together
         jsonrpc: '2.0',
         method: 'tools/call',
         params: {
-          name: 'hover',
+          name: 'get-symbol-definition',
           arguments: {
             // Missing required 'symbol' field
             file: 'test.ts',
