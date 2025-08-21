@@ -8,6 +8,7 @@ import { formatDiagnosticsPlain } from './lsp/formatter.js';
 import type { Diagnostic } from './lsp/types.js';
 import { HELP_MESSAGE } from './constants.js';
 import { ensureDaemonRunning } from './utils.js';
+import { startMcpServer } from './mcp/server.js';
 import packageJson from '../package.json' with { type: 'json' };
 
 // Schema for Claude Code PostToolUse hook payload
@@ -166,6 +167,12 @@ async function run(): Promise<void> {
   // Handle version command directly (no daemon needed)
   if (command === 'version' || command === '--version' || command === '-v') {
     process.stdout.write(packageJson.version + '\n');
+    return;
+  }
+
+  // Handle mcp-server command directly (starts MCP server)
+  if (command === 'mcp-server') {
+    await startMcpServer();
     return;
   }
 
