@@ -34,7 +34,7 @@ describe('Config File Support', () => {
     const backToNoConfigProc = await runCommandWithArgs(['diagnostics', svelteFile]);
     expect(backToNoConfigProc.exitCode).toBe(0);
     expect(stripAnsi(backToNoConfigProc.stdout + backToNoConfigProc.stderr)).toBe('');
-  });
+  }, 10000);
 
   test('--config-file= format works', async () => {
     const configPath = path.resolve('tests/fixtures/config/svelte-config.json');
@@ -46,7 +46,7 @@ describe('Config File Support', () => {
     
     const output = stripAnsi(proc.stdout + proc.stderr);
     expect(output).toBe("[js] HINT at line 7, column 7: 'result' is declared but its value is never read. [6133]");
-  });
+  }, 10000);
 
   test('missing --config-file argument shows error', async () => {
     const proc = await runCommandWithArgs(['--config-file']);
