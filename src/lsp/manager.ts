@@ -717,15 +717,48 @@ export class LSPManager {
 
   async shutdown(): Promise<void> {
     log('Shutting down LSP manager...');
+    log(`Shutting down ${this.clients.size} LSP clients`);
 
     const shutdownPromises = Array.from(this.clients.values()).map(
       async (client) => {
         try {
-          await client.shutdown();
+          // Add a timeout to prevent hanging on shutdown
+          const timeoutPromise = new Promise<void>((_, reject) => 
+            setTimeout(() => reject(new Error('Shutdown timeout')), 5000)
+          );
+          
+          await Promise.race([
+            client.shutdown(),
+            timeoutPromise
+          ]);
+          
+          log(`Successfully shut down ${client.serverID}`);
         } catch (error) {
           log(
             `Error shutting down LSP client ${client.serverID}: ${error instanceof Error ? error.message : String(error)}`
           );
+          
+          // Force kill if graceful shutdown fails
+          if (client.process && !client.process.killed) {
+            try {
+              if (process.platform === 'win32') {
+                const { exec } = await import('child_process');
+                await new Promise<void>((resolve) => {
+                  exec(`taskkill /pid ${client.process!.pid} /T /F`, () => resolve());
+                });
+              } else {
+                // Kill process group forcefully
+                try {
+                  process.kill(-client.process.pid!, 'SIGKILL');
+                } catch (e) {
+                  client.process.kill('SIGKILL');
+                }
+              }
+              log(`Force killed ${client.serverID} process ${client.process.pid}`);
+            } catch (killError) {
+              log(`Failed to force kill ${client.serverID}: ${killError}`);
+            }
+          }
         }
       }
     );
@@ -733,6 +766,8 @@ export class LSPManager {
     await Promise.all(shutdownPromises);
     this.clients.clear();
     this.broken.clear();
+    this.initializing.clear();
+    log('LSP manager shutdown complete');
   }
 }
 

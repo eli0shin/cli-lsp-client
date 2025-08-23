@@ -7,6 +7,10 @@ This is a Bun CLI project that builds a standalone executable.
 - ALWAYS use `bun` instead of `npm` or `yarn` for all package management
 - ALWAYS use `bun run` to execute scripts
 - Use `bunx` instead of `npx` for running packages
+- **CRITICAL**: This package is distributed as a single-file compiled executable
+- **NEVER** add runtime dependencies to package.json - ALL dependencies must be devDependencies
+- The compiled binary is self-contained and includes all necessary code
+- Runtime dependencies would cause `bunx` to unnecessarily resolve and download packages
 
 ## Build & Development Commands
 

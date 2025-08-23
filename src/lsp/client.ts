@@ -190,6 +190,7 @@ export async function createLSPClient(
     diagnostics,
     connection,
     serverCapabilities,
+    process: serverHandle.process,
 
     async openFile(filePath: string): Promise<void> {
       const absolutePath = path.isAbsolute(filePath)
@@ -555,9 +556,61 @@ export async function createLSPClient(
 
     async shutdown(): Promise<void> {
       log(`Shutting down LSP client ${serverID}`);
+      
+      // Try to gracefully shut down the LSP server first
+      try {
+        await connection.sendRequest('shutdown');
+        await connection.sendNotification('exit');
+      } catch (error) {
+        log(`Error during graceful shutdown of ${serverID}: ${error}`);
+      }
+      
+      // Close the connection
       connection.end();
       connection.dispose();
-      serverHandle.process.kill();
+      
+      // Kill the process and all its children
+      const proc = serverHandle.process;
+      if (proc && !proc.killed) {
+        try {
+          if (process.platform === 'win32') {
+            // On Windows, use taskkill to kill the process tree
+            const { exec } = await import('child_process');
+            await new Promise<void>((resolve) => {
+              exec(`taskkill /pid ${proc.pid} /T /F`, (error) => {
+                if (error) {
+                  log(`Error killing process tree on Windows: ${error}`);
+                }
+                resolve();
+              });
+            });
+          } else {
+            // On Unix-like systems, kill the process group
+            // First try SIGTERM for graceful shutdown
+            try {
+              process.kill(-proc.pid, 'SIGTERM');
+            } catch (e) {
+              // If process group doesn't exist, kill individual process
+              proc.kill('SIGTERM');
+            }
+            
+            // Wait a bit for graceful shutdown
+            await new Promise(resolve => setTimeout(resolve, 2000));
+            
+            // Force kill if still alive
+            if (!proc.killed) {
+              try {
+                process.kill(-proc.pid, 'SIGKILL');
+              } catch (e) {
+                // If process group doesn't exist, kill individual process
+                proc.kill('SIGKILL');
+              }
+            }
+          }
+        } catch (error) {
+          log(`Error killing process ${proc.pid}: ${error}`);
+        }
+      }
     },
   };
 

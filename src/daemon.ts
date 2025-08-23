@@ -7,6 +7,8 @@ import { detectProjectTypes, initializeDetectedServers } from './lsp/start.js';
 import { initializeServers } from './lsp/servers.js';
 import { log } from './logger.js';
 import { hashPath } from './utils.js';
+import { killAllLSPProcesses } from './process-registry.js';
+import { killOrphanedLSPProcesses } from './lsp/orphan-cleanup.js';
 
 function getDaemonPaths() {
   const cwd = process.cwd();
@@ -240,10 +242,17 @@ export async function handleRequest(
 let server: net.Server | null = null;
 
 export async function startDaemon(): Promise<void> {
+  // Set environment variable to indicate we're running as daemon
+  process.env.LSPCLI_DAEMON = 'true';
+  
   process.stdout.write('Starting daemon…\n');
   const { LOG_PATH } = await import('./logger.js');
   process.stdout.write(`Daemon log: ${LOG_PATH}\n`);
   log(`Daemon starting... PID: ${process.pid}`);
+
+  // Kill any orphaned LSP processes from previous daemon instances
+  // This handles cases where the daemon was killed with SIGKILL
+  await killOrphanedLSPProcesses();
 
   // Clean up any stale files first
   await cleanup();
@@ -397,13 +406,21 @@ export async function shutdown(): Promise<void> {
   process.stdout.write('Shutting down daemon…\n');
   log(`=== DAEMON SHUTDOWN START - PID: ${process.pid} ===`);
 
-  // Shutdown LSP manager first
+  // Shutdown LSP manager first (this should handle most processes)
   try {
     await lspManager.shutdown();
     log('LSP manager shutdown completed');
   } catch (error) {
     process.stderr.write(`Error shutting down LSP manager: ${error}\n`);
     log(`LSP manager shutdown error: ${error}`);
+  }
+  
+  // Kill any remaining LSP processes that might have escaped
+  try {
+    await killAllLSPProcesses();
+    log('All LSP processes terminated');
+  } catch (error) {
+    log(`Error killing remaining LSP processes: ${error}`);
   }
 
   if (server) {
