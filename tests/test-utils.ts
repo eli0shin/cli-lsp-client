@@ -17,6 +17,12 @@ export function stripAnsi(str: string): string {
     .replace(/\u001b\[[0-9;]*m/g, '')
     .replace(/^\n/, '')
     .replace(/\xa0/g, ' ')
+    // Remove gopls markdown separators and clean up spacing
+    .split('\n')
+    .filter(line => line !== '---')
+    .join('\n')
+    // Clean up any resulting triple blank lines
+    .replace(/\n\n\n+/g, '\n\n')
     .trimEnd();
 }
 

@@ -18,7 +18,6 @@ describe('Python Hover Command', () => {
     b: int
 ) -> int
 \`\`\`
----
 Add two numbers together.`);
   }, 10000);
 
@@ -35,7 +34,6 @@ Add two numbers together.`);
 \`\`\`python
 (function) def greet(name: str) -> str
 \`\`\`
----
 Greet a person by name.`);
   }, 10000);
 
@@ -86,7 +84,6 @@ Greet a person by name.`);
 \`\`\`python
 (class) Person
 \`\`\`
----
 A person with various attributes for testing type expansion`);
   }, 10000);
 
@@ -108,7 +105,6 @@ A person with various attributes for testing type expansion`);
     filter_func: ((Dict[str, Any]) -> bool) | None = None
 ) -> List[Dict[str, Any]]
 \`\`\`
----
 Process a batch of items with optional filtering`);
   }, 10000);
 

@@ -79,7 +79,11 @@ export class LSPManager {
   }
 
   // Public method to track initialization
-  setInitializing(serverID: string, root: string, promise: Promise<LSPClient | null>): void {
+  setInitializing(
+    serverID: string,
+    root: string,
+    promise: Promise<LSPClient | null>
+  ): void {
     const clientKey = this.getClientKey(serverID, root);
     this.initializing.set(clientKey, promise);
   }
@@ -91,7 +95,10 @@ export class LSPManager {
   }
 
   // Public method to wait for initialization
-  async waitForInitialization(serverID: string, root: string): Promise<LSPClient | null> {
+  async waitForInitialization(
+    serverID: string,
+    root: string
+  ): Promise<LSPClient | null> {
     const clientKey = this.getClientKey(serverID, root);
     const initPromise = this.initializing.get(clientKey);
     if (initPromise) {
@@ -181,7 +188,12 @@ export class LSPManager {
           }
 
           log(`About to call createLSPClient for ${server.id}`);
-          client = await createLSPClient(server.id, serverHandle, root, getConfigLanguageExtensions() || undefined);
+          client = await createLSPClient(
+            server.id,
+            serverHandle,
+            root,
+            getConfigLanguageExtensions() || undefined
+          );
           log(`createLSPClient returned for ${server.id}`);
           this.clients.set(clientKey, client);
           log(`Created and cached new client for ${clientKey}`);
@@ -261,7 +273,7 @@ export class LSPManager {
     log(`=== HOVER REQUEST START ===`);
     log(`Symbol: ${symbolName}, File: ${filePath}`);
 
-    const results: HoverResult[] = [];
+    const seen = new Set<string>();
 
     // File-scoped search only
     const absolutePath = path.isAbsolute(filePath)
@@ -275,6 +287,15 @@ export class LSPManager {
 
     const applicableServers = await getApplicableServers(absolutePath);
 
+    // Collect all results with their source positions for deterministic ordering
+    type Collected = {
+      sourceFile: string;
+      sourceLine: number;
+      sourceChar: number;
+      item: HoverResult;
+    };
+    const collected: Collected[] = [];
+
     for (const server of applicableServers) {
       const root = await getProjectRoot(absolutePath, server);
       const client = await this.getOrCreateClient(server, root);
@@ -282,18 +303,39 @@ export class LSPManager {
       if (!client) continue;
 
       try {
-        // Read file content to find text occurrences
-        const fileContent = await Bun.file(absolutePath).text();
-        const symbolPositions = this.findSymbolOccurrences(
-          fileContent,
-          symbolName
-        );
-
-        // Get document symbols to identify symbol types
+        // Get document symbols to identify symbol types and precise positions
         const documentSymbols = await client.getDocumentSymbols(absolutePath);
         log(`Got ${documentSymbols.length} document symbols`);
 
-        // Try hover at each occurrence
+        // For GraphQL files, always use text search since document symbols are unreliable
+        // (they only return type definitions, not references)
+        const fileContent = await Bun.file(absolutePath).text();
+        const textPositions = this.findSymbolOccurrences(
+          fileContent,
+          symbolName
+        );
+        log(`Text search found ${textPositions.length} positions for "${symbolName}": ${textPositions.map(p => `${p.line}:${p.character}`).join(', ')}`);
+
+        // For non-GraphQL files, prefer document symbols
+        let docSymbolPositions: Position[] = [];
+        if (!absolutePath.endsWith('.graphql') && !absolutePath.endsWith('.gql')) {
+          docSymbolPositions = this.collectSymbolPositionsByName(
+            documentSymbols,
+            symbolName
+          );
+        }
+
+        const symbolPositions = (
+          absolutePath.endsWith('.graphql') || absolutePath.endsWith('.gql')
+            ? textPositions
+            : docSymbolPositions.length > 0 
+              ? docSymbolPositions 
+              : textPositions
+        )
+          // Ensure deterministic order: sort by line then character
+          .sort((a, b) => a.line - b.line || a.character - b.character);
+
+        // Try hover at each position (collect all, no early break)
         for (const position of symbolPositions) {
           let hoverLocation = position;
           let hoverFile = absolutePath;
@@ -378,12 +420,16 @@ export class LSPManager {
           if (hover) {
             // Get language ID from file extension
             const fileExt = path.extname(hoverFile);
-            const configLanguageExtensions = await getConfigLanguageExtensions();
-            const languageId = configLanguageExtensions?.[fileExt] || 
-                              LANGUAGE_EXTENSIONS[fileExt] || 
-                              'plaintext';
+            const configLanguageExtensions =
+              await getConfigLanguageExtensions();
+            const languageId =
+              configLanguageExtensions?.[fileExt] ||
+              LANGUAGE_EXTENSIONS[fileExt] ||
+              'plaintext';
 
-            log(`Enhancing hover for language: ${languageId}, symbolKind: ${symbolKind}`);
+            log(
+              `Enhancing hover for language: ${languageId}, symbolKind: ${symbolKind}`
+            );
 
             // Create TypeEnhancer and enhance the hover result
             const typeEnhancer = new TypeEnhancer(client);
@@ -395,7 +441,9 @@ export class LSPManager {
               languageId
             );
 
-            log(`Enhanced hover has expandedType: ${!!enhancedHover.expandedType}, functionSignature: ${!!enhancedHover.functionSignature}`);
+            log(
+              `Enhanced hover has expandedType: ${!!enhancedHover.expandedType}, functionSignature: ${!!enhancedHover.functionSignature}`
+            );
 
             // Format the enhanced hover for better output
             const formattedContent = typeEnhancer.formatEnhancedHover(
@@ -410,26 +458,36 @@ export class LSPManager {
               hover.contents = formattedContent;
             } else if (Array.isArray(hover.contents)) {
               hover.contents = [formattedContent];
-            } else if (hover.contents && typeof hover.contents === 'object' && 'value' in hover.contents) {
+            } else if (
+              hover.contents &&
+              typeof hover.contents === 'object' &&
+              'value' in hover.contents
+            ) {
               hover.contents.value = formattedContent;
             }
 
-            results.push({
-              symbol: symbolName,
-              hover: hover,
-              location: {
-                file: path.relative(process.cwd(), hoverFile),
-                line: hoverLocation.line,
-                column: hoverLocation.character,
-              },
-            });
-            // For now, return first successful result to avoid duplicates
-            break;
+            // Deduplicate by final hover location
+            const key = `${hoverFile}:${hoverLocation.line}:${hoverLocation.character}`;
+            if (!seen.has(key)) {
+              seen.add(key);
+              const resultItem: HoverResult = {
+                symbol: symbolName,
+                hover: hover,
+                location: {
+                  file: path.relative(process.cwd(), hoverFile),
+                  line: hoverLocation.line,
+                  column: hoverLocation.character,
+                },
+              };
+              collected.push({
+                sourceFile: absolutePath,
+                sourceLine: position.line,
+                sourceChar: position.character,
+                item: resultItem,
+              });
+            }
           }
         }
-
-        // If we found results, break to avoid duplicates from other servers
-        if (results.length > 0) break;
       } catch (error) {
         log(
           `Error getting hover from ${server.id}: ${error instanceof Error ? error.message : String(error)}`
@@ -437,8 +495,57 @@ export class LSPManager {
       }
     }
 
-    log(`=== HOVER REQUEST COMPLETE - Found ${results.length} results ===`);
-    return results;
+    // Sort collected results by their source occurrence position to match document order
+    collected.sort(
+      (a, b) =>
+        a.sourceLine - b.sourceLine ||
+        a.sourceChar - b.sourceChar ||
+        a.item.location.line - b.item.location.line ||
+        a.item.location.column - b.item.location.column
+    );
+
+    const ordered = collected.map((c) => c.item);
+    log(`=== HOVER REQUEST COMPLETE - Found ${ordered.length} results ===`);
+    return ordered;
+  }
+
+  // Helper to collect positions of symbols with a specific name
+  private collectSymbolPositionsByName(
+    symbols: DocumentSymbol[] | SymbolInformation[],
+    symbolName: string
+  ): Position[] {
+    const positions: Position[] = [];
+
+    if (symbols.length === 0) return positions;
+
+    // Hierarchical DocumentSymbol format
+    if ('children' in symbols[0]) {
+      const walk = (syms: DocumentSymbol[]) => {
+        for (const sym of syms) {
+          if (sym.name === symbolName) {
+            // Prefer the selectionRange (identifier) when available
+            const symWithSelection = sym as DocumentSymbol & { selectionRange?: { start: Position } };
+            const pos = symWithSelection.selectionRange?.start || sym.range.start;
+            positions.push(pos);
+          }
+          if (sym.children && sym.children.length > 0) {
+            walk(sym.children);
+          }
+        }
+      };
+      walk(symbols as DocumentSymbol[]);
+      return positions;
+    }
+
+    // Flat SymbolInformation format
+    const infos = symbols as SymbolInformation[];
+    for (const info of infos) {
+      if (info.name === symbolName) {
+        // Without async file IO here, use the start of the symbol range
+        positions.push(info.location.range.start);
+      }
+    }
+    return positions;
   }
 
   // Helper method to find symbol at a specific position
@@ -581,7 +688,12 @@ export class LSPManager {
           return null;
         }
 
-        client = await createLSPClient(server.id, serverHandle, root, getConfigLanguageExtensions() || undefined);
+        client = await createLSPClient(
+          server.id,
+          serverHandle,
+          root,
+          getConfigLanguageExtensions() || undefined
+        );
         this.clients.set(clientKey, client);
       } catch (error) {
         log(

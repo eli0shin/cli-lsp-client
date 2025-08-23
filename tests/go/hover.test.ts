@@ -93,8 +93,6 @@ type User struct { // size=176 (0xb0)
 }
 \`\`\`
 
----
-
 User represents a user with various fields for testing struct expansion
 
 \`\`\`go
@@ -102,9 +100,12 @@ func (u User) AddTag(tag string)
 func (u User) SetAddress(street string, city string, country string, zipCode string)
 \`\`\`
 
----
+[complextypes.User on pkg.go.dev](https://pkg.go.dev/test-fixtures/valid/complex-types#User)
 
-[complextypes.User on pkg.go.dev](https://pkg.go.dev/test-fixtures/valid/complex-types#User)`);
+Location: tests/fixtures/go/valid/complex-types/complex-struct.go:64:3
+\`\`\`go
+field User string // size=16 (0x10), offset=40 (0x28)
+\`\`\``);
   }, 10000);
 
   test('should show nested struct information', async () => {
@@ -127,12 +128,7 @@ type Address struct { // size=64 (0x40)
 }
 \`\`\`
 
----
-
 Address represents a nested struct
-
-
----
 
 [complextypes.Address on pkg.go.dev](https://pkg.go.dev/test-fixtures/valid/complex-types#Address)`);
   }, 10000);
@@ -152,12 +148,7 @@ Address represents a nested struct
 func (u *User) AddTag(tag string)
 \`\`\`
 
----
-
 AddTag adds a tag to the user
-
-
----
 
 [(complextypes.User).AddTag on pkg.go.dev](https://pkg.go.dev/test-fixtures/valid/complex-types#User.AddTag)`);
   }, 10000);

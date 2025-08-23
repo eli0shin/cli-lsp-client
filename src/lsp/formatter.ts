@@ -126,17 +126,18 @@ export async function formatHoverResults(
 
   const output: string[] = [];
 
-  for (const result of results) {
+  results.forEach((result, index) => {
     // Format hover content and append directly to location line
     const content = formatHoverContent(result.hover).replace(/^\n+/, '');
     output.push(
       `${CYAN}Location:${RESET_COLOR} ${result.location.file}:${result.location.line + 1}:${result.location.column + 1}\n${content}`
     );
 
-    if (results.length > 1) {
-      output.push(GRAY + '─'.repeat(60) + RESET_COLOR);
+    // Add a blank line between results, but not after the last one
+    if (index < results.length - 1) {
+      output.push('');
     }
-  }
+  });
 
   return output.join('\n');
 }

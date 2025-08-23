@@ -37,5 +37,7 @@ This is a Bun CLI project that builds a standalone executable.
 - CLI tests use `spawn` to execute the binary and verify exit codes and output
 - Use `stripAnsi()` helper from test-utils to remove ANSI color codes from output
 - Use `.nothrow()` on Bun shell commands to prevent test failures on non-zero exit codes
-- **CRITICAL**: ALWAYS use `expect(...).toBe(...)` with exact string matches, NEVER use `toContain()` for output validation
-- All test assertions must use `stripAnsi()` on CLI output before exact string comparison with `toBe()`
+
+**IMPORTANT**: ALWAYS use `expect(...).toBe(...)` with exact string matches, NEVER use `toContain()` for output validation
+
+**IMPORTANT**: All test assertions must use `stripAnsi()` on CLI output before exact string comparison with `toBe()`
