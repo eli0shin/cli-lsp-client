@@ -577,18 +577,27 @@ export async function createLSPClient(
             // On Windows, use taskkill to kill the process tree
             const { exec } = await import('child_process');
             await new Promise<void>((resolve) => {
-              exec(`taskkill /pid ${proc.pid} /T /F`, (error) => {
-                if (error) {
-                  log(`Error killing process tree on Windows: ${error}`);
-                }
+              if (proc.pid) {
+                exec(`taskkill /pid ${proc.pid} /T /F`, (error) => {
+                  if (error) {
+                    log(`Error killing process tree on Windows: ${error}`);
+                  }
+                  resolve();
+                });
+              } else {
+                proc.kill('SIGTERM');
                 resolve();
-              });
+              }
             });
           } else {
             // On Unix-like systems, kill the process group
             // First try SIGTERM for graceful shutdown
             try {
-              process.kill(-proc.pid, 'SIGTERM');
+              if (proc.pid) {
+                process.kill(-proc.pid, 'SIGTERM');
+              } else {
+                proc.kill('SIGTERM');
+              }
             } catch (e) {
               // If process group doesn't exist, kill individual process
               proc.kill('SIGTERM');
@@ -600,7 +609,11 @@ export async function createLSPClient(
             // Force kill if still alive
             if (!proc.killed) {
               try {
-                process.kill(-proc.pid, 'SIGKILL');
+                if (proc.pid) {
+                  process.kill(-proc.pid, 'SIGKILL');
+                } else {
+                  proc.kill('SIGKILL');
+                }
               } catch (e) {
                 // If process group doesn't exist, kill individual process
                 proc.kill('SIGKILL');
@@ -608,7 +621,7 @@ export async function createLSPClient(
             }
           }
         } catch (error) {
-          log(`Error killing process ${proc.pid}: ${error}`);
+          log(`Error killing process ${proc.pid ?? 'unknown'}: ${error}`);
         }
       }
     },
