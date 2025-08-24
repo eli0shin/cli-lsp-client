@@ -188,13 +188,21 @@ export async function createLSPClient(
     root,
     createdAt: Date.now(),
     diagnostics,
+    openFiles: new Set<string>(),
     connection,
     serverCapabilities,
+    process: serverHandle.process,
 
     async openFile(filePath: string): Promise<void> {
       const absolutePath = path.isAbsolute(filePath)
         ? filePath
         : path.resolve(process.cwd(), filePath);
+
+      // Skip if already open
+      if (client.openFiles.has(absolutePath)) {
+        log(`File already open: ${absolutePath}`);
+        return;
+      }
 
       log(`=== OPENING FILE: ${absolutePath} ===`);
 
@@ -220,28 +228,21 @@ export async function createLSPClient(
         },
       });
 
-      log(`Sending didChange for ${absolutePath}`);
-      // CRITICAL: Send a dummy change notification to force diagnostics
-      // Some LSP servers (e.g., Pyright) cache diagnostics and won't re-send them
-      // when a file is reopened with the same content. This ensures fresh diagnostics.
-      await connection.sendNotification('textDocument/didChange', {
-        textDocument: {
-          uri: `file://${absolutePath}`,
-          version: 1,
-        },
-        contentChanges: [
-          {
-            text: text,
-          },
-        ],
-      });
-      log(`=== FILE OPEN SEQUENCE COMPLETE: ${absolutePath} ===`);
+      // Track as open
+      client.openFiles.add(absolutePath);
+      log(`=== FILE OPENED: ${absolutePath} ===`);
     },
 
     async closeFile(filePath: string): Promise<void> {
       const absolutePath = path.isAbsolute(filePath)
         ? filePath
         : path.resolve(process.cwd(), filePath);
+
+      // Skip if not open
+      if (!client.openFiles.has(absolutePath)) {
+        log(`File not open, skipping close: ${absolutePath}`);
+        return;
+      }
 
       // Clear diagnostics for this file when closing
       diagnostics.delete(absolutePath);
@@ -250,6 +251,42 @@ export async function createLSPClient(
         textDocument: {
           uri: `file://${absolutePath}`,
         },
+      });
+
+      // Remove from tracking
+      client.openFiles.delete(absolutePath);
+      log(`File closed: ${absolutePath}`);
+    },
+
+    async closeAllFiles(): Promise<void> {
+      log(`Closing all open files: ${client.openFiles.size} files`);
+      const closePromises = Array.from(client.openFiles).map(file =>
+        client.closeFile(file)
+      );
+      await Promise.all(closePromises);
+      log('All files closed');
+    },
+
+    async sendChangeNotification(filePath: string): Promise<void> {
+      const absolutePath = path.isAbsolute(filePath)
+        ? filePath
+        : path.resolve(process.cwd(), filePath);
+
+      log(`Sending didChange for diagnostics: ${absolutePath}`);
+
+      // Read current file content
+      const file = Bun.file(absolutePath);
+      const text = await file.text();
+
+      // Send didChange notification to force fresh diagnostics
+      // Some LSP servers (e.g., Pyright) cache diagnostics and won't re-send them
+      // when a file is reopened with the same content. This ensures fresh diagnostics.
+      await connection.sendNotification('textDocument/didChange', {
+        textDocument: {
+          uri: `file://${absolutePath}`,
+          version: 1,
+        },
+        contentChanges: [{ text }],
       });
     },
 
@@ -311,6 +348,9 @@ export async function createLSPClient(
 
       // Open the file to trigger diagnostics
       await this.openFile(filePath);
+
+      // Send change notification to force fresh diagnostics
+      await this.sendChangeNotification(filePath);
 
       // Wait for diagnostics
       await this.waitForDiagnostics(filePath, timeoutMs);
@@ -555,9 +595,74 @@ export async function createLSPClient(
 
     async shutdown(): Promise<void> {
       log(`Shutting down LSP client ${serverID}`);
+      
+      // Try to gracefully shut down the LSP server first
+      try {
+        await connection.sendRequest('shutdown');
+        await connection.sendNotification('exit');
+      } catch (error) {
+        log(`Error during graceful shutdown of ${serverID}: ${error}`);
+      }
+      
+      // Close the connection
       connection.end();
       connection.dispose();
-      serverHandle.process.kill();
+      
+      // Kill the process and all its children
+      const proc = serverHandle.process;
+      if (proc && !proc.killed) {
+        try {
+          if (process.platform === 'win32') {
+            // On Windows, use taskkill to kill the process tree
+            const { exec } = await import('child_process');
+            await new Promise<void>((resolve) => {
+              if (proc.pid) {
+                exec(`taskkill /pid ${proc.pid} /T /F`, (error) => {
+                  if (error) {
+                    log(`Error killing process tree on Windows: ${error}`);
+                  }
+                  resolve();
+                });
+              } else {
+                proc.kill('SIGTERM');
+                resolve();
+              }
+            });
+          } else {
+            // On Unix-like systems, kill the process group
+            // First try SIGTERM for graceful shutdown
+            try {
+              if (proc.pid) {
+                process.kill(-proc.pid, 'SIGTERM');
+              } else {
+                proc.kill('SIGTERM');
+              }
+            } catch (e) {
+              // If process group doesn't exist, kill individual process
+              proc.kill('SIGTERM');
+            }
+            
+            // Wait a bit for graceful shutdown
+            await new Promise(resolve => setTimeout(resolve, 2000));
+            
+            // Force kill if still alive
+            if (!proc.killed) {
+              try {
+                if (proc.pid) {
+                  process.kill(-proc.pid, 'SIGKILL');
+                } else {
+                  proc.kill('SIGKILL');
+                }
+              } catch (e) {
+                // If process group doesn't exist, kill individual process
+                proc.kill('SIGKILL');
+              }
+            }
+          }
+        } catch (error) {
+          log(`Error killing process ${proc.pid ?? 'unknown'}: ${error}`);
+        }
+      }
     },
   };
 

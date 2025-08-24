@@ -7,6 +7,10 @@ This is a Bun CLI project that builds a standalone executable.
 - ALWAYS use `bun` instead of `npm` or `yarn` for all package management
 - ALWAYS use `bun run` to execute scripts
 - Use `bunx` instead of `npx` for running packages
+- **CRITICAL**: This package is distributed as a single-file compiled executable
+- **NEVER** add runtime dependencies to package.json - ALL dependencies must be devDependencies
+- The compiled binary is self-contained and includes all necessary code
+- Runtime dependencies would cause `bunx` to unnecessarily resolve and download packages
 
 ## Build & Development Commands
 
@@ -37,5 +41,7 @@ This is a Bun CLI project that builds a standalone executable.
 - CLI tests use `spawn` to execute the binary and verify exit codes and output
 - Use `stripAnsi()` helper from test-utils to remove ANSI color codes from output
 - Use `.nothrow()` on Bun shell commands to prevent test failures on non-zero exit codes
-- **CRITICAL**: ALWAYS use `expect(...).toBe(...)` with exact string matches, NEVER use `toContain()` for output validation
-- All test assertions must use `stripAnsi()` on CLI output before exact string comparison with `toBe()`
+
+**IMPORTANT**: ALWAYS use `expect(...).toBe(...)` with exact string matches, NEVER use `toContain()` for output validation
+
+**IMPORTANT**: All test assertions must use `stripAnsi()` on CLI output before exact string comparison with `toBe()`

@@ -18,6 +18,7 @@ import type {
   DeclarationLink,
 } from 'vscode-languageserver-types';
 import type { MessageConnection } from 'vscode-jsonrpc/node';
+import type { ChildProcessWithoutNullStreams } from 'child_process';
 import { z } from 'zod';
 
 export type Diagnostic = VSCodeDiagnostic;
@@ -265,10 +266,14 @@ export type LSPClient = {
   root: string;
   createdAt: number;
   diagnostics: Map<string, Diagnostic[]>;
+  openFiles: Set<string>;
   connection?: MessageConnection;
   serverCapabilities?: ServerCapabilities;
+  process?: ChildProcessWithoutNullStreams;
   openFile(path: string): Promise<void>;
   closeFile(path: string): Promise<void>;
+  closeAllFiles(): Promise<void>;
+  sendChangeNotification(path: string): Promise<void>;
   getDiagnostics(path: string): Diagnostic[];
   waitForDiagnostics(path: string, timeoutMs?: number): Promise<void>;
   triggerDiagnostics(path: string, timeoutMs?: number): Promise<void>;

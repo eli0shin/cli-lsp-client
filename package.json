@@ -8,6 +8,7 @@
   "main": "src/cli.ts",
   "devDependencies": {
     "@eslint/js": "^9.33.0",
+    "@modelcontextprotocol/sdk": "^1.17.3",
     "@types/bun": "latest",
     "@types/node": "latest",
     "eslint": "^9.33.0",
@@ -20,7 +21,8 @@
     "typescript": "latest",
     "typescript-eslint": "^8.39.1",
     "vscode-jsonrpc": "^8.2.1",
-    "vscode-languageserver-types": "^3.17.5"
+    "vscode-languageserver-types": "^3.17.5",
+    "zod": "3.25"
   },
   "bin": {
     "cli-lsp-client": "cli-lsp-client"
@@ -47,9 +49,5 @@
     "prepublishOnly": "bun test && bun run build",
     "postinstall": "node scripts/postinstall.js"
   },
-  "type": "module",
-  "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.17.3",
-    "zod": "3.25"
-  }
+  "type": "module"
 }

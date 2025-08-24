@@ -46,7 +46,7 @@ function formatHoverResultsPlain(hoverResults: HoverResult[]): string {
 
       return `${location}\n${content}`;
     })
-    .join('\n\n---\n\n');
+    .join('\n\n');
 }
 
 server.registerTool(
@@ -64,8 +64,16 @@ Use this tool when you need to:
 
 This tool performs the equivalent of "hovering" over a symbol in an IDE, providing rich contextual information that helps understand code without navigating to the definition.`,
     inputSchema: {
-      file: z.string().describe('The absolute or relative file path containing the symbol (e.g., "src/utils.ts", "/home/user/project/main.py")'),
-      symbol: z.string().describe('The exact symbol name to look up (e.g., "calculateTotal", "MyClass", "MAX_SIZE"). Case-sensitive.'),
+      file: z
+        .string()
+        .describe(
+          'The absolute or relative file path containing the symbol (e.g., "src/utils.ts", "/home/user/project/main.py")'
+        ),
+      symbol: z
+        .string()
+        .describe(
+          'The exact symbol name to look up (e.g., "calculateTotal", "MyClass", "MAX_SIZE"). Case-sensitive.'
+        ),
     },
     annotations: {
       readOnlyHint: true,
@@ -137,4 +145,3 @@ export async function startMcpServer() {
   const transport = new StdioServerTransport();
   await server.connect(transport);
 }
-

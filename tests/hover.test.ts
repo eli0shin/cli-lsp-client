@@ -117,7 +117,7 @@ type HoverResult = {
     expect(result.exitCode).toBe(0);
     const output = stripAnsi(result.stdout);
     // When hovering over an import, we follow to the actual type definition
-    expect(output).toBe(`Location: src/lsp/types.ts:23:13
+    expect(output).toBe(`Location: src/lsp/types.ts:24:13
 \`\`\`typescript
 type Diagnostic = VSCodeDiagnostic
 \`\`\``);
@@ -377,6 +377,118 @@ Represents the completion of an asynchronous operation`);
       .toBe(`Location: tests/fixtures/typescript/valid/simple-function.ts:61:17
 \`\`\`typescript
 function getUserId(): UserID
+\`\`\``);
+  }, 10000);
+
+  test('should return all matching symbols with the same name in a file', async () => {
+    const result = await runHover(
+      'tests/fixtures/typescript/valid/duplicate-symbols.ts',
+      'greet'
+    );
+
+    expect(result.exitCode).toBe(0);
+    const output = stripAnsi(result.stdout);
+
+    // Expect two precise hover blocks separated by a blank line
+    const expected = `Location: tests/fixtures/typescript/valid/duplicate-symbols.ts:4:3
+\`\`\`typescript
+(method) GreeterA.greet(name: string): string
+\`\`\`
+
+Location: tests/fixtures/typescript/valid/duplicate-symbols.ts:10:3
+\`\`\`typescript
+(method) GreeterB.greet(name: string): string
+\`\`\``;
+    expect(output).toBe(expected);
+  }, 20000);
+
+  test('should show correct hover styles for different result variable types', async () => {
+    const result = await runHover(
+      'tests/fixtures/typescript/valid/multi-result-types.ts',
+      'result'
+    );
+
+    expect(result.exitCode).toBe(0);
+    const output = stripAnsi(result.stdout);
+
+    const expected = `Location: tests/fixtures/typescript/valid/multi-result-types.ts:2:9
+\`\`\`typescript
+const result: "hello"
+\`\`\`
+
+Location: tests/fixtures/typescript/valid/multi-result-types.ts:7:9
+\`\`\`typescript
+const result: {
+    a: number;
+    b: string;
+}
+\`\`\`
+
+Location: tests/fixtures/typescript/valid/multi-result-types.ts:15:9
+\`\`\`typescript
+const result: {
+    readonly a: 1;
+    readonly b: "y";
+    readonly nested: {
+        readonly flag: true;
+    };
+}
+\`\`\``;
+
+    expect(output).toBe(expected);
+  }, 20000);
+
+  test('should get hover info for strCase function', async () => {
+    const result = await runHover(
+      'tests/fixtures/typescript/valid/multi-result-types.ts',
+      'strCase'
+    );
+
+    expect(result.exitCode).toBe(0);
+    const output = stripAnsi(result.stdout);
+    expect(output)
+      .toBe(`Location: tests/fixtures/typescript/valid/multi-result-types.ts:1:17
+\`\`\`typescript
+function strCase(): string
+\`\`\``);
+  }, 10000);
+
+  test('should get hover info for objCase function', async () => {
+    const result = await runHover(
+      'tests/fixtures/typescript/valid/multi-result-types.ts',
+      'objCase'
+    );
+
+    expect(result.exitCode).toBe(0);
+    const output = stripAnsi(result.stdout);
+    expect(output)
+      .toBe(`Location: tests/fixtures/typescript/valid/multi-result-types.ts:6:17
+\`\`\`typescript
+function objCase(): {
+    a: number;
+    b: string;
+}
+\`\`\``);
+  }, 10000);
+
+  test('should get hover info for objConstCase function', async () => {
+    const result = await runHover(
+      'tests/fixtures/typescript/valid/multi-result-types.ts',
+      'objConstCase'
+    );
+
+    expect(result.exitCode).toBe(0);
+    const output = stripAnsi(result.stdout);
+    expect(output)
+      .toBe(`Location: tests/fixtures/typescript/valid/multi-result-types.ts:14:17
+\`\`\`typescript
+function objConstCase(): {
+    readonly a: 1;
+    readonly b: "y";
+    readonly nested: {
+        readonly flag: true;
+    };
+}
 \`\`\``);
   }, 10000);
 });

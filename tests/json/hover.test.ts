@@ -11,7 +11,7 @@ describe('JSON Hover Command', () => {
     expect(result.exitCode).toBe(0);
     const output = stripAnsi(result.stdout.toString());
     expect(output)
-      .toBe(`Location: tests/fixtures/json/valid/package-with-schema.json:3:4
+      .toBe(`Location: tests/fixtures/json/valid/package-with-schema.json:3:3
 The name of the package\\.`);
   }, 10000);
 
@@ -24,7 +24,7 @@ The name of the package\\.`);
     expect(result.exitCode).toBe(0);
     const output = stripAnsi(result.stdout.toString());
     expect(output)
-      .toBe(`Location: tests/fixtures/json/valid/package-with-schema.json:5:4
+      .toBe(`Location: tests/fixtures/json/valid/package-with-schema.json:5:3
 This helps people discover your package, as it's listed in 'npm search'\\.`);
   }, 10000);
 
@@ -51,7 +51,7 @@ This helps people discover your package, as it's listed in 'npm search'\\.`);
     expect(result.exitCode).toBe(0);
     const output = stripAnsi(result.stdout.toString());
     expect(output)
-      .toBe(`Location: tests/fixtures/json/valid/tsconfig-with-schema.json:4:6
+      .toBe(`Location: tests/fixtures/json/valid/tsconfig-with-schema.json:4:5
 Set the JavaScript language version for emitted JavaScript and include compatible library declarations.
 
 See more: https://www.typescriptlang.org/tsconfig#target`);
@@ -66,7 +66,7 @@ See more: https://www.typescriptlang.org/tsconfig#target`);
     expect(result.exitCode).toBe(0);
     const output = stripAnsi(result.stdout.toString());
     expect(output)
-      .toBe(`Location: tests/fixtures/json/valid/tsconfig-with-schema.json:7:6
+      .toBe(`Location: tests/fixtures/json/valid/tsconfig-with-schema.json:7:5
 Enable all strict type checking options.
 
 See more: https://www.typescriptlang.org/tsconfig#strict`);

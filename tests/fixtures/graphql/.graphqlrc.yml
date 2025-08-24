@@ -1,2 +1,7 @@
 schema: "./valid/test-schema.graphql"
 documents: "./**/*.{graphql,gql}"
+extensions:
+  languageService:
+    enableValidation: true
+    cacheSchemaFileForLookup: true
+    fillLeafsOnComplete: true

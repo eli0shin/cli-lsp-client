@@ -4,6 +4,7 @@ import type { LSPServer } from './types.js';
 import { log } from '../logger.js';
 import { loadConfigFile, configServerToLSPServer } from './config.js';
 import { bunxCommand, ensurePackageInstalled, getLocalCommandPath } from '../bun/index.js';
+import { registerLSPProcess } from '../process-registry.js';
 
 async function findProjectRoot(
   fileOrDirPath: string,
@@ -429,13 +430,24 @@ export async function spawnServer(
 
     log(`Spawning ${server.id} with command: ${command.join(' ')} in ${root}`);
 
+    // Special environment variables for problematic servers
+    const serverEnv = { ...server.env };
+    
+    // For R language server, limit process pool to prevent zombie processes
+    if (server.id === 'r_language_server') {
+      serverEnv.R_LANGSVR_POOL_SIZE = '0';
+    }
+
     const childProcess = spawn(command[0], command.slice(1), {
       cwd: root,
       env: {
         ...process.env,
-        ...server.env,
+        ...serverEnv,
       },
       stdio: ['pipe', 'pipe', 'pipe'],
+      // Create a new process group on Unix systems
+      // This allows us to kill all child processes when terminating
+      detached: process.platform !== 'win32',
     });
 
     // Basic error handling
@@ -450,6 +462,12 @@ export async function spawnServer(
     childProcess.stderr.on('data', (data: Buffer) => {
       log(`LSP server ${server.id} stderr: ${data.toString()}`);
     });
+
+    // Register process for cleanup on daemon shutdown
+    // Only register if we're running in daemon context
+    if (process.env.LSPCLI_DAEMON === 'true') {
+      registerLSPProcess(childProcess);
+    }
 
     return {
       process: childProcess,
