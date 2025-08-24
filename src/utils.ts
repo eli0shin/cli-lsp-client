@@ -21,6 +21,26 @@ export function hashPath(dirPath: string): string {
 }
 
 /**
+ * Safely converts a file:// URL to a decoded file path
+ * @param url The URL string to convert
+ * @returns The decoded file path, or the original pathname if decoding fails
+ */
+export function urlToFilePath(url: string): string {
+  try {
+    const urlObj = new URL(url);
+    return decodeURIComponent(urlObj.pathname);
+  } catch (error) {
+    // Fallback to undecoded pathname if decodeURIComponent fails
+    try {
+      return new URL(url).pathname;
+    } catch {
+      // If URL parsing fails entirely, return the original string
+      return url;
+    }
+  }
+}
+
+/**
  * Ensures the daemon is running, starting it if necessary
  * @param configFile Optional path to config file to pass to daemon
  * @returns true if daemon is running or was successfully started, false otherwise

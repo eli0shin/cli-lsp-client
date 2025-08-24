@@ -16,6 +16,7 @@ import {
   getConfigLanguageExtensions,
 } from './servers.js';
 import { log } from '../logger.js';
+import { urlToFilePath } from '../utils.js';
 import { TypeEnhancer } from './type-enhancer.js';
 import { LANGUAGE_EXTENSIONS } from './language.js';
 
@@ -400,7 +401,7 @@ export class LSPManager {
                 const firstTypeDef = typeDefinitions[0];
                 if ('uri' in firstTypeDef) {
                   const location = firstTypeDef;
-                  const typeDefFile = new URL(location.uri).pathname;
+                  const typeDefFile = urlToFilePath(location.uri);
                   const typeDefLocation = location.range.start;
 
                   // Only use type definition if it's different from original location
@@ -416,7 +417,7 @@ export class LSPManager {
                   }
                 } else if ('targetUri' in firstTypeDef) {
                   const locationLink = firstTypeDef;
-                  const typeDefFile = new URL(locationLink.targetUri).pathname;
+                  const typeDefFile = urlToFilePath(locationLink.targetUri);
                   const typeDefLocation =
                     locationLink.targetSelectionRange?.start ||
                     locationLink.targetRange.start;

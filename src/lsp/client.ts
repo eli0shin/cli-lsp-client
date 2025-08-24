@@ -27,6 +27,7 @@ import {
 import type { ServerHandle } from './servers.js';
 import { LANGUAGE_EXTENSIONS } from './language.js';
 import { log } from '../logger.js';
+import { urlToFilePath } from '../utils.js';
 import type { LanguageExtensionMapping } from './config.js';
 
 export async function createLSPClient(
@@ -62,7 +63,7 @@ export async function createLSPClient(
       `>>> RECEIVED publishDiagnostics!!! uri: ${uri}, count: ${diagnosticsCount}`
     );
 
-    const filePath = new URL(uri).pathname;
+    const filePath = urlToFilePath(uri);
     // Cast to Diagnostic[] since we know the structure from LSP protocol
     diagnostics.set(filePath, (rawDiagnostics as Diagnostic[]) || []);
   });
