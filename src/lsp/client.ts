@@ -236,6 +236,7 @@ export async function createLSPClient(
           },
         ],
       });
+      
       log(`=== FILE OPEN SEQUENCE COMPLETE: ${absolutePath} ===`);
     },
 
@@ -341,6 +342,9 @@ export async function createLSPClient(
       } catch (error) {
         log(`documentSymbol not supported or failed: ${error}`);
         return [];
+      } finally {
+        // Close the file after getting symbols
+        await this.closeFile(absolutePath);
       }
     },
 
@@ -369,6 +373,9 @@ export async function createLSPClient(
       } catch (error) {
         log(`definition request failed: ${error}`);
         return null;
+      } finally {
+        // Close the file after getting definition
+        await this.closeFile(absolutePath);
       }
     },
 
@@ -400,6 +407,9 @@ export async function createLSPClient(
       } catch (error) {
         log(`typeDefinition request failed: ${error}`);
         return null;
+      } finally {
+        // Close the file after getting type definition
+        await this.closeFile(absolutePath);
       }
     },
 
@@ -428,6 +438,9 @@ export async function createLSPClient(
       } catch (error) {
         log(`hover request failed: ${error}`);
         return null;
+      } finally {
+        // Close the file after getting hover
+        await this.closeFile(absolutePath);
       }
     },
 

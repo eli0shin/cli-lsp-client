@@ -18,7 +18,7 @@ try {
 
   // Wait for daemon to be fully ready after start
   console.log('Waiting for daemon to be ready...');
-  await new Promise((resolve) => setTimeout(resolve, 8000));
+  await new Promise((resolve) => setTimeout(resolve, 5000));
 
   console.log('Global test setup complete');
 } catch (error) {
