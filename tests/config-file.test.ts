@@ -1,20 +1,8 @@
-import { test, describe, expect, beforeAll, afterAll } from 'bun:test';
+import { test, describe, expect } from 'bun:test';
 import { runCommandWithArgs, stripAnsi } from './test-utils.js';
 import path from 'path';
 
 describe('Config File Support', () => {
-  beforeAll(async () => {
-    // Stop any running daemon to ensure clean state
-    await runCommandWithArgs(['stop']).catch(() => {});
-    // Wait for cleanup
-    await new Promise(resolve => setTimeout(resolve, 1000));
-  });
-
-  afterAll(async () => {
-    // Clean up daemon after tests
-    await runCommandWithArgs(['stop']).catch(() => {});
-  });
-
   test('config file enables custom language server and provides diagnostics', async () => {
     const configPath = path.resolve('tests/fixtures/config/svelte-config.json');
     const svelteFile = path.resolve('tests/fixtures/svelte/Component.svelte');

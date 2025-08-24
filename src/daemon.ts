@@ -141,6 +141,24 @@ function formatUptime(uptimeMs: number): string {
   }
 }
 
+export async function handleRequestWithLifecycle(
+  request: Request
+): Promise<string | number | StatusResult | unknown> {
+  try {
+    // Execute the actual command
+    const result = await handleRequest(request);
+
+    // Close all open files after command completes
+    await lspManager.closeAllFiles();
+
+    return result;
+  } catch (error) {
+    // Ensure files are closed even on error
+    await lspManager.closeAllFiles();
+    throw error;
+  }
+}
+
 export async function handleRequest(
   request: Request
 ): Promise<string | number | StatusResult | unknown> {
@@ -288,7 +306,7 @@ export async function startDaemon(): Promise<void> {
         const request = parseResult.data;
         log(`Received request: ${JSON.stringify(request)}`);
 
-        const result = await handleRequest(request);
+        const result = await handleRequestWithLifecycle(request);
 
         socket.write(
           JSON.stringify({

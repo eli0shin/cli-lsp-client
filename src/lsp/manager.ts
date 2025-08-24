@@ -715,6 +715,14 @@ export class LSPManager {
     }));
   }
 
+  async closeAllFiles(): Promise<void> {
+    log('Closing all files across all clients');
+    const closePromises = Array.from(this.clients.values()).map((client) =>
+      client.closeAllFiles()
+    );
+    await Promise.all(closePromises);
+  }
+
   async shutdown(): Promise<void> {
     log('Shutting down LSP manager...');
     log(`Shutting down ${this.clients.size} LSP clients`);

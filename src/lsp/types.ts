@@ -266,11 +266,14 @@ export type LSPClient = {
   root: string;
   createdAt: number;
   diagnostics: Map<string, Diagnostic[]>;
+  openFiles: Set<string>;
   connection?: MessageConnection;
   serverCapabilities?: ServerCapabilities;
   process?: ChildProcessWithoutNullStreams;
   openFile(path: string): Promise<void>;
   closeFile(path: string): Promise<void>;
+  closeAllFiles(): Promise<void>;
+  sendChangeNotification(path: string): Promise<void>;
   getDiagnostics(path: string): Diagnostic[];
   waitForDiagnostics(path: string, timeoutMs?: number): Promise<void>;
   triggerDiagnostics(path: string, timeoutMs?: number): Promise<void>;

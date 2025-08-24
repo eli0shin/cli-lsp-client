@@ -188,6 +188,7 @@ export async function createLSPClient(
     root,
     createdAt: Date.now(),
     diagnostics,
+    openFiles: new Set<string>(),
     connection,
     serverCapabilities,
     process: serverHandle.process,
@@ -196,6 +197,12 @@ export async function createLSPClient(
       const absolutePath = path.isAbsolute(filePath)
         ? filePath
         : path.resolve(process.cwd(), filePath);
+
+      // Skip if already open
+      if (client.openFiles.has(absolutePath)) {
+        log(`File already open: ${absolutePath}`);
+        return;
+      }
 
       log(`=== OPENING FILE: ${absolutePath} ===`);
 
@@ -221,29 +228,21 @@ export async function createLSPClient(
         },
       });
 
-      log(`Sending didChange for ${absolutePath}`);
-      // CRITICAL: Send a dummy change notification to force diagnostics
-      // Some LSP servers (e.g., Pyright) cache diagnostics and won't re-send them
-      // when a file is reopened with the same content. This ensures fresh diagnostics.
-      await connection.sendNotification('textDocument/didChange', {
-        textDocument: {
-          uri: `file://${absolutePath}`,
-          version: 1,
-        },
-        contentChanges: [
-          {
-            text: text,
-          },
-        ],
-      });
-      
-      log(`=== FILE OPEN SEQUENCE COMPLETE: ${absolutePath} ===`);
+      // Track as open
+      client.openFiles.add(absolutePath);
+      log(`=== FILE OPENED: ${absolutePath} ===`);
     },
 
     async closeFile(filePath: string): Promise<void> {
       const absolutePath = path.isAbsolute(filePath)
         ? filePath
         : path.resolve(process.cwd(), filePath);
+
+      // Skip if not open
+      if (!client.openFiles.has(absolutePath)) {
+        log(`File not open, skipping close: ${absolutePath}`);
+        return;
+      }
 
       // Clear diagnostics for this file when closing
       diagnostics.delete(absolutePath);
@@ -252,6 +251,42 @@ export async function createLSPClient(
         textDocument: {
           uri: `file://${absolutePath}`,
         },
+      });
+
+      // Remove from tracking
+      client.openFiles.delete(absolutePath);
+      log(`File closed: ${absolutePath}`);
+    },
+
+    async closeAllFiles(): Promise<void> {
+      log(`Closing all open files: ${client.openFiles.size} files`);
+      const closePromises = Array.from(client.openFiles).map(file =>
+        client.closeFile(file)
+      );
+      await Promise.all(closePromises);
+      log('All files closed');
+    },
+
+    async sendChangeNotification(filePath: string): Promise<void> {
+      const absolutePath = path.isAbsolute(filePath)
+        ? filePath
+        : path.resolve(process.cwd(), filePath);
+
+      log(`Sending didChange for diagnostics: ${absolutePath}`);
+
+      // Read current file content
+      const file = Bun.file(absolutePath);
+      const text = await file.text();
+
+      // Send didChange notification to force fresh diagnostics
+      // Some LSP servers (e.g., Pyright) cache diagnostics and won't re-send them
+      // when a file is reopened with the same content. This ensures fresh diagnostics.
+      await connection.sendNotification('textDocument/didChange', {
+        textDocument: {
+          uri: `file://${absolutePath}`,
+          version: 1,
+        },
+        contentChanges: [{ text }],
       });
     },
 
@@ -314,6 +349,9 @@ export async function createLSPClient(
       // Open the file to trigger diagnostics
       await this.openFile(filePath);
 
+      // Send change notification to force fresh diagnostics
+      await this.sendChangeNotification(filePath);
+
       // Wait for diagnostics
       await this.waitForDiagnostics(filePath, timeoutMs);
     },
@@ -342,9 +380,6 @@ export async function createLSPClient(
       } catch (error) {
         log(`documentSymbol not supported or failed: ${error}`);
         return [];
-      } finally {
-        // Close the file after getting symbols
-        await this.closeFile(absolutePath);
       }
     },
 
@@ -373,9 +408,6 @@ export async function createLSPClient(
       } catch (error) {
         log(`definition request failed: ${error}`);
         return null;
-      } finally {
-        // Close the file after getting definition
-        await this.closeFile(absolutePath);
       }
     },
 
@@ -407,9 +439,6 @@ export async function createLSPClient(
       } catch (error) {
         log(`typeDefinition request failed: ${error}`);
         return null;
-      } finally {
-        // Close the file after getting type definition
-        await this.closeFile(absolutePath);
       }
     },
 
@@ -438,9 +467,6 @@ export async function createLSPClient(
       } catch (error) {
         log(`hover request failed: ${error}`);
         return null;
-      } finally {
-        // Close the file after getting hover
-        await this.closeFile(absolutePath);
       }
     },
 

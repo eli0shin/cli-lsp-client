@@ -23,6 +23,7 @@ describe('Java Hover Command', () => {
     const output = stripAnsi(result.stdout.toString());
     expect(output).toBe(`Location: tests/fixtures/java/valid/src/main/java/com/example/HelloWorld.java:8:13
 
+
 Location: tests/fixtures/java/valid/src/main/java/com/example/HelloWorld.java:15:17`);
   }, 10000);
 
@@ -36,6 +37,7 @@ Location: tests/fixtures/java/valid/src/main/java/com/example/HelloWorld.java:15
     const output = stripAnsi(result.stdout.toString());
     expect(output).toBe(`Location: tests/fixtures/java/valid/src/main/java/com/example/HelloWorld.java:11:17
 
+
 Location: tests/fixtures/java/valid/src/main/java/com/example/HelloWorld.java:19:17`);
   }, 10000);
 
@@ -48,6 +50,7 @@ Location: tests/fixtures/java/valid/src/main/java/com/example/HelloWorld.java:19
     expect(result.exitCode).toBe(0);
     const output = stripAnsi(result.stdout.toString());
     expect(output).toBe(`Location: tests/fixtures/java/valid/src/main/java/com/example/HelloWorld.java:4:33
+
 
 Location: tests/fixtures/java/valid/src/main/java/com/example/HelloWorld.java:16:28`);
   }, 10000);
