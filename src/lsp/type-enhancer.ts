@@ -62,6 +62,8 @@ const languageStrategies: Record<string, LanguageStrategy> = {
         containsTruncation(content) ||
         // Interface without properties shown
         /^interface \w+$/m.test(content) ||
+        // Class without structure shown (with or without generics)
+        /^class \w+(?:<[^>]*>)?$/m.test(content) ||
         // Type alias that's just a name
         /^type \w+ = \w+$/m.test(content) ||
         // Variable with just type name (not expanded)
@@ -100,6 +102,15 @@ const languageStrategies: Record<string, LanguageStrategy> = {
         }
         const interfaceName = original.match(/^interface (\w+)$/m)?.[1] || '';
         return `\`\`\`typescript\ninterface ${interfaceName} ${expanded}\n\`\`\``;
+      }
+      // Replace class without structure with expanded version
+      if (/^class \w+(?:<[^>]*>)?$/m.test(original)) {
+        // If expanded already contains "class", use it as-is
+        if (expanded.startsWith('class ')) {
+          return `\`\`\`typescript\n${expanded}\n\`\`\``;
+        }
+        const className = original.match(/^class (\w+)(?:<[^>]*>)?$/m)?.[1] || '';
+        return `\`\`\`typescript\nclass ${className} ${expanded}\n\`\`\``;
       }
       // Replace truncated parts with expanded version
       if (original.includes('...')) {
@@ -320,6 +331,432 @@ export class TypeEnhancer {
     }
   }
 
+  private async extractClassFromSymbols(
+    filePath: string,
+    className: string
+  ): Promise<string | null> {
+    try {
+      // For TypeScript files (.ts and .d.ts), parse directly for better accuracy
+      if (filePath.endsWith('.ts') || filePath.endsWith('.d.ts')) {
+        const parsedClass = await this.parseTypescriptFile(filePath, className);
+        if (parsedClass) {
+          log(`Successfully parsed TypeScript file for ${className}`);
+          return parsedClass;
+        }
+      }
+
+      // Fallback to symbol-based extraction
+      const symbols = await this.client.getDocumentSymbols(filePath);
+      
+      // Find the class symbol
+      const findClass = (syms: (DocumentSymbol | SymbolInformation)[]): DocumentSymbol | null => {
+        for (const sym of syms) {
+          if ('children' in sym) {
+            // DocumentSymbol
+            if (sym.name === className && sym.kind === SymbolKind.Class) {
+              return sym;
+            }
+            // Recursively search children
+            const found = findClass(sym.children || []);
+            if (found) return found;
+          }
+        }
+        return null;
+      };
+      
+      const classSymbol = findClass(symbols as DocumentSymbol[]);
+      if (!classSymbol || !('children' in classSymbol)) {
+        return null;
+      }
+      
+      // Categorize class members
+      const properties: string[] = [];
+      let constructorInfo: string | null = null;
+      const methods: string[] = [];
+      
+      // Process each class member
+      for (const child of classSymbol.children || []) {
+        // Skip private members to show only public API
+        if (this.isPrivateMember(child)) {
+          log(`Skipping private member: ${child.name}`);
+          continue;
+        }
+        
+        const memberInfo = await this.extractMemberInfo(filePath, child);
+        
+        if (child.kind === SymbolKind.Property || child.kind === SymbolKind.Field) {
+          properties.push(memberInfo);
+        } else if (child.kind === SymbolKind.Constructor) {
+          constructorInfo = memberInfo;
+        } else if (child.kind === SymbolKind.Method) {
+          methods.push(memberInfo);
+        }
+        // Ignore other symbol kinds for class members
+      }
+      
+      // Format the class structure
+      return this.formatClassStructure(className, properties, constructorInfo, methods);
+    } catch (error) {
+      log(`Failed to extract class from symbols: ${error}`);
+      return null;
+    }
+  }
+
+  private async extractMemberInfo(
+    filePath: string, 
+    member: DocumentSymbol
+  ): Promise<string> {
+    // Get hover information for accurate type
+    let typeInfo = '...';
+    
+    if ('range' in member && member.range) {
+      try {
+        const hover = await this.client.getHover(filePath, member.range.start);
+        if (hover) {
+          const hoverContent = extractHoverContent(hover);
+          typeInfo = this.parseTypeFromHover(hoverContent, member.name, member.kind);
+        }
+      } catch (error) {
+        log(`Failed to get hover for member ${member.name}: ${error}`);
+      }
+    }
+    
+    // Fallback to detail if hover didn't work and we still have truncation
+    if (typeInfo === '...' && member.detail) {
+      typeInfo = member.detail;
+    }
+    
+    // Format based on member kind
+    const visibility = this.extractVisibility(member.detail || '');
+    return this.formatMember(member.name, typeInfo, member.kind, visibility);
+  }
+
+  private parseTypeFromHover(hoverContent: string, memberName: string, memberKind: SymbolKind): string {
+    if (!hoverContent) {
+      log(`No hover content for ${memberName}`);
+      return '...';
+    }
+    
+    log(`Parsing hover for ${memberName} (kind ${memberKind}): "${hoverContent.substring(0, 100)}..."`);
+    
+    // Handle different hover content patterns
+    if (memberKind === SymbolKind.Method || memberKind === SymbolKind.Constructor) {
+      // For methods/constructors, extract the full signature
+      const methodMatch = hoverContent.match(/\(method\)\s+[^:]+:\s*(.+)$/m) ||
+                         hoverContent.match(/\(constructor\)\s+[^:]+:\s*(.+)$/m) ||
+                         hoverContent.match(/^(.+)$/m);
+      if (methodMatch) {
+        const result = this.cleanTypeString(methodMatch[1]);
+        log(`Extracted method type for ${memberName}: "${result}"`);
+        return result;
+      }
+    } else {
+      // For properties, extract type after colon
+      const propMatch = hoverContent.match(/\(property\)\s+[^:]+:\s*(.+)$/m) ||
+                       hoverContent.match(new RegExp(`${memberName}:\\s*(.+)$`, 'm')) ||
+                       hoverContent.match(/:\s*(.+)$/m);
+      if (propMatch) {
+        const result = this.cleanTypeString(propMatch[1]);
+        log(`Extracted property type for ${memberName}: "${result}"`);
+        return result;
+      }
+    }
+    
+    log(`Failed to extract type for ${memberName}, using '...' to indicate truncation`);
+    return '...';
+  }
+
+  private cleanTypeString(type: string): string {
+    // Remove markdown code blocks and clean up type string
+    return type
+      .replace(/^```[\w]*\n?/, '')
+      .replace(/\n?```$/, '')
+      .replace(/^`|`$/g, '')
+      .trim();
+  }
+
+  private extractVisibility(detail: string): string {
+    // Extract visibility modifiers from detail string
+    const visibilityMatch = detail.match(/^(public|private|protected|readonly)\s+/);
+    return visibilityMatch ? visibilityMatch[1] + ' ' : '';
+  }
+
+  private isPrivateMember(member: DocumentSymbol): boolean {
+    // Check for private modifier in detail
+    if (member.detail?.includes('private')) {
+      return true;
+    }
+    
+    // Check for underscore prefix (common private convention)
+    if (member.name.startsWith('_')) {
+      return true;
+    }
+    
+    return false;
+  }
+
+  private splitIntoStatements(classBody: string): string[] {
+    // Split on semicolons but keep JSDoc comments with their following statements
+    const statements: string[] = [];
+    let current = '';
+    let inJSDoc = false;
+    let inString = false;
+    let stringChar = '';
+    let braceDepth = 0;
+    let parenDepth = 0;
+    
+    for (let i = 0; i < classBody.length; i++) {
+      const char = classBody[i];
+      const next = classBody[i + 1];
+      const prev = i > 0 ? classBody[i - 1] : '';
+      
+      // Track string literals to avoid splitting inside them
+      if ((char === '"' || char === "'" || char === '`') && prev !== '\\') {
+        if (!inString) {
+          inString = true;
+          stringChar = char;
+        } else if (char === stringChar) {
+          inString = false;
+          stringChar = '';
+        }
+      }
+      
+      // Track JSDoc comments
+      if (!inString && char === '/' && next === '*' && classBody[i + 2] === '*') {
+        inJSDoc = true;
+      }
+      if (inJSDoc && char === '*' && next === '/') {
+        inJSDoc = false;
+        current += char + next;
+        i++; // Skip the '/'
+        continue;
+      }
+      
+      // Track brace and parenthesis depth to handle complex parameters
+      if (!inString && !inJSDoc) {
+        if (char === '{') braceDepth++;
+        if (char === '}') braceDepth--;
+        if (char === '(') parenDepth++;
+        if (char === ')') parenDepth--;
+      }
+      
+      current += char;
+      
+      // Split on semicolon only if:
+      // - Not in JSDoc comment
+      // - Not inside string literals  
+      // - At depth 0 for both braces and parentheses
+      // - This ensures we don't split on semicolons inside object parameters
+      if (char === ';' && !inJSDoc && !inString && braceDepth === 0 && parenDepth === 0) {
+        if (current.trim()) {
+          statements.push(current.trim());
+        }
+        current = '';
+      }
+    }
+    
+    // Add remaining content
+    if (current.trim()) {
+      statements.push(current.trim());
+    }
+    
+    return statements;
+  }
+
+  private async parseTypescriptFile(
+    filePath: string,
+    className: string
+  ): Promise<string | null> {
+    try {
+      // Read the TypeScript file content
+      const fileContent = await Bun.file(filePath).text();
+      
+      // Find the class declaration using brace matching
+      const classStart = fileContent.indexOf(`class ${className}`);
+      if (classStart === -1) {
+        log(`Could not find class ${className} in ${filePath}`);
+        return null;
+      }
+      
+      // Find the opening brace after the class name
+      const openBraceIndex = fileContent.indexOf('{', classStart);
+      if (openBraceIndex === -1) {
+        log(`Could not find opening brace for class ${className}`);
+        return null;
+      }
+      
+      // Find the matching closing brace
+      let braceCount = 0;
+      let closeBraceIndex = -1;
+      
+      for (let i = openBraceIndex; i < fileContent.length; i++) {
+        if (fileContent[i] === '{') braceCount++;
+        if (fileContent[i] === '}') braceCount--;
+        if (braceCount === 0) {
+          closeBraceIndex = i;
+          break;
+        }
+      }
+      
+      if (closeBraceIndex === -1) {
+        log(`Could not find closing brace for class ${className}`);
+        return null;
+      }
+      
+      const classBody = fileContent.slice(openBraceIndex + 1, closeBraceIndex);
+      
+      const properties: string[] = [];
+      let constructorInfo: string | null = null;
+      const methods: string[] = [];
+
+      // Parse class members by statements (semicolon-separated) to handle multi-line signatures
+      // First, split by semicolons but preserve JSDoc comments
+      const statements = this.splitIntoStatements(classBody);
+      log(`Parsing class body with ${statements.length} statements`);
+      
+      for (const statement of statements) {
+        const trimmed = statement.trim();
+        log(`Processing statement: "${trimmed.substring(0, 100)}${trimmed.length > 100 ? '...' : ''}"`);
+        
+        // Skip empty statements and implementation code
+        if (!trimmed || trimmed.startsWith('this.') || trimmed.startsWith('return') || 
+            trimmed === '}' || trimmed === '{') {
+          continue;
+        }
+
+        // Skip private members
+        if (trimmed.startsWith('private ')) {
+          continue;
+        }
+
+        // Parse constructor
+        if (trimmed.includes('constructor(')) {
+          const constructorMatch = trimmed.match(/constructor\s*\(([^)]*)\)/);
+          if (constructorMatch) {
+            const params = constructorMatch[1];
+            constructorInfo = `constructor(${params}): ${className}`;
+            log(`Found constructor: ${constructorInfo}`);
+          }
+          continue;
+        }
+
+        // Parse methods - handle both simple and multi-line signatures
+        // Look for method name followed by parameters and return type
+        // First try to find method signature pattern (handle empty parameters)
+        const methodPattern = /^(?:\/\*\*[\s\S]*?\*\/\s*)?(async\s+)?([\w]+)\s*(<[^>]*>)?\s*\(([^)]*)\)\s*:\s*(.+?)$/s;
+        const methodMatch = trimmed.match(methodPattern);
+        if (methodMatch) {
+          const [, asyncMod, methodName, generics, params, returnType] = methodMatch;
+          const prefix = asyncMod ? 'async ' : '';
+          const genericsPart = generics || '';
+          
+          // Simplify complex parameter objects for readability
+          // Handle nested objects with proper brace counting
+          let simplifiedParams = params.trim();
+          
+          // Replace complex object parameters with simplified version
+          let braceCount = 0;
+          let simplified = '';
+          let inObject = false;
+          
+          for (const char of params) {
+            if (char === '{') {
+              if (!inObject) {
+                simplified += '{...';
+                inObject = true;
+              }
+              braceCount++;
+            } else if (char === '}') {
+              braceCount--;
+              if (braceCount === 0 && inObject) {
+                simplified += '}';
+                inObject = false;
+              }
+            } else if (!inObject) {
+              simplified += char;
+            }
+          }
+          
+          simplifiedParams = simplified.replace(/\s+/g, ' ').trim();
+          
+          // Clean up return type - remove any trailing semicolons
+          const cleanReturnType = returnType.trim().replace(/;+$/, '');
+          const signature = `${prefix}${methodName}${genericsPart}(${simplifiedParams}): ${cleanReturnType}`;
+          methods.push(signature);
+          log(`Found method: ${signature}`);
+          continue;
+        }
+
+        // Parse properties - look for property declarations
+        const propertyMatch = trimmed.match(/^(?:\/\*\*[\s\S]*?\*\/\s*)?(public\s+|protected\s+)?(readonly\s+)?([\w]+)\s*:\s*([^;=]+)/);
+        if (propertyMatch) {
+          const [, , readonly, propName, propType] = propertyMatch;
+          const prefix = readonly ? 'readonly ' : '';
+          const signature = `${prefix}${propName}: ${propType.trim()}`;
+          properties.push(signature);
+          log(`Found property: ${signature}`);
+          continue;
+        }
+      }
+
+      // Format the class structure
+      return this.formatClassStructure(className, properties, constructorInfo, methods);
+    } catch (error) {
+      log(`Failed to parse TypeScript declaration: ${error}`);
+      return null;
+    }
+  }
+
+  private formatMember(name: string, type: string, kind: SymbolKind, visibility: string): string {
+    if (kind === SymbolKind.Constructor) {
+      return `${visibility}constructor${type.startsWith('(') ? type : `(${type})`}`;
+    } else if (kind === SymbolKind.Method) {
+      if (type.includes('(') && type.includes(')')) {
+        return `${visibility}${name}${type}`;
+      }
+      return `${visibility}${name}(): ${type}`;
+    } else if (kind === SymbolKind.Property || kind === SymbolKind.Field) {
+      return `${visibility}${name}: ${type}`;
+    } else {
+      // Fallback for any other symbol kinds
+      return `${visibility}${name}: ${type}`;
+    }
+  }
+
+  private formatClassStructure(
+    className: string,
+    properties: string[],
+    constructor: string | null,
+    methods: string[]
+  ): string {
+    const parts: string[] = [`class ${className} {`];
+    
+    // Add properties
+    if (properties.length > 0) {
+      parts.push(...properties.map(p => `  ${p};`));
+    }
+    
+    // Add constructor
+    if (constructor) {
+      if (properties.length > 0) parts.push('');
+      parts.push(`  ${constructor};`);
+    }
+    
+    // Add methods (limit to prevent overwhelming output)
+    if (methods.length > 0) {
+      if (properties.length > 0 || constructor) parts.push('');
+      const limitedMethods = methods.slice(0, 15); // Show first 15 methods
+      parts.push(...limitedMethods.map(m => `  ${m};`));
+      
+      if (methods.length > 15) {
+        parts.push(`  // ... ${methods.length - 15} more methods`);
+      }
+    }
+    
+    parts.push('}');
+    return parts.join('\n');
+  }
+
   async enhanceHover(
     filePath: string,
     position: Position,
@@ -354,6 +791,20 @@ export class TypeEnhancer {
       if (extractedInterface) {
         result.expandedType = extractedInterface;
         log(`Extracted interface structure from symbols`);
+        return result;
+      }
+    }
+    
+    // Special handling for classes shown without structure
+    const classMatch = hoverContent.match(/^class\s+(\w+)(?:<[^>]*>)?$/m);
+    if (classMatch && languageId === 'typescript') {
+      const className = classMatch[1];
+      log(`Detected class ${className} without structure, extracting from symbols`);
+      
+      const extractedClass = await this.extractClassFromSymbols(filePath, className);
+      if (extractedClass) {
+        result.expandedType = extractedClass;
+        log(`Extracted class structure from symbols`);
         return result;
       }
     }

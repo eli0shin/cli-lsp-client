@@ -491,4 +491,21 @@ function objConstCase(): {
 }
 \`\`\``);
   }, 10000);
+
+  test('should get enhanced hover info for complex class with complete structure', async () => {
+    const result = await runHover(
+      'tests/fixtures/typescript/enhanced-hover/complex-api.ts',
+      'APIServer'
+    );
+
+    expect(result.exitCode).toBe(0);
+    const output = stripAnsi(result.stdout);
+    expect(output)
+      .toBe(`Location: tests/fixtures/typescript/enhanced-hover/complex-api.ts:30:14
+\`\`\`typescript
+class APIServer {
+  constructor(config: ServerOptions, context?: TContext): APIServer;
+}
+\`\`\``);
+  }, 10000);
 });
