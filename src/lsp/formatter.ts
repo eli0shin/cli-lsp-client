@@ -161,6 +161,12 @@ function formatHoverContent(hover: Hover): string {
 
   // Simple markdown to terminal formatting
   content = content
+    // Remove markdown horizontal rules (---) that gopls adds
+    .split('\n')
+    .filter(line => line.trim() !== '---')
+    .join('\n')
+    // Clean up any resulting triple blank lines
+    .replace(/\n\n\n+/g, '\n\n')
     // Code blocks
     .replace(/\n?```(\w+)?\n([\s\S]*?)```/g, (_, lang, code) => {
       // Safely parse the code parameter
