@@ -745,11 +745,11 @@ export class TypeEnhancer {
     // Add methods (limit to prevent overwhelming output)
     if (methods.length > 0) {
       if (properties.length > 0 || constructor) parts.push('');
-      const limitedMethods = methods.slice(0, 15); // Show first 15 methods
+      const limitedMethods = methods.slice(0, 100); // Show first 100 methods
       parts.push(...limitedMethods.map(m => `  ${m};`));
       
-      if (methods.length > 15) {
-        parts.push(`  // ... ${methods.length - 15} more methods`);
+      if (methods.length > 100) {
+        parts.push(`  // ... ${methods.length - 100} more methods`);
       }
     }
     
