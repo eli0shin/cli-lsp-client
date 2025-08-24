@@ -500,10 +500,41 @@ function objConstCase(): {
 
     expect(result.exitCode).toBe(0);
     const output = stripAnsi(result.stdout);
-    expect(output)
-      .toBe(`Location: tests/fixtures/typescript/enhanced-hover/complex-api.ts:30:14
+    expect(output).toBe(`Location: tests/fixtures/typescript/enhanced-hover/complex-api.ts:30:14
 \`\`\`typescript
+class APIServer /*
+  Example API Server demonstrating complex TypeScript class structure
+  that should be parsed correctly by the enhanced hover functionality.
+ /
+
+export interface ServerOptions {
+  port: number;
+  host: string;
+  ssl?: boolean;
+}
+
+export interface CallbackFunction<T> {
+  (data: T): void;
+}
+
+export interface ComplexConfig {
+  title?: string;
+  description?: string;
+  metadata?: Record<string, unknown>;
+  handlers?: {
+    onSuccess?: CallbackFunction<string>;
+    onError?: CallbackFunction<Error>;
+  };
+}
+
+/*
+  A complex API server class with various method signatures
+  to test the enhanced hover parsing capabilities.
+ /
 class APIServer {
+  /*
+      The server's current configuration
+     */
   constructor(config: ServerOptions, context?: TContext): APIServer;
 }
 \`\`\``);

@@ -18,6 +18,20 @@ export type EnhancedHover = {
   completionInfo?: CompletionItem[];
 };
 
+type MemberInfo = {
+  signature: string;
+  documentation?: string;
+  visibility?: string;
+};
+
+type ClassStructure = {
+  className: string;
+  documentation?: string;
+  properties: MemberInfo[];
+  constructor: MemberInfo | null;
+  methods: MemberInfo[];
+};
+
 type LanguageStrategy = {
   shouldExpandType: (hoverContent: string) => boolean;
   extractTypeFromCompletion: (items: CompletionItem[]) => string | null;
@@ -369,10 +383,28 @@ export class TypeEnhancer {
         return null;
       }
       
-      // Categorize class members
-      const properties: string[] = [];
-      let constructorInfo: string | null = null;
-      const methods: string[] = [];
+      // Create class structure
+      const structure: ClassStructure = {
+        className,
+        documentation: undefined,
+        properties: [],
+        constructor: null,
+        methods: []
+      };
+      
+      // Get class-level documentation from hover
+      if (classSymbol.range) {
+        try {
+          const classHover = await this.client.getHover(filePath, classSymbol.range.start);
+          if (classHover) {
+            const hoverContent = extractHoverContent(classHover);
+            const jsdocMatch = hoverContent.match(/^(\/\*\*[\s\S]*?\*\/)/m);
+            structure.documentation = jsdocMatch ? jsdocMatch[1] : undefined;
+          }
+        } catch (error) {
+          log(`Failed to get class hover: ${error}`);
+        }
+      }
       
       // Process each class member
       for (const child of classSymbol.children || []) {
@@ -385,17 +417,17 @@ export class TypeEnhancer {
         const memberInfo = await this.extractMemberInfo(filePath, child);
         
         if (child.kind === SymbolKind.Property || child.kind === SymbolKind.Field) {
-          properties.push(memberInfo);
+          structure.properties.push(memberInfo);
         } else if (child.kind === SymbolKind.Constructor) {
-          constructorInfo = memberInfo;
+          structure.constructor = memberInfo;
         } else if (child.kind === SymbolKind.Method) {
-          methods.push(memberInfo);
+          structure.methods.push(memberInfo);
         }
         // Ignore other symbol kinds for class members
       }
       
       // Format the class structure
-      return this.formatClassStructure(className, properties, constructorInfo, methods);
+      return this.formatClassStructure(structure);
     } catch (error) {
       log(`Failed to extract class from symbols: ${error}`);
       return null;
@@ -405,16 +437,21 @@ export class TypeEnhancer {
   private async extractMemberInfo(
     filePath: string, 
     member: DocumentSymbol
-  ): Promise<string> {
-    // Get hover information for accurate type
+  ): Promise<MemberInfo> {
+    // Get hover information for accurate type and JSDoc
     let typeInfo = '...';
+    let documentation: string | undefined;
     
     if ('range' in member && member.range) {
       try {
         const hover = await this.client.getHover(filePath, member.range.start);
         if (hover) {
           const hoverContent = extractHoverContent(hover);
-          typeInfo = this.parseTypeFromHover(hoverContent, member.name, member.kind);
+          
+          // Extract both JSDoc and type signature
+          const { jsdoc, signature } = this.parseHoverContent(hoverContent, member.name, member.kind);
+          typeInfo = signature;
+          documentation = jsdoc;
         }
       } catch (error) {
         log(`Failed to get hover for member ${member.name}: ${error}`);
@@ -428,7 +465,28 @@ export class TypeEnhancer {
     
     // Format based on member kind
     const visibility = this.extractVisibility(member.detail || '');
-    return this.formatMember(member.name, typeInfo, member.kind, visibility);
+    const formattedSignature = this.formatMember(member.name, typeInfo, member.kind, visibility);
+    
+    return {
+      signature: formattedSignature,
+      documentation,
+      visibility
+    };
+  }
+
+  private parseHoverContent(
+    hoverContent: string, 
+    memberName: string, 
+    memberKind: SymbolKind
+  ): { jsdoc?: string; signature: string } {
+    // Extract JSDoc comments (they appear at the beginning of hover content)
+    const jsdocMatch = hoverContent.match(/^(\/\*\*[\s\S]*?\*\/)/m);
+    const jsdoc = jsdocMatch ? jsdocMatch[1] : undefined;
+    
+    // Extract signature using existing logic
+    const signature = this.parseTypeFromHover(hoverContent, memberName, memberKind);
+    
+    return { jsdoc, signature };
   }
 
   private parseTypeFromHover(hoverContent: string, memberName: string, memberKind: SymbolKind): string {
@@ -605,9 +663,21 @@ export class TypeEnhancer {
       
       const classBody = fileContent.slice(openBraceIndex + 1, closeBraceIndex);
       
-      const properties: string[] = [];
-      let constructorInfo: string | null = null;
-      const methods: string[] = [];
+      const classStructure: ClassStructure = {
+        className,
+        documentation: undefined,
+        properties: [],
+        constructor: null,
+        methods: []
+      };
+      
+      // Extract class-level JSDoc
+      const classJSDocMatch = fileContent.match(
+        new RegExp(`(\\/\\*\\*[\\s\\S]*?\\*\\/)\\s*(?:export\\s+)?class\\s+${className}`)
+      );
+      if (classJSDocMatch) {
+        classStructure.documentation = classJSDocMatch[1];
+      }
 
       // Parse class members by statements (semicolon-separated) to handle multi-line signatures
       // First, split by semicolons but preserve JSDoc comments
@@ -629,13 +699,22 @@ export class TypeEnhancer {
           continue;
         }
 
+        // Extract JSDoc for this statement
+        const jsdocMatch = trimmed.match(/^(\/\*\*[\s\S]*?\*\/)\s*/);
+        const jsdoc = jsdocMatch ? jsdocMatch[1] : undefined;
+        const withoutJSDoc = jsdocMatch ? trimmed.slice(jsdocMatch[0].length) : trimmed;
+
         // Parse constructor
-        if (trimmed.includes('constructor(')) {
-          const constructorMatch = trimmed.match(/constructor\s*\(([^)]*)\)/);
+        if (withoutJSDoc.includes('constructor(')) {
+          const constructorMatch = withoutJSDoc.match(/constructor\s*\(([^)]*)\)/);
           if (constructorMatch) {
             const params = constructorMatch[1];
-            constructorInfo = `constructor(${params}): ${className}`;
-            log(`Found constructor: ${constructorInfo}`);
+            const signature = `constructor(${params}): ${className}`;
+            classStructure.constructor = {
+              signature,
+              documentation: jsdoc
+            };
+            log(`Found constructor: ${signature}`);
           }
           continue;
         }
@@ -643,8 +722,8 @@ export class TypeEnhancer {
         // Parse methods - handle both simple and multi-line signatures
         // Look for method name followed by parameters and return type
         // First try to find method signature pattern (handle empty parameters)
-        const methodPattern = /^(?:\/\*\*[\s\S]*?\*\/\s*)?(async\s+)?([\w]+)\s*(<[^>]*>)?\s*\(([^)]*)\)\s*:\s*(.+?)$/s;
-        const methodMatch = trimmed.match(methodPattern);
+        const methodPattern = /^(async\s+)?([\w]+)\s*(<[^>]*>)?\s*\(([^)]*)\)\s*:\s*(.+?)$/s;
+        const methodMatch = withoutJSDoc.match(methodPattern);
         if (methodMatch) {
           const [, asyncMod, methodName, generics, params, returnType] = methodMatch;
           const prefix = asyncMod ? 'async ' : '';
@@ -682,25 +761,33 @@ export class TypeEnhancer {
           // Clean up return type - remove any trailing semicolons
           const cleanReturnType = returnType.trim().replace(/;+$/, '');
           const signature = `${prefix}${methodName}${genericsPart}(${simplifiedParams}): ${cleanReturnType}`;
-          methods.push(signature);
+          
+          classStructure.methods.push({
+            signature,
+            documentation: jsdoc
+          });
           log(`Found method: ${signature}`);
           continue;
         }
 
         // Parse properties - look for property declarations
-        const propertyMatch = trimmed.match(/^(?:\/\*\*[\s\S]*?\*\/\s*)?(public\s+|protected\s+)?(readonly\s+)?([\w]+)\s*:\s*([^;=]+)/);
+        const propertyMatch = withoutJSDoc.match(/^(public\s+|protected\s+)?(readonly\s+)?([\w]+)\s*:\s*([^;=]+)/);
         if (propertyMatch) {
           const [, , readonly, propName, propType] = propertyMatch;
           const prefix = readonly ? 'readonly ' : '';
           const signature = `${prefix}${propName}: ${propType.trim()}`;
-          properties.push(signature);
+          
+          classStructure.properties.push({
+            signature,
+            documentation: jsdoc
+          });
           log(`Found property: ${signature}`);
           continue;
         }
       }
 
       // Format the class structure
-      return this.formatClassStructure(className, properties, constructorInfo, methods);
+      return this.formatClassStructure(classStructure);
     } catch (error) {
       log(`Failed to parse TypeScript declaration: ${error}`);
       return null;
@@ -723,38 +810,84 @@ export class TypeEnhancer {
     }
   }
 
+  private formatClassStructure(structure: ClassStructure): string;
   private formatClassStructure(
     className: string,
-    properties: string[],
-    constructor: string | null,
-    methods: string[]
+    properties: MemberInfo[],
+    constructor: MemberInfo | null,
+    methods: MemberInfo[]
+  ): string;
+  private formatClassStructure(
+    classNameOrStructure: string | ClassStructure,
+    properties?: MemberInfo[],
+    constructor?: MemberInfo | null,
+    methods?: MemberInfo[]
   ): string {
-    const parts: string[] = [`class ${className} {`];
+    let structure: ClassStructure;
     
-    // Add properties
-    if (properties.length > 0) {
-      parts.push(...properties.map(p => `  ${p};`));
+    if (typeof classNameOrStructure === 'string') {
+      // Legacy signature - convert to structure
+      structure = {
+        className: classNameOrStructure,
+        documentation: undefined,
+        properties: properties || [],
+        constructor: constructor || null,
+        methods: methods || []
+      };
+    } else {
+      // New signature with ClassStructure
+      structure = classNameOrStructure;
     }
     
-    // Add constructor
-    if (constructor) {
-      if (properties.length > 0) parts.push('');
-      parts.push(`  ${constructor};`);
+    const parts: string[] = [];
+    
+    // Add class-level JSDoc if present
+    if (structure.documentation) {
+      parts.push(structure.documentation);
     }
     
-    // Add methods (limit to prevent overwhelming output)
-    if (methods.length > 0) {
-      if (properties.length > 0 || constructor) parts.push('');
-      const limitedMethods = methods.slice(0, 100); // Show first 100 methods
-      parts.push(...limitedMethods.map(m => `  ${m};`));
+    parts.push(`class ${structure.className} {`);
+    
+    // Add properties with JSDoc
+    for (const prop of structure.properties) {
+      if (prop.documentation) {
+        parts.push(this.indentJSDoc(prop.documentation, '  '));
+      }
+      parts.push(`  ${prop.signature};`);
+    }
+    
+    // Add constructor with JSDoc
+    if (structure.constructor) {
+      if (structure.properties.length > 0) parts.push('');
+      if (structure.constructor.documentation) {
+        parts.push(this.indentJSDoc(structure.constructor.documentation, '  '));
+      }
+      parts.push(`  ${structure.constructor.signature};`);
+    }
+    
+    // Add methods with JSDoc (limited to 100)
+    if (structure.methods.length > 0) {
+      if (structure.properties.length > 0 || structure.constructor) parts.push('');
       
-      if (methods.length > 100) {
-        parts.push(`  // ... ${methods.length - 100} more methods`);
+      const limitedMethods = structure.methods.slice(0, 100);
+      for (const method of limitedMethods) {
+        if (method.documentation) {
+          parts.push(this.indentJSDoc(method.documentation, '  '));
+        }
+        parts.push(`  ${method.signature};`);
+      }
+      
+      if (structure.methods.length > 100) {
+        parts.push(`  // ... ${structure.methods.length - 100} more methods`);
       }
     }
     
     parts.push('}');
     return parts.join('\n');
+  }
+
+  private indentJSDoc(jsdoc: string, indent: string): string {
+    return jsdoc.split('\n').map(line => indent + line).join('\n');
   }
 
   async enhanceHover(
