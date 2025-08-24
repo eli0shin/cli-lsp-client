@@ -269,6 +269,32 @@ export class LSPManager {
     return allDiagnostics;
   }
 
+  // Helper function to retry operations that might fail due to connection issues
+  private async retryWithConnectionCheck<T>(
+    operation: () => Promise<T>,
+    serverName: string,
+    maxRetries = 2,
+    delayMs = 100
+  ): Promise<T | null> {
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        return await operation();
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        
+        if (errorMessage.includes('Connection is disposed') && attempt < maxRetries) {
+          log(`${serverName} connection disposed on attempt ${attempt}, retrying in ${delayMs}ms...`);
+          await new Promise(resolve => setTimeout(resolve, delayMs));
+          continue;
+        }
+        
+        // Re-throw if not a retryable error or max retries exceeded
+        throw error;
+      }
+    }
+    return null; // This should never be reached
+  }
+
   async getHover(symbolName: string, filePath: string): Promise<HoverResult[]> {
     log(`=== HOVER REQUEST START ===`);
     log(`Symbol: ${symbolName}, File: ${filePath}`);
@@ -304,7 +330,10 @@ export class LSPManager {
 
       try {
         // Get document symbols to identify symbol types and precise positions
-        const documentSymbols = await client.getDocumentSymbols(absolutePath);
+        const documentSymbols = await this.retryWithConnectionCheck(
+          () => client.getDocumentSymbols(absolutePath),
+          server.id
+        ) || [];
         log(`Got ${documentSymbols.length} document symbols`);
 
         // For GraphQL files, always use text search since document symbols are unreliable
@@ -363,9 +392,9 @@ export class LSPManager {
 
           if (shouldFollowTypeDefinition) {
             try {
-              const typeDefinitions = await client.getTypeDefinition(
-                absolutePath,
-                position
+              const typeDefinitions = await this.retryWithConnectionCheck(
+                () => client.getTypeDefinition(absolutePath, position),
+                server.id
               );
               if (typeDefinitions && typeDefinitions.length > 0) {
                 const firstTypeDef = typeDefinitions[0];
@@ -415,13 +444,16 @@ export class LSPManager {
           }
 
           // Get hover at the appropriate location
-          const hover = await client.getHover(hoverFile, hoverLocation);
+          const hover = await this.retryWithConnectionCheck(
+            () => client.getHover(hoverFile, hoverLocation),
+            server.id
+          );
 
           if (hover) {
             // Get language ID from file extension
             const fileExt = path.extname(hoverFile);
             const configLanguageExtensions =
-              await getConfigLanguageExtensions();
+              getConfigLanguageExtensions();
             const languageId =
               configLanguageExtensions?.[fileExt] ||
               LANGUAGE_EXTENSIONS[fileExt] ||
