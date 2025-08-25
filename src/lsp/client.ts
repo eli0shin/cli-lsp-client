@@ -102,6 +102,11 @@ export async function createLSPClient(
           generateReturnInDocTemplate: true,
           useLabelDetailsInCompletionEntries: true
         },
+        // Advanced verbose/debug options
+        logVerbosity: 'verbose',
+        trace: 'verbose', 
+        maxTsServerMemory: 4096,
+        useSyntaxServer: 'auto',
         // Enable TypeScript 5.8+ expandable hover if available
         experimentalDecorators: true,
         typescript: {
@@ -117,6 +122,374 @@ export async function createLSPClient(
             includeInlayFunctionLikeReturnTypeHints: false,
             includeInlayEnumMemberValueHints: false
           }
+        }
+      }),
+      // Rust Analyzer hover enhancements
+      ...(serverID === 'rust-analyzer' && {
+        hover: {
+          documentation: {
+            enable: true,
+            keywords: { enable: true },
+            links: { enable: true }
+          },
+          maxSubstitutionLength: 50,
+          show: {
+            enumVariants: 10,
+            fields: 8,
+            traitAssocItems: 5
+          },
+          dropGlue: { enable: true },
+          memoryLayout: { enable: true }
+        }
+      }),
+      // Go (gopls) hover enhancements
+      ...(serverID === 'gopls' && {
+        hoverKind: "FullDocumentation",
+        linkTarget: "pkg.go.dev", 
+        linksInHover: true,
+        // Advanced verbose options
+        verboseWorkDoneProgress: true,
+        diagnosticsDelay: '500ms',
+        diagnosticsTrigger: 'Edit',
+        analysisProgressReporting: true,
+        semanticTokens: true,
+        inlayHints: true,
+        codelenses: {
+          'generate': true,
+          'test': true,
+          'tidy': true
+        },
+        analyses: {
+          'unreachable': true,
+          'unusedparams': true,
+          'shadow': true,
+          'simplifycompositelit': true
+        },
+        completionBudget: '100ms'
+      }),
+      // Lua Language Server hover enhancements
+      ...(serverID === 'lua_ls' && {
+        Lua: {
+          runtime: {
+            version: 'Lua 5.4',
+            path: ['?.lua', '?/init.lua']
+          },
+          workspace: {
+            library: [],
+            ignoreDir: ['.vscode'],
+            maxPreload: 5000,
+            preloadFileSize: 500
+          },
+          diagnostics: {
+            enable: true,
+            globals: ['vim'],
+            severity: {}
+          },
+          completion: {
+            enable: true,
+            callSnippet: 'Both',
+            keywordSnippet: 'Both',
+            displayContext: 6,
+            workspaceWord: true,
+            postfix: '@'
+          },
+          hover: {
+            enable: true,
+            viewNumber: true,
+            viewString: true,
+            viewStringMax: 1000,
+            previewFields: 50,
+            enumsLimit: 100,
+            expandAlias: true,
+            fieldInfer: 1000
+          },
+          hint: {
+            enable: true,
+            paramType: true,
+            setType: false,
+            paramName: 'All',
+            semicolon: 'SameLine',
+            arrayIndex: 'Auto'
+          },
+          semantic: {
+            enable: true,
+            variable: true,
+            annotation: true,
+            keyword: false
+          }
+        }
+      }),
+      // Bash Language Server hover enhancements (requires explainshell service)
+      ...(serverID === 'bash' && {
+        explainshellEndpoint: "",  // Empty string disables by default, user can configure
+        // Advanced analysis options
+        backgroundAnalysisMaxFiles: 500,
+        enableSourceErrorDiagnostics: false,
+        includeAllWorkspaceSymbols: false,
+        globPattern: '**/*@(.sh|.inc|.bash|.command)',
+        // ShellCheck integration
+        shellcheckPath: 'shellcheck',
+        shellcheckArguments: [],
+        // shfmt formatting options
+        'shfmt.path': 'shfmt',
+        'shfmt.ignoreEditorconfig': false,
+        'shfmt.languageDialect': 'auto',
+        'shfmt.binaryNextLine': false,
+        'shfmt.caseIndent': false,
+        'shfmt.funcNextLine': false,
+        'shfmt.spaceRedirects': false,
+        logLevel: 'info'
+      }),
+      // JDTLS (Java) hover and verbosity enhancements
+      ...(serverID === 'jdtls' && {
+        settings: {
+          java: {
+            signatureHelp: {
+              enabled: true,
+              description: { enabled: true }
+            },
+            completion: {
+              maxResults: 50,
+              favoriteStaticMembers: [
+                "org.junit.Assert.*",
+                "org.junit.jupiter.api.Assertions.*", 
+                "org.mockito.Mockito.*",
+                "java.util.Objects.*"
+              ],
+              filteredTypes: [],
+              includeDecompiledSources: true,
+              importOrder: ['java', 'javax', 'com', 'org']
+            },
+            references: {
+              includeDecompiledSources: true
+            },
+            implementationsCodeLens: {
+              enabled: true
+            },
+            referencesCodeLens: {
+              enabled: true
+            },
+            format: {
+              enabled: true,
+              settings: {
+                url: null
+              }
+            },
+            saveActions: {
+              organizeImports: true
+            },
+            contentProvider: {
+              preferred: "fernflower"  // Enhanced decompilation for better hover info
+            },
+            symbols: {
+              includeSourceMethodDeclarations: true
+            },
+            configuration: {
+              updateBuildConfiguration: "automatic"
+            },
+            validateAllOpenBuffersOnChanges: true
+          }
+        },
+        // Enable verbose server logging for debugging
+        trace: {
+          server: "verbose"
+        }
+      }),
+      // Pyright (Python) hover enhancements - limited options
+      ...(serverID === 'pyright' && {
+        python: {
+          analysis: {
+            logLevel: "Trace",  // Enhanced from Information
+            typeCheckingMode: "strict",  // Enhanced from basic
+            autoImportCompletions: true,
+            diagnosticMode: "workspace",
+            useLibraryCodeForTypes: true,
+            autoSearchPaths: true,
+            diagnosticSeverityOverrides: {},
+            // Enhanced verbosity options
+            stubPath: "",
+            venvPath: "",
+            pythonPath: ""
+          }
+        },
+        // Enable trace logging
+        'basedpyright.analysis.logLevel': 'Trace',
+        'basedpyright.disableLanguageServices': false,
+        'basedpyright.disableOrganizeImports': false,
+        'basedpyright.disableTaggedHints': false
+      }),
+      // JSON Language Server enhancements
+      ...(serverID === 'json' && {
+        json: {
+          validate: { enable: true },
+          format: { enable: true },
+          keepLines: { enable: true },
+          schemas: [],
+          resultLimit: 5000,  // Increased from 1000
+          maxItemsComputed: 5000,
+          jsonFoldingLimit: 1000,
+          jsoncFoldingLimit: 1000
+        },
+        http: {
+          proxy: '',
+          proxyStrictSSL: true
+        },
+        // Enable formatter and schema protocols
+        provideFormatter: true,
+        handledSchemaProtocols: ['file', 'http', 'https'],
+        customCapabilities: {
+          rangeFormatting: {
+            editLimit: 1000
+          }
+        }
+      }),
+      // CSS Language Server enhancements  
+      ...(serverID === 'css' && {
+        css: {
+          validate: true,
+          hover: {
+            documentation: true,
+            references: true
+          },
+          completion: {
+            completePropertyWithSemicolon: true,
+            triggerPropertyValueCompletion: true
+          },
+          lint: {
+            compatibleVendorPrefixes: "warning",
+            vendorPrefix: "warning",
+            duplicateProperties: "warning",
+            emptyRules: "warning",
+            propertyIgnoredDueToDisplay: "warning",
+            important: "ignore",
+            float: "ignore",
+            idSelector: "ignore"
+          }
+        },
+        scss: {
+          validate: true,
+          lint: {
+            compatibleVendorPrefixes: "warning",
+            vendorPrefix: "warning",
+            duplicateProperties: "warning",
+            emptyRules: "warning"
+          }
+        },
+        less: {
+          validate: true,
+          lint: {
+            compatibleVendorPrefixes: "warning",
+            vendorPrefix: "warning",
+            duplicateProperties: "warning", 
+            emptyRules: "warning"
+          }
+        }
+      }),
+      // YAML Language Server enhancements
+      ...(serverID === 'yaml' && {
+        yaml: {
+          validate: true,
+          hover: true,
+          completion: true,
+          format: {
+            enable: true,
+            singleQuote: false,
+            bracketSpacing: true,
+            proseWrap: 'preserve',
+            printWidth: 80
+          },
+          schemas: {},
+          schemaStore: {
+            enable: true,
+            url: 'https://www.schemastore.org/api/json/catalog.json'
+          },
+          maxItemsComputed: 5000,
+          customTags: [],
+          keyOrdering: false,
+          yamlVersion: '1.2',
+          disableDefaultProperties: false,
+          style: {
+            flowMapping: 'allow',
+            flowSequence: 'allow'
+          }
+        },
+        redhat: {
+          telemetry: {
+            enabled: false
+          }
+        }
+      }),
+      // GraphQL Language Server enhancements
+      ...(serverID === 'graphql' && {
+        graphql: {
+          useSchemaFileDefinitions: true,
+          debug: false,
+          // Advanced options
+          method: 'stream',
+          cacheSchemaFileForLookup: true,
+          schemaCacheTTL: 30000,
+          enableValidation: true,
+          customValidationRules: [],
+          customDirectives: [],
+          fileExtensions: ['.js', '.ts', '.tsx', '.jsx', '.graphql', '.gql'],
+          fillLeafsOnComplete: true,
+          extensions: []
+        }
+      }),
+      // R Language Server enhancements
+      ...(serverID === 'r' && {
+        r: {
+          lsp: {
+            debug: true,  // Enhanced from false
+            log_file: null,
+            diagnostics: true,
+            rich_documentation: true,
+            snippet_support: true,
+            max_completions: 200,
+            lint_cache: false,  // Enhanced for fresh results
+            link_file_size_limit: 16384,
+            server_capabilities: {},
+            args: [],
+            path: null
+          }
+        }
+      }),
+      // OmniSharp (C#) enhancements
+      ...(serverID === 'omnisharp' && {
+        // Verbose logging
+        loggingLevel: 'verbose',
+        FormattingOptions: {
+          EnableEditorConfigSupport: true,
+          OrganizeImports: true
+        },
+        MsBuild: {
+          EnablePackageRestore: true,
+          ToolsVersion: null,
+          LoadProjectsOnDemand: false
+        },
+        RoslynExtensionsOptions: {
+          EnableAnalyzersSupport: true,
+          EnableImportCompletion: true,
+          AnalyzeOpenDocumentsOnly: false,
+          EnableDecompilationSupport: true,
+          DocumentAnalysisTimeoutMs: 30000,
+          InlayHintsOptions: {
+            EnableForParameters: true,
+            ForLiteralParameters: true,
+            ForIndexerParameters: true,
+            ForObjectCreationParameters: true,
+            ForOtherParameters: true,
+            SuppressForParametersThatDifferOnlyBySuffix: true,
+            SuppressForParametersThatMatchMethodIntent: true,
+            SuppressForParametersThatMatchArgumentName: true
+          }
+        },
+        FileOptions: {
+          SystemExcludeSearchPatterns: ['**/node_modules/**/*', '**/bin/**/*', '**/obj/**/*'],
+          ExcludeSearchPatterns: []
+        },
+        Sdk: {
+          IncludePrereleases: true
         }
       })
     },
