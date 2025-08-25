@@ -490,7 +490,7 @@ export class LSPManager {
                 const resultItem: HoverResult = {
                   symbol: symbolName,
                   hover: hoverResult,
-                  signature: signatureResult,
+                  signature: signatureResult || undefined,
                   location: {
                     file: path.relative(process.cwd(), location.file),
                     line: location.position.line,
