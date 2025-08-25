@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import type { Diagnostic, HoverResult, Hover, MarkedString } from './types.js';
+import type { Diagnostic, HoverResult, Hover, MarkedString, SignatureHelp } from './types.js';
 
 const SEVERITY_NAMES = {
   1: 'ERROR',
@@ -129,9 +129,30 @@ export async function formatHoverResults(
   results.forEach((result, index) => {
     // Format hover content and append directly to location line
     const content = formatHoverContent(result.hover).replace(/^\n+/, '');
-    output.push(
-      `${CYAN}Location:${RESET_COLOR} ${result.location.file}:${result.location.line + 1}:${result.location.column + 1}\n${content}`
-    );
+    
+    // Add context label for multiple results
+    let locationLabel = `${CYAN}Location:${RESET_COLOR}`;
+    if (results.length > 1) {
+      // Try to determine the type of result based on content
+      const hoverContent = formatHoverContent(result.hover);
+      if (hoverContent.includes('const ') || hoverContent.includes('let ') || hoverContent.includes('var ')) {
+        locationLabel = `${CYAN}Declaration:${RESET_COLOR}`;
+      } else if (hoverContent.includes('class ') || hoverContent.includes('interface ') || hoverContent.includes('type ')) {
+        locationLabel = `${YELLOW}Type Definition:${RESET_COLOR}`;
+      }
+    }
+    
+    let resultContent = `${locationLabel} ${result.location.file}:${result.location.line + 1}:${result.location.column + 1}\n${content}`;
+    
+    // Add enhanced signature information if available (Phase 2 enhancement)
+    if (result.signature?.signatures?.length) {
+      const signatureInfo = formatSignatureHelp(result.signature);
+      if (signatureInfo) {
+        resultContent += `\n\n${GRAY}${BOLD}Signature Details:${RESET_COLOR}\n${signatureInfo}`;
+      }
+    }
+    
+    output.push(resultContent);
 
     // Add a blank line between results, but not after the last one
     if (index < results.length - 1) {
@@ -198,4 +219,52 @@ function formatHoverContent(hover: Hover): string {
     .replace(/\*([^*]+)\*/g, (_, text) => ITALIC + text + RESET_COLOR);
 
   return content.trim();
+}
+
+function formatSignatureHelp(signatureHelp: SignatureHelp): string {
+  if (!signatureHelp.signatures?.length) {
+    return '';
+  }
+
+  const signature = signatureHelp.signatures[0]; // Use the first signature
+  if (!signature) {
+    return '';
+  }
+
+  let result = '';
+  
+  // Format the signature label
+  if (signature.label) {
+    result += `${GREEN}${signature.label}${RESET_COLOR}`;
+  }
+  
+  // Add signature documentation if available
+  if (signature.documentation) {
+    const doc = typeof signature.documentation === 'string' 
+      ? signature.documentation 
+      : signature.documentation.value;
+    if (doc.trim()) {
+      result += `\n${doc.trim()}`;
+    }
+  }
+  
+  // Add parameter information
+  if (signature.parameters?.length) {
+    result += '\n\n' + signature.parameters
+      .map(param => {
+        let paramLine = `${CYAN}${param.label}${RESET_COLOR}`;
+        if (param.documentation) {
+          const paramDoc = typeof param.documentation === 'string' 
+            ? param.documentation 
+            : param.documentation.value;
+          if (paramDoc.trim()) {
+            paramLine += ` — ${paramDoc.trim()}`;
+          }
+        }
+        return paramLine;
+      })
+      .join('\n');
+  }
+  
+  return result.trim();
 }

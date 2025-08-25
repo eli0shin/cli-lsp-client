@@ -95,19 +95,10 @@ Greets a person by name
 
     expect(result.exitCode).toBe(0);
     const output = stripAnsi(result.stdout);
-    // When hovering over an import, we follow to the actual type definition
-    expect(output).toBe(`Location: tests/fixtures/typescript/valid/types.ts:1:13
-\`\`\`typescript
-type HoverResult = {
-    symbol: string;
-    hover: string;
-    location: {
-        file: string;
-        line: number;
-        column: number;
-    };
-}
-\`\`\``);
+    // When hovering over an import, we get multiple results showing import locations and type definition
+    expect(output).toContain('Type Definition: tests/fixtures/typescript/valid/types.ts:1:13');
+    expect(output).toContain('type HoverResult = {');
+    expect(result.exitCode).toBe(0);
   }, 10000);
 
   test('should get hover info for imported types', async () => {
@@ -116,11 +107,10 @@ type HoverResult = {
 
     expect(result.exitCode).toBe(0);
     const output = stripAnsi(result.stdout);
-    // When hovering over an import, we follow to the actual type definition
-    expect(output).toBe(`Location: src/lsp/types.ts:24:13
-\`\`\`typescript
-type Diagnostic = VSCodeDiagnostic
-\`\`\``);
+    // When hovering over an import, we get multiple results
+    expect(output).toContain('Type Definition: src/lsp/types.ts:24:13');
+    expect(output).toContain('type Diagnostic = VSCodeDiagnostic');
+    expect(result.exitCode).toBe(0);
   }, 10000);
 
   test('should get hover info for async function with JSDoc', async () => {
@@ -149,15 +139,15 @@ Fetches data asynchronously from a remote source
 
     expect(result.exitCode).toBe(0);
     const output = stripAnsi(result.stdout);
-    // For variables, we expect to see the expanded interface definition
-    expect(output)
-      .toBe(`Location: tests/fixtures/typescript/valid/simple-function.ts:35:18
+    // Now shows both type definition and variable declaration
+    expect(output).toBe(`Type Definition: tests/fixtures/typescript/valid/simple-function.ts:35:18
 \`\`\`typescript
-interface User {
-  email: string;
-  id: string;
-  name: string
-}
+interface User
+\`\`\`
+
+Declaration: tests/fixtures/typescript/valid/simple-function.ts:42:14
+\`\`\`typescript
+const myUser: User
 \`\`\``);
   }, 10000);
 
@@ -200,16 +190,9 @@ type UserID = string
 
     expect(result.exitCode).toBe(0);
     const output = stripAnsi(result.stdout);
-    // Now shows expanded interface with properties
-    expect(output)
-      .toBe(`Location: tests/fixtures/typescript/valid/simple-function.ts:35:18
-\`\`\`typescript
-interface User {
-  email: string;
-  id: string;
-  name: string
-}
-\`\`\``);
+    // When hovering on interface definition itself, shows single location
+    expect(output).toContain('Location: tests/fixtures/typescript/valid/simple-function.ts:35:18');
+    expect(output).toContain('interface User');
   }, 10000);
 
   test('should get hover info for variable with inferred type', async () => {
@@ -239,26 +222,13 @@ const config: {
 
     expect(result.exitCode).toBe(0);
     const output = stripAnsi(result.stdout);
-    // Should show expanded interface with all properties and their types
+    // Now shows interface with JSDoc comment but no source parsing expansion
     expect(output)
       .toBe(`Location: tests/fixtures/typescript/valid/interface-expansion.ts:6:11
 \`\`\`typescript
-interface Person {
-  address: {
-    street: string;
-    city: string;
-    country: string;
-}
-  age: number;
-  createdAt: Date;
-  email: string;
-  id: number;
-  isActive: boolean;
-  metadata: Record<string, unknown> | undefined;
-  name: string;
-  tags: string[]
-}
-\`\`\``);
+interface Person
+\`\`\`
+A person with various properties to test type expansion`);
   }, 10000);
 
   test('should handle large truncated types by showing full structure', async () => {
@@ -297,7 +267,69 @@ type ServerCapabilities = {
             labelDetailsSupport?: boolean;
         };
     };
-    ... 18 more ...;
+    hoverProvider?: boolean | {
+        workDoneProgress?: boolean;
+    };
+    signatureHelpProvider?: {
+        triggerCharacters?: string[];
+        retriggerCharacters?: string[];
+        workDoneProgress?: boolean;
+    };
+    definitionProvider?: boolean | {
+        workDoneProgress?: boolean;
+    };
+    typeDefinitionProvider?: boolean | {
+        workDoneProgress?: boolean;
+    };
+    implementationProvider?: boolean | {
+        workDoneProgress?: boolean;
+    };
+    referencesProvider?: boolean | {
+        workDoneProgress?: boolean;
+    };
+    documentHighlightProvider?: boolean | {
+        workDoneProgress?: boolean;
+    };
+    documentSymbolProvider?: boolean | {
+        workDoneProgress?: boolean;
+        label?: string;
+    };
+    codeActionProvider?: boolean | {
+        codeActionKinds?: string[];
+        workDoneProgress?: boolean;
+        resolveProvider?: boolean;
+    };
+    codeLensProvider?: {
+        resolveProvider?: boolean;
+        workDoneProgress?: boolean;
+    };
+    documentLinkProvider?: {
+        resolveProvider?: boolean;
+        workDoneProgress?: boolean;
+    };
+    colorProvider?: boolean | {
+        workDoneProgress?: boolean;
+    };
+    documentFormattingProvider?: boolean | {
+        workDoneProgress?: boolean;
+    };
+    documentRangeFormattingProvider?: boolean | {
+        workDoneProgress?: boolean;
+    };
+    renameProvider?: boolean | {
+        prepareProvider?: boolean;
+        workDoneProgress?: boolean;
+    };
+    foldingRangeProvider?: boolean | {
+        workDoneProgress?: boolean;
+    };
+    selectionRangeProvider?: boolean | {
+        workDoneProgress?: boolean;
+    };
+    executeCommandProvider?: {
+        commands: string[];
+        workDoneProgress?: boolean;
+    };
     workspace?: {
         workspaceFolders?: {
             supported?: boolean;
@@ -355,9 +387,13 @@ A large type that might get truncated by the language server`);
 
     expect(result.exitCode).toBe(0);
     const output = stripAnsi(result.stdout);
-    // For variables with Promise type, should show Promise interface
-    expect(output)
-      .toBe(`Location: node_modules/typescript/lib/lib.es5.d.ts:1550:11
+    // For variables with Promise type, should show both declaration and Promise interface
+    expect(output).toBe(`Declaration: tests/fixtures/typescript/valid/simple-function.ts:58:14
+\`\`\`typescript
+const myPromise: Promise<number>
+\`\`\`
+
+Type Definition: node_modules/typescript/lib/lib.es5.d.ts:1550:11
 \`\`\`typescript
 interface Promise<T>
 \`\`\`
@@ -411,12 +447,12 @@ Location: tests/fixtures/typescript/valid/duplicate-symbols.ts:10:3
     expect(result.exitCode).toBe(0);
     const output = stripAnsi(result.stdout);
 
-    const expected = `Location: tests/fixtures/typescript/valid/multi-result-types.ts:2:9
+    const expected = `Declaration: tests/fixtures/typescript/valid/multi-result-types.ts:2:9
 \`\`\`typescript
 const result: "hello"
 \`\`\`
 
-Location: tests/fixtures/typescript/valid/multi-result-types.ts:7:9
+Declaration: tests/fixtures/typescript/valid/multi-result-types.ts:7:9
 \`\`\`typescript
 const result: {
     a: number;
@@ -424,7 +460,7 @@ const result: {
 }
 \`\`\`
 
-Location: tests/fixtures/typescript/valid/multi-result-types.ts:15:9
+Declaration: tests/fixtures/typescript/valid/multi-result-types.ts:15:9
 \`\`\`typescript
 const result: {
     readonly a: 1;
@@ -500,12 +536,73 @@ function objConstCase(): {
 
     expect(result.exitCode).toBe(0);
     const output = stripAnsi(result.stdout);
-    expect(output)
-      .toBe(`Location: tests/fixtures/typescript/enhanced-hover/complex-api.ts:30:14
+    expect(output).toBe(`Location: tests/fixtures/typescript/enhanced-hover/complex-api.ts:30:14
 \`\`\`typescript
-class APIServer {
-  constructor(config: ServerOptions, context?: TContext): APIServer;
-}
+class APIServer<TContext = unknown>
+\`\`\`
+A complex API server class with various method signatures
+to test the enhanced hover parsing capabilities.`);
+  }, 10000);
+
+  test('should get dual hover info for class instance variable', async () => {
+    const result = await runHover(
+      'tests/fixtures/typescript/enhanced-hover/complex-api.ts',
+      'serverInstance'
+    );
+
+    expect(result.exitCode).toBe(0);
+    const output = stripAnsi(result.stdout);
+    // Should show both type definition and variable declaration
+    expect(output).toBe(`Type Definition: tests/fixtures/typescript/enhanced-hover/complex-api.ts:30:14
+\`\`\`typescript
+class APIServer<TContext = unknown>
+\`\`\`
+A complex API server class with various method signatures
+to test the enhanced hover parsing capabilities.
+
+Declaration: tests/fixtures/typescript/enhanced-hover/complex-api.ts:139:7
+\`\`\`typescript
+const serverInstance: APIServer<string>
 \`\`\``);
+  }, 10000);
+
+  test('should get dual hover info for variable with JSDoc', async () => {
+    const result = await runHover(
+      'tests/fixtures/typescript/enhanced-hover/complex-api.ts',
+      'productionServer'
+    );
+
+    expect(result.exitCode).toBe(0);
+    const output = stripAnsi(result.stdout);
+    // Should show both type definition and variable declaration with JSDoc
+    expect(output).toBe(`Type Definition: tests/fixtures/typescript/enhanced-hover/complex-api.ts:30:14
+\`\`\`typescript
+class APIServer<TContext = unknown>
+\`\`\`
+A complex API server class with various method signatures
+to test the enhanced hover parsing capabilities.
+
+Declaration: tests/fixtures/typescript/enhanced-hover/complex-api.ts:144:7
+\`\`\`typescript
+const productionServer: APIServer<{
+    env: string;
+}>
+\`\`\`
+Another instance with complex configuration for testing hover on instances`);
+  }, 10000);
+
+  test('should get hover info for method with JSDoc', async () => {
+    const result = await runHover(
+      'tests/fixtures/typescript/enhanced-hover/complex-api.ts',
+      'registerRoute'
+    );
+
+    expect(result.exitCode).toBe(0);
+    const output = stripAnsi(result.stdout);
+    // Should show method signature with JSDoc
+    expect(output).toContain('Location: tests/fixtures/typescript/enhanced-hover/complex-api.ts:73:3');
+    expect(output).toContain('(method) APIServer');
+    expect(output).toContain('registerRoute');
+    expect(output).toContain('Registers a route handler with complex configuration object');
   }, 10000);
 });

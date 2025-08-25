@@ -66,6 +66,7 @@ export type LSPServer = {
 export type HoverResult = {
   symbol: string;
   hover: Hover;
+  signature?: SignatureHelp;
   location: {
     file: string;
     line: number;
