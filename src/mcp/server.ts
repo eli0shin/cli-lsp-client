@@ -25,7 +25,7 @@ function formatHoverResultsPlain(hoverResults: HoverResult[]): string {
 
   return hoverResults
     .map((result) => {
-      const location = `Location: ${result.location.file}:${result.location.line}:${result.location.column}`;
+      const location = `${result.description}: ${result.location.file}:${result.location.line}:${result.location.column}`;
 
       let content = '';
       const contents = result.hover.contents;

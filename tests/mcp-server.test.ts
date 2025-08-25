@@ -200,7 +200,7 @@ This tool performs the equivalent of "hovering" over a symbol in an IDE, providi
     ]);
 
     // The symbol definition text without ANSI color codes (tool now returns plain text)
-    const expectedHoverText = `Location: tests/fixtures/typescript/valid/simple-function.ts:6:16
+    const expectedHoverText = `Declaration: tests/fixtures/typescript/valid/simple-function.ts:6:16
 
 \`\`\`typescript
 function add(a: number, b: number): number

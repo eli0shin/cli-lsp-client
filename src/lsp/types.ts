@@ -72,6 +72,7 @@ export type HoverResult = {
     line: number;
     column: number;
   };
+  description: string;
 };
 
 // Zod schemas for runtime validation

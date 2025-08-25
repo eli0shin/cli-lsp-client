@@ -49,6 +49,34 @@ const SymbolKind = {
   TypeParameter: 26,
 } as const;
 
+// Helper function to categorize symbols based on their SymbolKind
+function categorizeSymbol(symbolKind?: number): string {
+  if (symbolKind === undefined) {
+    return 'Location';
+  }
+
+  switch (symbolKind) {
+    case SymbolKind.Variable:
+    case SymbolKind.Constant:
+    case SymbolKind.Function:
+    case SymbolKind.Method:
+    case SymbolKind.Constructor:
+    case SymbolKind.Property:
+    case SymbolKind.Field:
+      return 'Declaration';
+    
+    case SymbolKind.Class:
+    case SymbolKind.Interface:
+    case SymbolKind.Struct:
+    case SymbolKind.Enum:
+    case SymbolKind.TypeParameter:
+      return 'Type Definition';
+    
+    default:
+      return 'Location';
+  }
+}
+
 export class LSPManager {
   private readonly clients = new Map<string, LSPClient>();
   private readonly broken = new Set<string>();
@@ -386,11 +414,11 @@ export class LSPManager {
             description: string;
           }[] = [];
 
-          // Always include the original location
+          // Always include the original location with proper categorization
           hoverLocations.push({
             file: absolutePath,
             position: position,
-            description: 'Declaration',
+            description: categorizeSymbol(symbolKind),
           });
 
           // Add type definition location if different and relevant
@@ -496,6 +524,7 @@ export class LSPManager {
                     line: location.position.line,
                     column: location.position.character,
                   },
+                  description: location.description,
                 };
                 collected.push({
                   sourceFile: absolutePath,
