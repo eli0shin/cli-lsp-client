@@ -11,7 +11,7 @@ describe('Hover Command', () => {
     expect(result.exitCode).toBe(0);
     const output = stripAnsi(result.stdout);
     expect(output)
-      .toBe(`Location: tests/fixtures/typescript/valid/simple-function.ts:7:17
+      .toBe(`Declaration: tests/fixtures/typescript/valid/simple-function.ts:7:17
 \`\`\`typescript
 function add(a: number, b: number): number
 \`\`\`
@@ -33,7 +33,7 @@ Adds two numbers together
     expect(result.exitCode).toBe(0);
     const output = stripAnsi(result.stdout);
     expect(output)
-      .toBe(`Location: tests/fixtures/typescript/valid/simple-function.ts:16:17
+      .toBe(`Declaration: tests/fixtures/typescript/valid/simple-function.ts:16:17
 \`\`\`typescript
 function greet(name: string): string
 \`\`\`
@@ -159,7 +159,7 @@ type Diagnostic = VSCodeDiagnostic
     expect(result.exitCode).toBe(0);
     const output = stripAnsi(result.stdout);
     expect(output)
-      .toBe(`Location: tests/fixtures/typescript/valid/simple-function.ts:26:23
+      .toBe(`Declaration: tests/fixtures/typescript/valid/simple-function.ts:26:23
 \`\`\`typescript
 function fetchData(): Promise<string>
 \`\`\`
@@ -182,7 +182,7 @@ Fetches data asynchronously from a remote source
 interface User
 \`\`\`
 
-Location: tests/fixtures/typescript/valid/simple-function.ts:42:14
+Declaration: tests/fixtures/typescript/valid/simple-function.ts:42:14
 \`\`\`typescript
 const myUser: User
 \`\`\``);
@@ -198,7 +198,7 @@ const myUser: User
     const output = stripAnsi(result.stdout);
     // For variables with type aliases, we show the resolved type (string, not UserID)
     expect(output)
-      .toBe(`Location: tests/fixtures/typescript/valid/simple-function.ts:49:14
+      .toBe(`Declaration: tests/fixtures/typescript/valid/simple-function.ts:49:14
 \`\`\`typescript
 const userId: string
 \`\`\``);
@@ -213,7 +213,7 @@ const userId: string
     expect(result.exitCode).toBe(0);
     const output = stripAnsi(result.stdout);
     expect(output)
-      .toBe(`Location: tests/fixtures/typescript/valid/simple-function.ts:31:13
+      .toBe(`Declaration: tests/fixtures/typescript/valid/simple-function.ts:31:13
 \`\`\`typescript
 type UserID = string
 \`\`\``);
@@ -228,7 +228,7 @@ type UserID = string
     expect(result.exitCode).toBe(0);
     const output = stripAnsi(result.stdout);
     // When hovering on interface definition itself, shows single location
-    expect(output).toContain('Location: tests/fixtures/typescript/valid/simple-function.ts:35:18');
+    expect(output).toContain('Type Definition: tests/fixtures/typescript/valid/simple-function.ts:35:18');
     expect(output).toContain('interface User');
   }, 10000);
 
@@ -242,7 +242,7 @@ type UserID = string
     const output = stripAnsi(result.stdout);
     // Should show the const declaration with inferred type
     expect(output)
-      .toBe(`Location: tests/fixtures/typescript/valid/simple-function.ts:52:14
+      .toBe(`Declaration: tests/fixtures/typescript/valid/simple-function.ts:52:14
 \`\`\`typescript
 const config: {
     apiUrl: string;
@@ -261,7 +261,7 @@ const config: {
     const output = stripAnsi(result.stdout);
     // Now shows interface with JSDoc comment but no source parsing expansion
     expect(output)
-      .toBe(`Location: tests/fixtures/typescript/valid/interface-expansion.ts:6:11
+      .toBe(`Type Definition: tests/fixtures/typescript/valid/interface-expansion.ts:6:11
 \`\`\`typescript
 interface Person
 \`\`\`
@@ -279,7 +279,7 @@ A person with various properties to test type expansion`);
     // TypeScript LSP server truncates very large types with "... N more ..."
     // This is a limitation of the TypeScript language server itself
     expect(output)
-      .toBe(`Location: tests/fixtures/typescript/valid/truncated-type.ts:6:6
+      .toBe(`Declaration: tests/fixtures/typescript/valid/truncated-type.ts:6:6
 \`\`\`typescript
 type ServerCapabilities = {
     textDocumentSync?: number | {
@@ -425,7 +425,7 @@ A large type that might get truncated by the language server`);
     expect(result.exitCode).toBe(0);
     const output = stripAnsi(result.stdout);
     // For variables with Promise type, should show both declaration and Promise interface
-    expect(output).toBe(`Location: tests/fixtures/typescript/valid/simple-function.ts:58:14
+    expect(output).toBe(`Declaration: tests/fixtures/typescript/valid/simple-function.ts:58:14
 \`\`\`typescript
 const myPromise: Promise<number>
 \`\`\`
@@ -447,7 +447,7 @@ Represents the completion of an asynchronous operation`);
     const output = stripAnsi(result.stdout);
     // Should show function signature, not the return type definition
     expect(output)
-      .toBe(`Location: tests/fixtures/typescript/valid/simple-function.ts:61:17
+      .toBe(`Declaration: tests/fixtures/typescript/valid/simple-function.ts:61:17
 \`\`\`typescript
 function getUserId(): UserID
 \`\`\``);
@@ -463,12 +463,12 @@ function getUserId(): UserID
     const output = stripAnsi(result.stdout);
 
     // Expect two precise hover blocks separated by a blank line
-    const expected = `Location: tests/fixtures/typescript/valid/duplicate-symbols.ts:4:3
+    const expected = `Declaration: tests/fixtures/typescript/valid/duplicate-symbols.ts:4:3
 \`\`\`typescript
 (method) GreeterA.greet(name: string): string
 \`\`\`
 
-Location: tests/fixtures/typescript/valid/duplicate-symbols.ts:10:3
+Declaration: tests/fixtures/typescript/valid/duplicate-symbols.ts:10:3
 \`\`\`typescript
 (method) GreeterB.greet(name: string): string
 \`\`\``;
@@ -484,12 +484,12 @@ Location: tests/fixtures/typescript/valid/duplicate-symbols.ts:10:3
     expect(result.exitCode).toBe(0);
     const output = stripAnsi(result.stdout);
 
-    const expected = `Location: tests/fixtures/typescript/valid/multi-result-types.ts:2:9
+    const expected = `Declaration: tests/fixtures/typescript/valid/multi-result-types.ts:2:9
 \`\`\`typescript
 const result: "hello"
 \`\`\`
 
-Location: tests/fixtures/typescript/valid/multi-result-types.ts:7:9
+Declaration: tests/fixtures/typescript/valid/multi-result-types.ts:7:9
 \`\`\`typescript
 const result: {
     a: number;
@@ -497,7 +497,7 @@ const result: {
 }
 \`\`\`
 
-Location: tests/fixtures/typescript/valid/multi-result-types.ts:15:9
+Declaration: tests/fixtures/typescript/valid/multi-result-types.ts:15:9
 \`\`\`typescript
 const result: {
     readonly a: 1;
@@ -520,7 +520,7 @@ const result: {
     expect(result.exitCode).toBe(0);
     const output = stripAnsi(result.stdout);
     expect(output)
-      .toBe(`Location: tests/fixtures/typescript/valid/multi-result-types.ts:1:17
+      .toBe(`Declaration: tests/fixtures/typescript/valid/multi-result-types.ts:1:17
 \`\`\`typescript
 function strCase(): string
 \`\`\``);
@@ -535,7 +535,7 @@ function strCase(): string
     expect(result.exitCode).toBe(0);
     const output = stripAnsi(result.stdout);
     expect(output)
-      .toBe(`Location: tests/fixtures/typescript/valid/multi-result-types.ts:6:17
+      .toBe(`Declaration: tests/fixtures/typescript/valid/multi-result-types.ts:6:17
 \`\`\`typescript
 function objCase(): {
     a: number;
@@ -553,7 +553,7 @@ function objCase(): {
     expect(result.exitCode).toBe(0);
     const output = stripAnsi(result.stdout);
     expect(output)
-      .toBe(`Location: tests/fixtures/typescript/valid/multi-result-types.ts:14:17
+      .toBe(`Declaration: tests/fixtures/typescript/valid/multi-result-types.ts:14:17
 \`\`\`typescript
 function objConstCase(): {
     readonly a: 1;
@@ -573,7 +573,7 @@ function objConstCase(): {
 
     expect(result.exitCode).toBe(0);
     const output = stripAnsi(result.stdout);
-    expect(output).toBe(`Location: tests/fixtures/typescript/enhanced-hover/complex-api.ts:30:14
+    expect(output).toBe(`Type Definition: tests/fixtures/typescript/enhanced-hover/complex-api.ts:30:14
 \`\`\`typescript
 class APIServer<TContext = unknown>
 \`\`\`
@@ -597,7 +597,7 @@ class APIServer<TContext = unknown>
 A complex API server class with various method signatures
 to test the enhanced hover parsing capabilities.
 
-Location: tests/fixtures/typescript/enhanced-hover/complex-api.ts:139:7
+Declaration: tests/fixtures/typescript/enhanced-hover/complex-api.ts:139:7
 \`\`\`typescript
 const serverInstance: APIServer<string>
 \`\`\``);
@@ -619,7 +619,7 @@ class APIServer<TContext = unknown>
 A complex API server class with various method signatures
 to test the enhanced hover parsing capabilities.
 
-Location: tests/fixtures/typescript/enhanced-hover/complex-api.ts:144:7
+Declaration: tests/fixtures/typescript/enhanced-hover/complex-api.ts:144:7
 \`\`\`typescript
 const productionServer: APIServer<{
     env: string;
@@ -637,7 +637,7 @@ Another instance with complex configuration for testing hover on instances`);
     expect(result.exitCode).toBe(0);
     const output = stripAnsi(result.stdout);
     // Should show method signature with JSDoc
-    expect(output).toContain('Location: tests/fixtures/typescript/enhanced-hover/complex-api.ts:73:3');
+    expect(output).toContain('Declaration: tests/fixtures/typescript/enhanced-hover/complex-api.ts:73:3');
     expect(output).toContain('(method) APIServer');
     expect(output).toContain('registerRoute');
     expect(output).toContain('Registers a route handler with complex configuration object');

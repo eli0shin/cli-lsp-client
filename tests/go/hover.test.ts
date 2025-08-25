@@ -21,12 +21,12 @@ describe('Go Hover Command', () => {
 
     expect(result.exitCode).toBe(0);
     const output = stripAnsi(result.stdout.toString());
-    expect(output).toBe(`Declaration: tests/fixtures/go/valid/main-package/simple-function.go:10:2
+    expect(output).toBe(`Location: tests/fixtures/go/valid/main-package/simple-function.go:10:2
 \`\`\`go
 var message string
 \`\`\`
 
-Declaration: tests/fixtures/go/valid/main-package/simple-function.go:11:14
+Location: tests/fixtures/go/valid/main-package/simple-function.go:11:14
 \`\`\`go
 var message string
 \`\`\`
@@ -46,7 +46,7 @@ a ...any`);
 
     expect(result.exitCode).toBe(0);
     const output = stripAnsi(result.stdout.toString());
-    expect(output).toBe(`Location: tests/fixtures/go/valid/person-package/struct-example.go:5:6
+    expect(output).toBe(`Type Definition: tests/fixtures/go/valid/person-package/struct-example.go:5:6
 \`\`\`go
 type Person struct { // size=24 (0x18)
 \tName string
@@ -68,7 +68,7 @@ func (p Person) Greet() string
 
     expect(result.exitCode).toBe(0);
     const output = stripAnsi(result.stdout.toString());
-    expect(output).toBe(`Location: tests/fixtures/go/valid/person-package/struct-example.go:6:2
+    expect(output).toBe(`Declaration: tests/fixtures/go/valid/person-package/struct-example.go:6:2
 \`\`\`go
 field Name string // size=16 (0x10), offset=0
 \`\`\`
@@ -100,7 +100,7 @@ func (p Person) Greet() string
 
     expect(result.exitCode).toBe(0);
     const output = stripAnsi(result.stdout.toString());
-    expect(output).toBe(`Location: tests/fixtures/go/valid/person-package/struct-example.go:14:6
+    expect(output).toBe(`Declaration: tests/fixtures/go/valid/person-package/struct-example.go:14:6
 \`\`\`go
 func NewPerson(name string, age int) Person
 \`\`\`
@@ -141,7 +141,7 @@ func (u User) SetAddress(street string, city string, country string, zipCode str
 
 [complextypes.User on pkg.go.dev](https://pkg.go.dev/test-fixtures/valid/complex-types#User)
 
-Location: tests/fixtures/go/valid/complex-types/complex-struct.go:64:3
+Declaration: tests/fixtures/go/valid/complex-types/complex-struct.go:64:3
 \`\`\`go
 field User string // size=16 (0x10), offset=40 (0x28)
 \`\`\``);
@@ -156,7 +156,7 @@ field User string // size=16 (0x10), offset=40 (0x28)
     expect(result.exitCode).toBe(0);
     const output = stripAnsi(result.stdout.toString());
     // Should show both field declaration and Address struct definition
-    expect(output).toBe(`Location: tests/fixtures/go/valid/complex-types/complex-struct.go:17:2
+    expect(output).toBe(`Declaration: tests/fixtures/go/valid/complex-types/complex-struct.go:17:2
 \`\`\`go
 field Address Address // size=64 (0x40), offset=112 (0x70)
 \`\`\`

@@ -11,7 +11,7 @@ describe('Python Hover Command', () => {
     expect(result.exitCode).toBe(0);
     const output = stripAnsi(result.stdout.toString());
     expect(output)
-      .toBe(`Location: tests/fixtures/python/valid/simple-module.py:1:5
+      .toBe(`Declaration: tests/fixtures/python/valid/simple-module.py:1:5
 \`\`\`python
 (function) def add(
     a: int,
@@ -30,7 +30,7 @@ Add two numbers together.`);
     expect(result.exitCode).toBe(0);
     const output = stripAnsi(result.stdout.toString());
     expect(output)
-      .toBe(`Location: tests/fixtures/python/valid/simple-module.py:5:5
+      .toBe(`Declaration: tests/fixtures/python/valid/simple-module.py:5:5
 \`\`\`python
 (function) def greet(name: str) -> str
 \`\`\`
@@ -45,7 +45,7 @@ Greet a person by name.`);
 
     expect(result.exitCode).toBe(0);
     const output = stripAnsi(result.stdout.toString());
-    expect(output).toMatch(/Location: .*\.lsp-cli-client\/packages\/node_modules\/pyright\/dist\/typeshed-fallback\/stdlib\/builtins\.pyi:35[34]:7\n```python\n\(class\) float\n```/);
+    expect(output).toMatch(/Declaration: tests\/fixtures\/python\/valid\/simple-module\.py:9:1\n```python\n\(constant\) PI: float\n```\n\nType Definition: .*\.lsp-cli-client\/packages\/node_modules\/pyright\/dist\/typeshed-fallback\/stdlib\/builtins\.pyi:35[34]:7\n```python\n\(class\) float\n```/);
   }, 10000);
 
   test('should get hover info for class', async () => {
@@ -80,7 +80,7 @@ Greet a person by name.`);
     const output = stripAnsi(result.stdout.toString());
     // Python shows class but not full expansion like TypeScript interfaces
     expect(output)
-      .toBe(`Location: tests/fixtures/python/valid/class-with-types.py:6:7
+      .toBe(`Type Definition: tests/fixtures/python/valid/class-with-types.py:6:7
 \`\`\`python
 (class) Person
 \`\`\`
@@ -97,7 +97,7 @@ A person with various attributes for testing type expansion`);
     const output = stripAnsi(result.stdout.toString());
     // Should show the method with full type signature
     expect(output)
-      .toBe(`Location: tests/fixtures/python/valid/class-with-types.py:37:9
+      .toBe(`Declaration: tests/fixtures/python/valid/class-with-types.py:37:9
 \`\`\`python
 (method) def process_batch(
     self: Self@DataProcessor,
