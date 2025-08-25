@@ -390,7 +390,7 @@ export class LSPManager {
           hoverLocations.push({
             file: absolutePath,
             position: position,
-            description: 'Declaration',
+            description: 'Location',
           });
 
           // Add type definition location if different and relevant
@@ -496,6 +496,7 @@ export class LSPManager {
                     line: location.position.line,
                     column: location.position.character,
                   },
+                  description: location.description,
                 };
                 collected.push({
                   sourceFile: absolutePath,

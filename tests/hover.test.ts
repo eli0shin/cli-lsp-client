@@ -95,9 +95,34 @@ Greets a person by name
 
     expect(result.exitCode).toBe(0);
     const output = stripAnsi(result.stdout);
-    // When hovering over an import, we get multiple results showing import locations and type definition
-    expect(output).toContain('Type Definition: tests/fixtures/typescript/valid/types.ts:1:13');
-    expect(output).toContain('type HoverResult = {');
+    // When hovering over an import, we get deduplicated results showing multiple locations for same content
+    expect(output).toBe(`Location: tests/fixtures/typescript/valid/import-example.ts:1:10
+Location: tests/fixtures/typescript/valid/import-example.ts:3:38
+\`\`\`typescript
+(alias) type HoverResult = {
+    symbol: string;
+    hover: string;
+    location: {
+        file: string;
+        line: number;
+        column: number;
+    };
+}
+import HoverResult
+\`\`\`
+
+Type Definition: tests/fixtures/typescript/valid/types.ts:1:13
+\`\`\`typescript
+type HoverResult = {
+    symbol: string;
+    hover: string;
+    location: {
+        file: string;
+        line: number;
+        column: number;
+    };
+}
+\`\`\``);
     expect(result.exitCode).toBe(0);
   }, 10000);
 
@@ -107,9 +132,21 @@ Greets a person by name
 
     expect(result.exitCode).toBe(0);
     const output = stripAnsi(result.stdout);
-    // When hovering over an import, we get multiple results
-    expect(output).toContain('Type Definition: src/lsp/types.ts:24:13');
-    expect(output).toContain('type Diagnostic = VSCodeDiagnostic');
+    // When hovering over an import, we get deduplicated results showing multiple locations for same content
+    expect(output).toBe(`Location: src/lsp/formatter.ts:2:15
+Location: src/lsp/formatter.ts:20:39
+Location: src/lsp/formatter.ts:20:54
+Location: src/lsp/formatter.ts:50:16
+Location: src/lsp/formatter.ts:83:16
+\`\`\`typescript
+(alias) type Diagnostic = Diagnostic
+import Diagnostic
+\`\`\`
+
+Type Definition: src/lsp/types.ts:24:13
+\`\`\`typescript
+type Diagnostic = VSCodeDiagnostic
+\`\`\``);
     expect(result.exitCode).toBe(0);
   }, 10000);
 
@@ -145,7 +182,7 @@ Fetches data asynchronously from a remote source
 interface User
 \`\`\`
 
-Declaration: tests/fixtures/typescript/valid/simple-function.ts:42:14
+Location: tests/fixtures/typescript/valid/simple-function.ts:42:14
 \`\`\`typescript
 const myUser: User
 \`\`\``);
@@ -388,7 +425,7 @@ A large type that might get truncated by the language server`);
     expect(result.exitCode).toBe(0);
     const output = stripAnsi(result.stdout);
     // For variables with Promise type, should show both declaration and Promise interface
-    expect(output).toBe(`Declaration: tests/fixtures/typescript/valid/simple-function.ts:58:14
+    expect(output).toBe(`Location: tests/fixtures/typescript/valid/simple-function.ts:58:14
 \`\`\`typescript
 const myPromise: Promise<number>
 \`\`\`
@@ -447,12 +484,12 @@ Location: tests/fixtures/typescript/valid/duplicate-symbols.ts:10:3
     expect(result.exitCode).toBe(0);
     const output = stripAnsi(result.stdout);
 
-    const expected = `Declaration: tests/fixtures/typescript/valid/multi-result-types.ts:2:9
+    const expected = `Location: tests/fixtures/typescript/valid/multi-result-types.ts:2:9
 \`\`\`typescript
 const result: "hello"
 \`\`\`
 
-Declaration: tests/fixtures/typescript/valid/multi-result-types.ts:7:9
+Location: tests/fixtures/typescript/valid/multi-result-types.ts:7:9
 \`\`\`typescript
 const result: {
     a: number;
@@ -460,7 +497,7 @@ const result: {
 }
 \`\`\`
 
-Declaration: tests/fixtures/typescript/valid/multi-result-types.ts:15:9
+Location: tests/fixtures/typescript/valid/multi-result-types.ts:15:9
 \`\`\`typescript
 const result: {
     readonly a: 1;
@@ -560,7 +597,7 @@ class APIServer<TContext = unknown>
 A complex API server class with various method signatures
 to test the enhanced hover parsing capabilities.
 
-Declaration: tests/fixtures/typescript/enhanced-hover/complex-api.ts:139:7
+Location: tests/fixtures/typescript/enhanced-hover/complex-api.ts:139:7
 \`\`\`typescript
 const serverInstance: APIServer<string>
 \`\`\``);
@@ -582,7 +619,7 @@ class APIServer<TContext = unknown>
 A complex API server class with various method signatures
 to test the enhanced hover parsing capabilities.
 
-Declaration: tests/fixtures/typescript/enhanced-hover/complex-api.ts:144:7
+Location: tests/fixtures/typescript/enhanced-hover/complex-api.ts:144:7
 \`\`\`typescript
 const productionServer: APIServer<{
     env: string;

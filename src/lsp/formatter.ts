@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import type { Diagnostic, HoverResult, Hover, MarkedString, SignatureHelp } from './types.js';
+import type { Diagnostic, HoverResult, Hover, SignatureHelp } from './types.js';
 
 const SEVERITY_NAMES = {
   1: 'ERROR',
@@ -124,29 +124,46 @@ export async function formatHoverResults(
     return 'No hover information found for the symbol.';
   }
 
-  const output: string[] = [];
-
-  results.forEach((result, index) => {
-    // Format hover content and append directly to location line
-    const content = formatHoverContent(result.hover).replace(/^\n+/, '');
+  // Group results by identical hover content
+  const contentGroups = new Map<string, HoverResult[]>();
+  
+  results.forEach(result => {
+    // Create a content key from hover contents and signature
+    const hoverContent = JSON.stringify(result.hover.contents);
+    const signatureContent = result.signature ? JSON.stringify(result.signature) : '';
+    const contentKey = `${hoverContent}|${signatureContent}`;
     
-    // Add context label for multiple results
-    let locationLabel = `${CYAN}Location:${RESET_COLOR}`;
-    if (results.length > 1) {
-      // Try to determine the type of result based on content
-      const hoverContent = formatHoverContent(result.hover);
-      if (hoverContent.includes('const ') || hoverContent.includes('let ') || hoverContent.includes('var ')) {
-        locationLabel = `${CYAN}Declaration:${RESET_COLOR}`;
-      } else if (hoverContent.includes('class ') || hoverContent.includes('interface ') || hoverContent.includes('type ')) {
-        locationLabel = `${YELLOW}Type Definition:${RESET_COLOR}`;
-      }
+    if (!contentGroups.has(contentKey)) {
+      contentGroups.set(contentKey, []);
     }
+    contentGroups.get(contentKey)!.push(result);
+  });
+
+  const output: string[] = [];
+  let groupIndex = 0;
+
+  contentGroups.forEach(group => {
+    // Sort locations within each group for consistent ordering
+    group.sort((a, b) => {
+      const fileCompare = a.location.file.localeCompare(b.location.file);
+      if (fileCompare !== 0) return fileCompare;
+      if (a.location.line !== b.location.line) return a.location.line - b.location.line;
+      return a.location.column - b.location.column;
+    });
+
+    // Format hover content once per group
+    const content = formatHoverContent(group[0].hover).replace(/^\n+/, '');
     
-    let resultContent = `${locationLabel} ${result.location.file}:${result.location.line + 1}:${result.location.column + 1}\n${content}`;
+    // Build locations list with labels based on description field
+    const locations = group.map(result => {
+      return `${CYAN}${result.description}:${RESET_COLOR} ${result.location.file}:${result.location.line + 1}:${result.location.column + 1}`;
+    }).join('\n');
+    
+    let resultContent = `${locations}\n${content}`;
     
     // Add enhanced signature information if available (Phase 2 enhancement)
-    if (result.signature?.signatures?.length) {
-      const signatureInfo = formatSignatureHelp(result.signature);
+    if (group[0].signature?.signatures?.length) {
+      const signatureInfo = formatSignatureHelp(group[0].signature);
       if (signatureInfo) {
         resultContent += `\n\n${GRAY}${BOLD}Signature Details:${RESET_COLOR}\n${signatureInfo}`;
       }
@@ -154,10 +171,11 @@ export async function formatHoverResults(
     
     output.push(resultContent);
 
-    // Add a blank line between results, but not after the last one
-    if (index < results.length - 1) {
+    // Add a blank line between groups, but not after the last one
+    if (groupIndex < contentGroups.size - 1) {
       output.push('');
     }
+    groupIndex++;
   });
 
   return output.join('\n');
@@ -174,7 +192,13 @@ function formatHoverContent(hover: Hover): string {
     content = hover.contents;
   } else if (Array.isArray(hover.contents)) {
     content = hover.contents
-      .map((c: string | MarkedString) => (typeof c === 'string' ? c : c.value))
+      .map((c) => {
+        if (typeof c === 'string') {
+          return c;
+        }
+        // Handle both MarkedString and MarkupContent
+        return c.value;
+      })
       .join('\n\n');
   } else if ('kind' in hover.contents) {
     content = hover.contents.value;
