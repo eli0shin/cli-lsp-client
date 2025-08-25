@@ -134,3 +134,11 @@ export class APIServer<TContext = unknown> {
     return new APIServer(this.config);
   }
 }
+
+// Test instance variables for hover testing
+const serverInstance = new APIServer<string>({ port: 3000, host: 'localhost' }, 'test-context');
+
+/**
+ * Another instance with complex configuration for testing hover on instances
+ */
+const productionServer = APIServer.create({ port: 8080, host: '0.0.0.0', ssl: true }, { env: 'production' });

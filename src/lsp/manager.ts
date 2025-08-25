@@ -17,7 +17,6 @@ import {
 } from './servers.js';
 import { log } from '../logger.js';
 import { urlToFilePath } from '../utils.js';
-import { TypeEnhancer } from './type-enhancer.js';
 import { LANGUAGE_EXTENSIONS } from './language.js';
 
 // SymbolKind enum values from LSP spec
@@ -367,8 +366,6 @@ export class LSPManager {
 
         // Try hover at each position (collect all, no early break)
         for (const position of symbolPositions) {
-          let hoverLocation = position;
-          let hoverFile = absolutePath;
 
           // Find the symbol at this position
           const symbolAtPosition = this.findSymbolAtPosition(
@@ -382,9 +379,21 @@ export class LSPManager {
             `Symbol "${symbolName}" at ${position.line}:${position.character} has kind: ${symbolKind}`
           );
 
-          // Determine if we should follow type definitions based on symbol kind
-          // For functions and methods, we want to show the function itself, not its return type
-          // If symbol is not found in document symbols (like imports), we should follow type definitions
+          // Collect hover results from multiple locations for comprehensive information
+          const hoverLocations: {
+            file: string;
+            position: Position;
+            description: string;
+          }[] = [];
+
+          // Always include the original location
+          hoverLocations.push({
+            file: absolutePath,
+            position: position,
+            description: 'Declaration',
+          });
+
+          // Add type definition location if different and relevant
           const shouldFollowTypeDefinition =
             symbolKind === undefined ||
             (symbolKind !== SymbolKind.Function &&
@@ -399,125 +408,102 @@ export class LSPManager {
               );
               if (typeDefinitions && typeDefinitions.length > 0) {
                 const firstTypeDef = typeDefinitions[0];
+                let typeDefFile: string;
+                let typeDefLocation: Position;
+
                 if ('uri' in firstTypeDef) {
                   const location = firstTypeDef;
-                  const typeDefFile = urlToFilePath(location.uri);
-                  const typeDefLocation = location.range.start;
-
-                  // Only use type definition if it's different from original location
-                  if (
-                    typeDefFile !== absolutePath ||
-                    typeDefLocation.line !== position.line
-                  ) {
-                    hoverFile = typeDefFile;
-                    hoverLocation = typeDefLocation;
-                    log(
-                      `Using type definition at ${hoverFile}:${hoverLocation.line}:${hoverLocation.character}`
-                    );
-                  }
+                  typeDefFile = urlToFilePath(location.uri);
+                  typeDefLocation = location.range.start;
                 } else if ('targetUri' in firstTypeDef) {
                   const locationLink = firstTypeDef;
-                  const typeDefFile = urlToFilePath(locationLink.targetUri);
-                  const typeDefLocation =
+                  typeDefFile = urlToFilePath(locationLink.targetUri);
+                  typeDefLocation =
                     locationLink.targetSelectionRange?.start ||
                     locationLink.targetRange.start;
+                } else {
+                  typeDefFile = '';
+                  typeDefLocation = { line: 0, character: 0 };
+                }
 
-                  // Only use type definition if it's different from original location
-                  if (
-                    typeDefFile !== absolutePath ||
-                    typeDefLocation.line !== position.line
-                  ) {
-                    hoverFile = typeDefFile;
-                    hoverLocation = typeDefLocation;
-                    log(
-                      `Using type definition link at ${hoverFile}:${hoverLocation.line}:${hoverLocation.character}`
-                    );
-                  }
+                // Only add type definition if it's different from original location
+                if (
+                  typeDefFile &&
+                  (typeDefFile !== absolutePath ||
+                    typeDefLocation.line !== position.line)
+                ) {
+                  hoverLocations.push({
+                    file: typeDefFile,
+                    position: typeDefLocation,
+                    description: 'Type Definition',
+                  });
+                  log(
+                    `Found type definition at ${typeDefFile}:${typeDefLocation.line}:${typeDefLocation.character}`
+                  );
                 }
               }
             } catch (error) {
               log(`Type definition lookup failed: ${error}`);
             }
-          } else {
-            log(
-              `Symbol kind ${symbolKind} indicates function/method, skipping type definition lookup`
-            );
           }
 
-          // Get hover at the appropriate location
-          const hover = await this.retryWithConnectionCheck(
-            () => client.getHover(hoverFile, hoverLocation),
-            server.id
-          );
+          // Get comprehensive information for each location (Phase 2: Multi-request pattern)
+          for (const location of hoverLocations) {
+            // Execute multiple requests concurrently for richer information
+            const [hover, signatureHelp] = await Promise.allSettled([
+              this.retryWithConnectionCheck(
+                () => client.getHover(location.file, location.position),
+                server.id
+              ),
+              this.retryWithConnectionCheck(
+                () => client.getSignatureHelp(location.file, location.position),
+                server.id
+              )
+            ]);
 
-          if (hover) {
-            // Get language ID from file extension
-            const fileExt = path.extname(hoverFile);
-            const configLanguageExtensions =
-              getConfigLanguageExtensions();
-            const languageId =
-              configLanguageExtensions?.[fileExt] ||
-              LANGUAGE_EXTENSIONS[fileExt] ||
-              'plaintext';
+            // Extract results from Promise.allSettled
+            const hoverResult = hover.status === 'fulfilled' ? hover.value : null;
+            const signatureResult = signatureHelp.status === 'fulfilled' ? signatureHelp.value : null;
 
-            log(
-              `Enhancing hover for language: ${languageId}, symbolKind: ${symbolKind}`
-            );
+            if (hoverResult) {
+              // Get language ID from file extension
+              const fileExt = path.extname(location.file);
+              const configLanguageExtensions =
+                getConfigLanguageExtensions();
+              const languageId =
+                configLanguageExtensions?.[fileExt] ||
+                LANGUAGE_EXTENSIONS[fileExt] ||
+                'plaintext';
 
-            // Create TypeEnhancer and enhance the hover result
-            const typeEnhancer = new TypeEnhancer(client);
-            const enhancedHover = await typeEnhancer.enhanceHover(
-              hoverFile,
-              hoverLocation,
-              hover,
-              symbolKind,
-              languageId
-            );
+              log(
+                `Got ${location.description.toLowerCase()} hover info for ${languageId} symbol: ${symbolKind}`
+              );
 
-            log(
-              `Enhanced hover has expandedType: ${!!enhancedHover.expandedType}, functionSignature: ${!!enhancedHover.functionSignature}`
-            );
+              if (signatureResult?.signatures?.length) {
+                log(`Also got signature help with ${signatureResult.signatures.length} signature(s)`);
+              }
 
-            // Format the enhanced hover for better output
-            const formattedContent = typeEnhancer.formatEnhancedHover(
-              enhancedHover,
-              languageId
-            );
-
-            log(`Formatted content length: ${formattedContent.length}`);
-
-            // Update hover contents with enhanced information
-            if (typeof hover.contents === 'string') {
-              hover.contents = formattedContent;
-            } else if (Array.isArray(hover.contents)) {
-              hover.contents = [formattedContent];
-            } else if (
-              hover.contents &&
-              typeof hover.contents === 'object' &&
-              'value' in hover.contents
-            ) {
-              hover.contents.value = formattedContent;
-            }
-
-            // Deduplicate by final hover location
-            const key = `${hoverFile}:${hoverLocation.line}:${hoverLocation.character}`;
-            if (!seen.has(key)) {
-              seen.add(key);
-              const resultItem: HoverResult = {
-                symbol: symbolName,
-                hover: hover,
-                location: {
-                  file: path.relative(process.cwd(), hoverFile),
-                  line: hoverLocation.line,
-                  column: hoverLocation.character,
-                },
-              };
-              collected.push({
-                sourceFile: absolutePath,
-                sourceLine: position.line,
-                sourceChar: position.character,
-                item: resultItem,
-              });
+              // Deduplicate by hover location
+              const key = `${location.file}:${location.position.line}:${location.position.character}`;
+              if (!seen.has(key)) {
+                seen.add(key);
+                const resultItem: HoverResult = {
+                  symbol: symbolName,
+                  hover: hoverResult,
+                  signature: signatureResult,
+                  location: {
+                    file: path.relative(process.cwd(), location.file),
+                    line: location.position.line,
+                    column: location.position.character,
+                  },
+                };
+                collected.push({
+                  sourceFile: absolutePath,
+                  sourceLine: position.line,
+                  sourceChar: position.character,
+                  item: resultItem,
+                });
+              }
             }
           }
         }

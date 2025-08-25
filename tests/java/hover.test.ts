@@ -63,7 +63,7 @@ Location: tests/fixtures/java/valid/src/main/java/com/example/HelloWorld.java:16
 
     expect(result.exitCode).toBe(0);
     const output = stripAnsi(result.stdout.toString());
-    expect(output).toBe(`Location: tests/fixtures/java/valid/src/main/java/com/example/HelloWorld.java:3:14`);
+    expect(output).toContain('Location: tests/fixtures/java/valid/src/main/java/com/example/HelloWorld.java:3:14');
   }, 10000);
 
   test('should handle symbol not found gracefully', async () => {

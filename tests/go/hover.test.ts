@@ -21,15 +21,21 @@ describe('Go Hover Command', () => {
 
     expect(result.exitCode).toBe(0);
     const output = stripAnsi(result.stdout.toString());
-    expect(output).toBe(`Location: tests/fixtures/go/valid/main-package/simple-function.go:10:2
+    expect(output).toBe(`Declaration: tests/fixtures/go/valid/main-package/simple-function.go:10:2
 \`\`\`go
 var message string
 \`\`\`
 
-Location: tests/fixtures/go/valid/main-package/simple-function.go:11:14
+Declaration: tests/fixtures/go/valid/main-package/simple-function.go:11:14
 \`\`\`go
 var message string
-\`\`\``);
+\`\`\`
+
+Signature Details:
+Println(a ...any) (n int, err error)
+Println formats using the default formats for its operands and writes to standard output. Spaces are always added between operands and a newline is appended. It returns the number of bytes written and any write error encountered.
+
+a ...any`);
   }, 10000);
 
   test('should get hover info for struct type', async () => {
@@ -112,7 +118,7 @@ func NewPerson(name string, age int) Person
     const output = stripAnsi(result.stdout.toString());
     // Go shows the full struct definition with all fields
     expect(output)
-      .toBe(`Location: tests/fixtures/go/valid/complex-types/complex-struct.go:8:6
+      .toBe(`Type Definition: tests/fixtures/go/valid/complex-types/complex-struct.go:8:6
 \`\`\`go
 type User struct { // size=176 (0xb0)
 \tID        int
@@ -149,15 +155,21 @@ field User string // size=16 (0x10), offset=40 (0x28)
 
     expect(result.exitCode).toBe(0);
     const output = stripAnsi(result.stdout.toString());
-    // Should show the Address struct with its fields
-    expect(output)
-      .toBe(`Location: tests/fixtures/go/valid/complex-types/complex-struct.go:21:6
+    // Should show both field declaration and Address struct definition
+    expect(output).toBe(`Location: tests/fixtures/go/valid/complex-types/complex-struct.go:17:2
+\`\`\`go
+field Address Address // size=64 (0x40), offset=112 (0x70)
+\`\`\`
+
+[(complextypes.User).Address on pkg.go.dev](https://pkg.go.dev/test-fixtures/valid/complex-types#User.Address)
+
+Type Definition: tests/fixtures/go/valid/complex-types/complex-struct.go:21:6
 \`\`\`go
 type Address struct { // size=64 (0x40)
-\tStreet  string
-\tCity    string
-\tCountry string
-\tZipCode string
+	Street  string
+	City    string
+	Country string
+	ZipCode string
 }
 \`\`\`
 

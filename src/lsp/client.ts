@@ -88,6 +88,37 @@ export async function createLSPClient(
     ],
     initializationOptions: {
       ...serverHandle.initialization,
+      // TypeScript-specific configuration for better hover information
+      ...(serverID === 'typescript' && {
+        preferences: {
+          includeCompletionsForModuleExports: true,
+          includeCompletionsWithInsertText: true,
+          allowIncompleteCompletions: true,
+          maxNodeModuleJsFileSize: 30000,
+          // Enhanced hover configuration for rich type information
+          maximumHoverLength: 5000,
+          verbosityLevel: 2,
+          displayPartsForJSDoc: true,
+          generateReturnInDocTemplate: true,
+          useLabelDetailsInCompletionEntries: true
+        },
+        // Enable TypeScript 5.8+ expandable hover if available
+        experimentalDecorators: true,
+        typescript: {
+          experimental: {
+            expandableHover: true
+          },
+          preferences: {
+            includeInlayParameterNameHints: "none",
+            includeInlayParameterNameHintsWhenArgumentMatchesName: false,
+            includeInlayFunctionParameterTypeHints: false,
+            includeInlayVariableTypeHints: false,
+            includeInlayPropertyDeclarationTypeHints: false,
+            includeInlayFunctionLikeReturnTypeHints: false,
+            includeInlayEnumMemberValueHints: false
+          }
+        }
+      })
     },
     capabilities: {
       window: {
