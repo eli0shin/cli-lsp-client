@@ -20,7 +20,8 @@ async function hasAnyFile(
           const gitPattern = pattern.replace('**/', ''); // Convert **/*.ts to *.ts for git
           
           // Use git ls-files to check if any tracked files match
-          const proc = Bun.spawn(['git', 'ls-files', gitPattern], {
+          // Skip submodules to avoid slow traversal in large repos
+          const proc = Bun.spawn(['git', 'ls-files', '--recurse-submodules=no', gitPattern], {
             cwd: directory,
             stdout: 'pipe',
             stderr: 'pipe'
