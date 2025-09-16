@@ -4,55 +4,107 @@ import { createLSPClient } from './client.js';
 import { log } from '../logger.js';
 import { lspManager } from './manager.js';
 
+function expandDepthLimitedPattern(pattern: string, maxDepth = 3): string[] {
+  // If pattern doesn't contain **/, return as-is
+  if (!pattern.includes('**/')) {
+    return [pattern];
+  }
+
+  // Extract the file pattern after **/
+  const filePattern = pattern.replace('**/', '');
+  const expandedPatterns: string[] = [];
+
+  // Add pattern for root directory
+  expandedPatterns.push(filePattern);
+
+  // Add patterns for each depth level
+  for (let depth = 1; depth <= maxDepth; depth++) {
+    const depthPattern = '*/'.repeat(depth) + filePattern;
+    expandedPatterns.push(depthPattern);
+  }
+
+  return expandedPatterns;
+}
+
 async function hasAnyFile(
   directory: string,
   patterns: string[]
 ): Promise<boolean> {
+
   try {
     // Check if we're in a git repository
     const isGitRepo = await Bun.file(`${directory}/.git/HEAD`).exists();
-    
+
     if (isGitRepo) {
-      // Use git ls-files to respect gitignore
+      // Separate exact files from glob patterns
+      const exactFiles: string[] = [];
+      const globPatterns: string[] = [];
+
       for (const pattern of patterns) {
         if (pattern.includes('*')) {
-          // For glob patterns, use git ls-files to only check tracked files
-          const gitPattern = pattern.replace('**/', ''); // Convert **/*.ts to *.ts for git
-          
-          // Use git ls-files to check if any tracked files match
-          // Skip submodules to avoid slow traversal in large repos
-          const proc = Bun.spawn(['git', 'ls-files', '--recurse-submodules=no', gitPattern], {
-            cwd: directory,
-            stdout: 'pipe',
-            stderr: 'pipe'
-          });
-          
-          const output = await new Response(proc.stdout).text();
-          await proc.exited;
-          
-          // Only return true if we actually found files (non-empty output)
-          if (output.trim().length > 0) {
-            log(`Found tracked files matching ${pattern} in ${directory}`);
-            return true;
-          }
+          globPatterns.push(pattern);
         } else {
-          // For exact file names, check if file exists in current directory
-          const filePath = `${directory}/${pattern}`;
-          if (await Bun.file(filePath).exists()) {
-            log(`Found exact file: ${filePath}`);
-            return true;
-          }
+          exactFiles.push(pattern);
+        }
+      }
+
+      // Check exact files first (very fast)
+      for (const file of exactFiles) {
+        const filePath = `${directory}/${file}`;
+        if (await Bun.file(filePath).exists()) {
+          log(`Found exact file: ${filePath}`);
+          return true;
+        }
+      }
+
+      // If we have glob patterns, batch them into a single git ls-files call
+      if (globPatterns.length > 0) {
+        // Expand patterns with depth limit
+        const expandedPatterns: string[] = [];
+        for (const pattern of globPatterns) {
+          const expanded = expandDepthLimitedPattern(pattern, 3);
+          expandedPatterns.push(...expanded);
+        }
+
+        // Execute single git ls-files with all patterns
+        const proc = Bun.spawn([
+          'git',
+          'ls-files',
+          '-z', // Use null terminator for safety
+          ...expandedPatterns
+        ], {
+          cwd: directory,
+          stdout: 'pipe',
+          stderr: 'pipe'
+        });
+
+        // Read just enough to know if any files exist
+        const reader = proc.stdout.getReader();
+        const { value } = await reader.read();
+
+        // Kill the process as soon as we find a match
+        proc.kill();
+        await proc.exited;
+
+        if (value && value.length > 0) {
+          log(`Found tracked files matching patterns in ${directory}`);
+          return true;
         }
       }
     } else {
-      // Not a git repo, use original Bun.Glob logic
+      // Not a git repo, use original Bun.Glob logic with depth limit
       for (const pattern of patterns) {
         if (pattern.includes('*')) {
-          const glob = new Bun.Glob(pattern);
-          const matches = glob.scan(directory);
-          if ((await matches.next()).value) {
-            log(`Found files matching ${pattern} in ${directory}`);
-            return true;
+          // Apply depth limiting to glob patterns
+          const expandedPatterns = expandDepthLimitedPattern(pattern, 3);
+
+          for (const expandedPattern of expandedPatterns) {
+            const glob = new Bun.Glob(expandedPattern);
+            const matches = glob.scan(directory);
+            if ((await matches.next()).value) {
+              log(`Found files matching ${expandedPattern} in ${directory}`);
+              return true;
+            }
           }
         } else {
           const filePath = `${directory}/${pattern}`;
@@ -63,12 +115,139 @@ async function hasAnyFile(
         }
       }
     }
-    
+
     log(`No files found for patterns: ${patterns.join(', ')} in ${directory}`);
     return false;
   } catch (error) {
     log(`hasAnyFile error: ${error}`);
     return false;
+  }
+}
+
+async function detectAllFileTypesOptimized(directory: string): Promise<Set<string>> {
+  const detectedTypes = new Set<string>();
+
+  try {
+    // Check if we're in a git repository
+    const isGitRepo = await Bun.file(`${directory}/.git/HEAD`).exists();
+
+    if (!isGitRepo) {
+      // Fall back to individual hasAnyFile checks for non-git repos
+      return detectedTypes;
+    }
+
+    // First check exact files (config files)
+    const exactFiles = {
+      typescript: ['tsconfig.json', 'jsconfig.json', 'package.json'],
+      python: ['pyproject.toml', 'requirements.txt'],
+      go: ['go.mod'],
+      java: ['pom.xml', 'build.gradle', 'build.gradle.kts'],
+      lua: ['.luarc.json', '.luarc.jsonc'],
+      graphql: ['.graphqlrc', '.graphqlrc.yml', '.graphqlrc.yaml', '.graphqlrc.json'],
+      r: ['DESCRIPTION', 'NAMESPACE', '.Rproj', 'renv.lock'],
+      csharp: ['project.json', 'global.json']
+    };
+
+    // Check exact files directly
+    for (const [language, files] of Object.entries(exactFiles)) {
+      for (const file of files) {
+        const filePath = `${directory}/${file}`;
+        if (await Bun.file(filePath).exists()) {
+          detectedTypes.add(language);
+          break; // One config file is enough to detect the language
+        }
+      }
+    }
+
+    // Use a targeted approach: check for source files with specific extensions
+    // This limits the output size while still being efficient
+    const sourcePatterns = [
+      '*.ts', '*.tsx', '*.js', '*.jsx', '*.mjs', '*.cjs',  // JS/TS
+      '*.py', '*.pyi',                                      // Python
+      '*.go',                                                // Go
+      '*.java',                                              // Java
+      '*.lua',                                               // Lua
+      '*.graphql', '*.gql',                                  // GraphQL
+      '*.yml', '*.yaml',                                     // YAML
+      '*.sh', '*.bash', '*.zsh',                           // Bash
+      '*.json', '*.jsonc',                                   // JSON
+      '*.css', '*.scss', '*.sass', '*.less',               // CSS
+      '*.r', '*.R', '*.rmd', '*.Rmd',                      // R
+      '*.cs', '*.sln', '*.csproj'                          // C#
+    ];
+
+    const proc = Bun.spawn([
+      'git',
+      'ls-files',
+      ...sourcePatterns
+    ], {
+      cwd: directory,
+      stdout: 'pipe',
+      stderr: 'pipe'
+    });
+
+    const output = await new Response(proc.stdout).text();
+    await proc.exited;
+
+    if (output.trim()) {
+      const files = output.trim().split('\n');
+
+      // Process the filtered list of source files
+      for (const file of files) {
+        const fileName = file.split('/').pop() || file;
+        const lowerFile = fileName.toLowerCase();
+
+        // Since we already filtered by extension, just categorize
+        if (lowerFile.endsWith('.ts') || lowerFile.endsWith('.tsx') ||
+            lowerFile.endsWith('.js') || lowerFile.endsWith('.jsx') ||
+            lowerFile.endsWith('.mjs') || lowerFile.endsWith('.cjs')) {
+          detectedTypes.add('typescript');
+        }
+        if (lowerFile.endsWith('.py') || lowerFile.endsWith('.pyi')) {
+          detectedTypes.add('python');
+        }
+        if (lowerFile.endsWith('.go')) {
+          detectedTypes.add('go');
+        }
+        if (lowerFile.endsWith('.java')) {
+          detectedTypes.add('java');
+        }
+        if (lowerFile.endsWith('.lua')) {
+          detectedTypes.add('lua');
+        }
+        if (lowerFile.endsWith('.graphql') || lowerFile.endsWith('.gql')) {
+          detectedTypes.add('graphql');
+        }
+        if (lowerFile.endsWith('.yml') || lowerFile.endsWith('.yaml')) {
+          detectedTypes.add('yaml');
+        }
+        if (lowerFile.endsWith('.sh') || lowerFile.endsWith('.bash') || lowerFile.endsWith('.zsh')) {
+          detectedTypes.add('bash');
+        }
+        if (lowerFile.endsWith('.json') || lowerFile.endsWith('.jsonc')) {
+          detectedTypes.add('json');
+        }
+        if (lowerFile.endsWith('.css') || lowerFile.endsWith('.scss') ||
+            lowerFile.endsWith('.sass') || lowerFile.endsWith('.less')) {
+          detectedTypes.add('css');
+        }
+        if (lowerFile.endsWith('.r') || lowerFile === 'description' ||
+            lowerFile === 'namespace' || lowerFile.endsWith('.rmd')) {
+          detectedTypes.add('r');
+        }
+        if (lowerFile.endsWith('.cs') || lowerFile.endsWith('.sln') || lowerFile.endsWith('.csproj')) {
+          detectedTypes.add('csharp');
+        }
+
+        // Early termination if we've detected all languages
+        if (detectedTypes.size === 12) break;
+      }
+    }
+
+    return detectedTypes;
+  } catch (error) {
+    log(`detectAllFileTypesOptimized error: ${error}`);
+    return detectedTypes;
   }
 }
 
@@ -80,6 +259,40 @@ export async function detectProjectTypes(
 
   log(`Starting detection for directory: ${directory}`);
 
+  // Try optimized batch detection first
+  const optimizedTypes = await detectAllFileTypesOptimized(directory);
+
+  if (optimizedTypes.size > 0) {
+    // Use optimized results
+    const languageToServerId: Record<string, string> = {
+      typescript: 'typescript',
+      python: 'pyright',
+      go: 'gopls',
+      java: 'jdtls',
+      lua: 'lua_ls',
+      graphql: 'graphql',
+      yaml: 'yaml',
+      bash: 'bash',
+      json: 'json',
+      css: 'css',
+      r: 'r_language_server',
+      csharp: 'omnisharp'
+    };
+
+    for (const language of optimizedTypes) {
+      const serverId = languageToServerId[language];
+      if (serverId) {
+        const server = getServerById(serverId);
+        if (server) {
+          detectedServers.push(server);
+        }
+      }
+    }
+
+    return detectedServers;
+  }
+
+  // Fall back to original detection for non-git repos
   // TypeScript/JavaScript
   detectionPromises.push(
     (async () => {

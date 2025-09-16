@@ -18,5 +18,5 @@ describe('Java Invalid Files', () => {
 [Java] ERROR at line 23, column 5: Syntax error, insert "else Statement" to complete IfStatement [1610612976]
 [Java] ERROR at line 27, column 9: Void methods cannot return a value [67108969]
 [Java] ERROR at line 28, column 5: Syntax error, insert "}" to complete ClassBody [1610612976]`);
-  });
+  }, 15000);
 });

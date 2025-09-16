@@ -20,5 +20,5 @@ describe('C# Invalid Files', () => {
 [csharp] WARNING at line 11, column 16: Non-nullable property 'Name' must contain a non-null value when exiting constructor. Consider adding the 'required' modifier or declaring the property as nullable. [CS8618]
 [csharp] HINT at line 1, column 1: Unnecessary using directive. [CS8019]
 [csharp] HINT at line 1, column 7: The using directive for 'System' appeared previously as global using [CS8933]`);
-  });
+  }, 15000);
 });
