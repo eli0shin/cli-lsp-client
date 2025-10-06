@@ -58,3 +58,6 @@ temp/
 !bin/
 !bin/cli-lsp-client
 !bin/cli-lsp-client.cmd
+
+# Java build artifacts
+**/target/
