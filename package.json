@@ -7,10 +7,12 @@
   },
   "main": "src/cli.ts",
   "devDependencies": {
+    "@commander-js/extra-typings": "^14.0.0",
     "@eslint/js": "^9.33.0",
     "@modelcontextprotocol/sdk": "^1.17.3",
     "@types/bun": "latest",
     "@types/node": "latest",
+    "commander": "^14.0.1",
     "eslint": "^9.33.0",
     "eslint-config-prettier": "10.1.8",
     "eslint-import-resolver-typescript": "^4.4.4",
