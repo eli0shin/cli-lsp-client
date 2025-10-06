@@ -1,31 +1,24 @@
 #!/usr/bin/env bun
 
 import path from 'path';
-import { z } from 'zod';
+import { Command } from '@commander-js/extra-typings';
 import { startDaemon } from './daemon.js';
-import { runCommand, sendToExistingDaemon } from './client.js';
+import { sendToExistingDaemon } from './client.js';
 import { formatDiagnosticsPlain } from './lsp/formatter.js';
 import type { Diagnostic } from './lsp/types.js';
-import { HELP_MESSAGE } from './constants.js';
 import { ensureDaemonRunning } from './utils.js';
-import { startMcpServer } from './mcp/server.js';
 import packageJson from '../package.json' with { type: 'json' };
-
-// Schema for Claude Code PostToolUse hook payload
-const HookDataSchema = z.object({
-  session_id: z.string().optional(),
-  transcript_path: z.string().optional(),
-  cwd: z.string().optional(),
-  hook_event_name: z.string().optional(),
-  tool_name: z.string().optional(),
-  tool_input: z
-    .object({
-      file_path: z.string().optional(),
-      content: z.string().optional(),
-    })
-    .optional(),
-  tool_response: z.any().optional(),
-});
+import { registerVersionCommand } from './commands/version.js';
+import { registerStatusCommand } from './commands/status.js';
+import { registerListCommand } from './commands/list.js';
+import { registerDiagnosticsCommand } from './commands/diagnostics.js';
+import { registerHoverCommand } from './commands/hover.js';
+import { registerStartCommand } from './commands/start.js';
+import { registerLogsCommand } from './commands/logs.js';
+import { registerStopCommand } from './commands/stop.js';
+import { registerStopAllCommand } from './commands/stop-all.js';
+import { registerMcpServerCommand } from './commands/mcp-server.js';
+import { registerClaudeCodeHookCommand } from './commands/claude-code-hook.js';
 
 export async function handleClaudeCodeHook(
   filePath: string
@@ -107,126 +100,55 @@ export async function handleClaudeCodeHook(
   }
 }
 
-function showHelp(): void {
-  process.stdout.write(HELP_MESSAGE + '\n');
-}
-
-type ParsedArgs = {
-  command: string;
-  commandArgs: string[];
-  configFile?: string;
-};
-
-function parseArgs(args: string[]): ParsedArgs {
-  let configFile: string | undefined;
-  const filteredArgs: string[] = [];
-  
-  for (let i = 0; i < args.length; i++) {
-    const arg = args[i];
-    
-    if (arg === '--config-file') {
-      if (i + 1 >= args.length) {
-        process.stderr.write('Error: --config-file requires a path argument\n');
-        process.exit(1);
-      }
-      configFile = args[i + 1];
-      i++; // Skip the next argument since it's the config file path
-    } else if (arg.startsWith('--config-file=')) {
-      configFile = arg.split('=', 2)[1];
-      if (!configFile) {
-        process.stderr.write('Error: --config-file= requires a path after the equals sign\n');
-        process.exit(1);
-      }
-    } else {
-      filteredArgs.push(arg);
-    }
-  }
-  
-  const command = filteredArgs[0] || 'status';
-  const commandArgs = filteredArgs.slice(1);
-  
-  return { command, commandArgs, configFile };
-}
-
 async function run(): Promise<void> {
-  const rawArgs = process.argv.slice(2);
-  const { command, commandArgs, configFile } = parseArgs(rawArgs);
-
   // Check if we're being invoked to run as daemon
   if (process.env.LSPCLI_DAEMON_MODE === '1') {
     await startDaemon();
     return;
   }
 
-  // Handle help command directly (no daemon needed)
-  if (command === 'help' || command === '--help' || command === '-h') {
-    showHelp();
-    return;
+  const program = new Command()
+    .name('cli-lsp-client')
+    .description('CLI tool for fast LSP diagnostics with background daemon')
+    .version(packageJson.version)
+    .option('--config-file <path>', 'path to configuration file')
+    .addHelpText('after', `
+Examples:
+  cli-lsp-client status                         # Check daemon status
+  cli-lsp-client list                           # List all running daemons
+  cli-lsp-client diagnostics src/main.ts        # Get TypeScript diagnostics
+  cli-lsp-client diagnostics ./script.py        # Get Python diagnostics
+  cli-lsp-client hover src/client.ts runCommand # Get hover info for runCommand function
+  cli-lsp-client start                          # Start servers for current directory
+  cli-lsp-client start /path/to/project         # Start servers for specific directory
+  cli-lsp-client logs                           # Get log file location
+  cli-lsp-client stop                           # Stop the daemon
+  cli-lsp-client stop-all                       # Stop all daemons (useful after package updates)
+  cli-lsp-client mcp-server                     # Start MCP server
+
+The daemon automatically starts when needed and caches LSP servers for fast diagnostics.
+Use 'cli-lsp-client logs' to find the log file for debugging.
+`);
+
+  // Register all commands
+  registerVersionCommand(program);
+  registerStatusCommand(program);
+  registerListCommand(program);
+  registerDiagnosticsCommand(program);
+  registerHoverCommand(program);
+  registerStartCommand(program);
+  registerLogsCommand(program);
+  registerStopCommand(program);
+  registerStopAllCommand(program);
+  registerMcpServerCommand(program);
+  registerClaudeCodeHookCommand(program);
+
+  // Set default command to status
+  if (process.argv.length === 2) {
+    process.argv.push('status');
   }
 
-  // Handle version command directly (no daemon needed)
-  if (command === 'version' || command === '--version' || command === '-v') {
-    process.stdout.write(packageJson.version + '\n');
-    return;
-  }
-
-  // Handle mcp-server command directly (starts MCP server)
-  if (command === 'mcp-server') {
-    await startMcpServer();
-    return;
-  }
-
-  // Handle claude-code-hook command directly (reads JSON from stdin)
-  if (command === 'claude-code-hook') {
-    try {
-      // Read JSON from stdin
-      const stdinData = await new Promise<string>((resolve, reject) => {
-        let data = '';
-        process.stdin.on('data', (chunk) => {
-          data += chunk.toString();
-        });
-        process.stdin.on('end', () => {
-          resolve(data);
-        });
-        process.stdin.on('error', reject);
-      });
-
-      if (!stdinData.trim()) {
-        process.exit(0); // No input, silently exit
-      }
-
-      // Parse the JSON to get the file path
-      const parseResult = HookDataSchema.safeParse(JSON.parse(stdinData));
-      if (!parseResult.success) {
-        process.exit(0); // Invalid JSON format, silently exit
-      }
-      const hookData = parseResult.data;
-      // Extract file_path from PostToolUse tool_input
-      const filePath = hookData.tool_input?.file_path;
-
-      if (!filePath) {
-        process.exit(0); // No file path, silently exit
-      }
-
-      const result = await handleClaudeCodeHook(filePath);
-      if (result.daemonFailed) {
-        // Daemon failed to start - exit with status 1 to show error to user
-        process.stderr.write(result.output + '\n');
-        process.exit(1);
-      }
-      if (result.hasIssues) {
-        process.stderr.write(result.output + '\n');
-        process.exit(2);
-      }
-      process.exit(0);
-    } catch (_error) {
-      // Silently fail for hook commands to not break Claude Code
-      process.exit(0);
-    }
-  }
-
-  // All other user commands are handled by the client (which auto-starts daemon if needed)
-  await runCommand(command, commandArgs, configFile);
+  await program.parseAsync(process.argv);
 }
 
 export { run };

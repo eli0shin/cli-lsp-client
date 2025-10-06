@@ -38,16 +38,18 @@ describe('Config File Support', () => {
 
   test('missing --config-file argument shows error', async () => {
     const proc = await runCommandWithArgs(['--config-file']);
-    
+
     expect(proc.exitCode).toBe(1);
-    expect(stripAnsi(proc.stderr)).toBe('Error: --config-file requires a path argument');
+    expect(stripAnsi(proc.stderr)).toBe("error: option '--config-file <path>' argument missing");
   });
 
-  test('empty --config-file= should show error', async () => {
+  test('empty --config-file= should show help', async () => {
+    // Commander treats --config-file= as invalid and shows help
     const proc = await runCommandWithArgs(['--config-file=']);
-    
+
     expect(proc.exitCode).toBe(1);
-    expect(stripAnsi(proc.stderr)).toBe('Error: --config-file= requires a path after the equals sign');
+    const output = stripAnsi(proc.stderr);
+    expect(output).toContain('Usage: cli-lsp-client [options] [command]');
   });
 
   test('config file flag should not interfere with other commands', async () => {
@@ -57,6 +59,9 @@ describe('Config File Support', () => {
     const proc = await runCommandWithArgs(['--config-file', configPath, 'help']);
     
     expect(proc.exitCode).toBe(0);
-    expect(stripAnsi(proc.stdout)).toBe('Usage: cli-lsp-client <command> [arguments]\n\nCommands:\n  help                          Show this help message\n  version                       Show version number\n  status                        Show daemon status and memory usage\n  list                          List all running daemons with their working directories\n  diagnostics <file>           Get diagnostics for a file\n  hover <file> <symbol>        Get hover info for a symbol in specific file\n  start [directory]            Start LSP servers for a directory (default: current)\n  logs                         Show the daemon log file path\n  stop                         Stop the daemon\n  stop-all                     Stop all daemons across all directories\n  mcp-server                   Start MCP server\n\nExamples:\n  cli-lsp-client help                           # Show this help\n  cli-lsp-client version                        # Show version number\n  cli-lsp-client status                         # Check daemon status\n  cli-lsp-client list                           # List all running daemons\n  cli-lsp-client diagnostics src/main.ts        # Get TypeScript diagnostics\n  cli-lsp-client diagnostics ./script.py       # Get Python diagnostics\n  cli-lsp-client hover src/client.ts runCommand # Get hover info for runCommand function\n  cli-lsp-client hover src/formatter.ts formatHoverResults # Get hover info for formatHoverResults function\n  cli-lsp-client start                          # Start servers for current directory\n  cli-lsp-client start /path/to/project        # Start servers for specific directory\n  cli-lsp-client logs                           # Get log file location\n  cli-lsp-client stop                           # Stop the daemon\n  cli-lsp-client stop-all                       # Stop all daemons (useful after package updates)\n  cli-lsp-client mcp-server                     # Start MCP server\n\nThe daemon automatically starts when needed and caches LSP servers for fast diagnostics.\nUse \'cli-lsp-client logs\' to find the log file for debugging.');
+    const output = stripAnsi(proc.stdout);
+    expect(output).toContain('Usage: cli-lsp-client [options] [command]');
+    expect(output).toContain('Examples:');
+    expect(output).toContain('The daemon automatically starts when needed');
   });
 });
