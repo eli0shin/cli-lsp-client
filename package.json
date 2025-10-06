@@ -25,19 +25,22 @@
     "zod": "3.25"
   },
   "bin": {
-    "cli-lsp-client": "cli-lsp-client"
+    "cli-lsp-client": "./bin/cli-lsp-client"
   },
   "bugs": {
     "url": "https://github.com/eli0shin/cli-lsp-client/issues"
   },
   "description": "CLI tool supporting claude code hooks for fast LSP diagnostics with background daemon and multi-project support",
   "files": [
-    "cli-lsp-client"
+    "bin/",
+    "script/preinstall.mjs",
+    "script/postinstall.mjs"
   ],
   "homepage": "https://github.com/eli0shin/cli-lsp-client#readme",
   "license": "MIT",
   "scripts": {
-    "build": "bun build src/cli.ts --compile --outfile cli-lsp-client",
+    "build": "./script/build.ts",
+    "release": "./script/release.ts",
     "dev": "bun run src/cli.ts",
     "typecheck": "bun tsc --noEmit",
     "lint": "eslint .",
@@ -46,8 +49,8 @@
     "format:fix": "prettier --write .",
     "test": "bun test",
     "test:watch": "bun test tests/ --watch",
-    "prepublishOnly": "bun test && bun run build",
-    "postinstall": "node scripts/postinstall.js"
+    "preinstall": "node ./script/preinstall.mjs",
+    "postinstall": "node ./script/postinstall.mjs"
   },
   "type": "module"
 }
