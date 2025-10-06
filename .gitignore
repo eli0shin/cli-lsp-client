@@ -55,3 +55,6 @@ temp/
 # .NET build artifacts
 **/obj/
 **/bin/
+!bin/
+!bin/cli-lsp-client
+!bin/cli-lsp-client.cmd

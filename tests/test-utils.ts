@@ -1,6 +1,6 @@
 import { spawn, execSync } from 'child_process';
 
-export const CLI_PATH = './cli-lsp-client';
+export const CLI_PATH = process.env.CLI_LSP_CLIENT_BIN_PATH || './bin/cli-lsp-client';
 
 // Get the log file path using the CLI's logs command
 export function getLogPath(): string {

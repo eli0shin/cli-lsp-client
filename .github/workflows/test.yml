@@ -176,10 +176,12 @@ jobs:
         run: bun run build
 
       - name: Make CLI executable
-        run: chmod +x ./cli-lsp-client
+        run: chmod +x ./dist/cli-lsp-client-linux-x64/bin/cli-lsp-client
 
       - name: Verify CLI works
-        run: ./cli-lsp-client status
+        env:
+          CLI_LSP_CLIENT_BIN_PATH: ./dist/cli-lsp-client-linux-x64/bin/cli-lsp-client
+        run: ./bin/cli-lsp-client status
 
       - name: Verify R language server
         run: |
@@ -192,12 +194,16 @@ jobs:
           omnisharp --help | head -5
 
       - name: Run tests
+        env:
+          CLI_LSP_CLIENT_BIN_PATH: ./dist/cli-lsp-client-linux-x64/bin/cli-lsp-client
         run: |
           # Run all tests except java, json tests (CI timeout issues) and bash hover test (WASM initialization race condition)
           find tests -name "*.test.ts" -not -path "*/java/*" -not -path "*/json/*" -not -path "*/bash/hover.test.ts" | xargs bun test --timeout 120000
 
       - name: Collect debug information
         if: always()  # Run even if tests fail
+        env:
+          CLI_LSP_CLIENT_BIN_PATH: ./dist/cli-lsp-client-linux-x64/bin/cli-lsp-client
         run: |
           echo "=== Debug Information ==="
           echo "Current working directory: $(pwd)"
@@ -205,10 +211,10 @@ jobs:
           echo "OS temp directory: $(node -e 'console.log(require("os").tmpdir())')"
           echo ""
           echo "=== LSP Daemon Status ==="
-          ./cli-lsp-client status || echo "Failed to get daemon status"
+          ./bin/cli-lsp-client status || echo "Failed to get daemon status"
           echo ""
           echo "=== LSP Log File ==="
-          LOG_PATH=$(./cli-lsp-client logs 2>/dev/null || echo "unknown")
+          LOG_PATH=$(./bin/cli-lsp-client logs 2>/dev/null || echo "unknown")
           echo "Log file path: $LOG_PATH"
           if [ -f "$LOG_PATH" ]; then
             echo "Log file exists, size: $(wc -c < "$LOG_PATH") bytes"
@@ -220,9 +226,11 @@ jobs:
 
       - name: Upload LSP daemon logs
         if: always()  # This ensures artifacts are uploaded even if tests fail or are cancelled
+        env:
+          CLI_LSP_CLIENT_BIN_PATH: ./dist/cli-lsp-client-linux-x64/bin/cli-lsp-client
         run: |
           # Get the actual log file path and copy it to a predictable location for upload
-          LOG_PATH=$(./cli-lsp-client logs 2>/dev/null || echo "")
+          LOG_PATH=$(./bin/cli-lsp-client logs 2>/dev/null || echo "")
           if [ -n "$LOG_PATH" ] && [ -f "$LOG_PATH" ]; then
             mkdir -p ./debug-logs
             cp "$LOG_PATH" ./debug-logs/lsp-daemon.log

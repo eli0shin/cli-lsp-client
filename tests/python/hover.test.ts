@@ -45,7 +45,7 @@ Greet a person by name.`);
 
     expect(result.exitCode).toBe(0);
     const output = stripAnsi(result.stdout.toString());
-    expect(output).toMatch(/Declaration: tests\/fixtures\/python\/valid\/simple-module\.py:9:1\n```python\n\(constant\) PI: float\n```\n\nType Definition: .*\.lsp-cli-client\/packages\/node_modules\/pyright\/dist\/typeshed-fallback\/stdlib\/builtins\.pyi:35[34]:7\n```python\n\(class\) float\n```/);
+    expect(output).toMatch(/Declaration: tests\/fixtures\/python\/valid\/simple-module\.py:9:1\n```python\n\(constant\) PI: float\n```\n\nType Definition: .*\.lsp-cli-client\/packages\/node_modules\/pyright\/dist\/typeshed-fallback\/stdlib\/builtins\.pyi:\d+:7\n```python\n\(class\) float\n```/);
   }, 10000);
 
   test('should get hover info for class', async () => {

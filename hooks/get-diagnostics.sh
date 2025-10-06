@@ -11,8 +11,9 @@ if [[ -z "$FILE_PATH" ]]; then
     exit 0
 fi
 
-# Run diagnostics on the file
-output=$(./cli-lsp-client diagnostics "$FILE_PATH" 2>&1)
+# Run diagnostics on the file (use wrapper script in dev)
+CLI_PATH="${CLI_LSP_CLIENT_BIN_PATH:-./bin/cli-lsp-client}"
+output=$("$CLI_PATH" diagnostics "$FILE_PATH" 2>&1)
 exit_code=$?
 
 # Only block on actual errors, not hints/warnings
