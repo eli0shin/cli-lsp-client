@@ -1,0 +1,57 @@
+#!/bin/sh
+set -e
+
+if [ -n "$CLI_LSP_CLIENT_BIN_PATH" ]; then
+    resolved="$CLI_LSP_CLIENT_BIN_PATH"
+else
+    # Get the real path of this script, resolving symlinks
+    script_path="$0"
+    while [ -L "$script_path" ]; do
+        link_target="$(readlink "$script_path")"
+        case "$link_target" in
+            /*) script_path="$link_target" ;;
+            *) script_path="$(dirname "$script_path")/$link_target" ;;
+        esac
+    done
+    script_dir="$(dirname "$script_path")"
+    script_dir="$(cd "$script_dir" && pwd)"
+
+    # Detect platform and architecture
+    case "$(uname -s)" in
+        Darwin) platform="darwin" ;;
+        Linux) platform="linux" ;;
+        MINGW*|CYGWIN*|MSYS*) platform="win32" ;;
+        *) platform="$(uname -s | tr '[:upper:]' '[:lower:]')" ;;
+    esac
+
+    case "$(uname -m)" in
+        x86_64|amd64) arch="x64" ;;
+        aarch64) arch="arm64" ;;
+        armv7l) arch="arm" ;;
+        *) arch="$(uname -m)" ;;
+    esac
+
+    name="cli-lsp-client-${platform}-${arch}"
+    binary="cli-lsp-client"
+    [ "$platform" = "win32" ] && binary="cli-lsp-client.exe"
+
+    # Search for binary starting from script location
+    resolved=""
+    current_dir="$script_dir"
+    while [ "$current_dir" != "/" ]; do
+        candidate="$current_dir/node_modules/$name/bin/$binary"
+        if [ -f "$candidate" ]; then
+            resolved="$candidate"
+            break
+        fi
+        current_dir="$(dirname "$current_dir")"
+    done
+
+    if [ -z "$resolved" ]; then
+        printf "Failed to find %s binary for your platform\n" "$name" >&2
+        exit 1
+    fi
+fi
+
+# Execute the binary
+exec "$resolved" "$@"
