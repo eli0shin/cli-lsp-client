@@ -43,7 +43,7 @@ async function determineVersion(): Promise<string> {
 
   // If bump type provided, use it
   if (bumpType) {
-    const newVersion = bumpVersion(currentVersion, bumpType)
+    const newVersion = bumpVersion(currentVersion, bumpType as BumpType)
     console.log(`📦 Bumping ${bumpType}: ${currentVersion} → ${newVersion}`)
     return newVersion
   }
