@@ -1,6 +1,8 @@
 // Global test setup that runs before all tests
 import { spawn } from 'bun';
 
+const CLI_PATH = process.env.CLI_LSP_CLIENT_BIN_PATH || './bin/cli-lsp-client';
+
 console.log('Running global test setup...');
 
 try {
@@ -10,11 +12,11 @@ try {
 
   // Stop any existing daemons to ensure clean state
   console.log('Stopping any existing daemons...');
-  await spawn(['./cli-lsp-client', 'stop']).exited;
+  await spawn([CLI_PATH, 'stop']).exited;
 
   // Run start to ensure daemon is ready
   console.log('Starting daemon...');
-  await spawn(['./cli-lsp-client', 'start']).exited;
+  await spawn([CLI_PATH, 'start']).exited;
 
   // Wait for daemon to be fully ready after start
   console.log('Waiting for daemon to be ready...');

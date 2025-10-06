@@ -22,9 +22,10 @@ This is a Bun CLI project that builds a standalone executable.
 ## Development Workflow
 
 - **CRITICAL**: After making code changes, ALWAYS run `bun run build` to rebuild the executable
-- **CRITICAL**: After rebuilding, ALWAYS run `./cli-lsp-client stop` to stop the daemon before testing
+- **CRITICAL**: After rebuilding, ALWAYS run `CLI_LSP_CLIENT_BIN_PATH=./dist/cli-lsp-client-darwin-arm64/bin/cli-lsp-client ./bin/cli-lsp-client stop` to stop the daemon before testing
 - The daemon runs the compiled executable, not the source files directly
 - Changes to source files are not visible until you build and restart the daemon
+- In development, use `CLI_LSP_CLIENT_BIN_PATH` to point to your platform's binary in `dist/`
 
 ## Code Style
 
