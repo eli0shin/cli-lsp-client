@@ -39,6 +39,13 @@ else
     resolved=""
     current_dir="$script_dir"
     while [ "$current_dir" != "/" ]; do
+        # Check dist/ first (for local development)
+        candidate="$current_dir/dist/$name/bin/$binary"
+        if [ -f "$candidate" ]; then
+            resolved="$candidate"
+            break
+        fi
+        # Then check node_modules/ (for production installs)
         candidate="$current_dir/node_modules/$name/bin/$binary"
         if [ -f "$candidate" ]; then
             resolved="$candidate"

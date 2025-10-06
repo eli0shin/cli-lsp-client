@@ -27,6 +27,14 @@ set "resolved="
 set "current_dir=%script_dir%"
 
 :search_loop
+rem Check dist/ first (for local development)
+set "candidate=%current_dir%\dist\%name%\bin\%binary%"
+if exist "%candidate%" (
+    set "resolved=%candidate%"
+    goto :execute
+)
+
+rem Then check node_modules/ (for production installs)
 set "candidate=%current_dir%\node_modules\%name%\bin\%binary%"
 if exist "%candidate%" (
     set "resolved=%candidate%"
