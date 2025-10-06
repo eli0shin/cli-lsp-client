@@ -156,7 +156,7 @@ async function publishPlatformPackages() {
       if (options.dryRun) {
         console.log(`  [DRY RUN] Would publish ${name}`)
       } else {
-        await $`cd dist/${name} && chmod 755 -R . && bun publish --access public`
+        await $`cd dist/${name} && chmod -R 755 . && bun publish --access public`
         console.log(`  ✅ Published ${name}`)
       }
     } catch (error) {
