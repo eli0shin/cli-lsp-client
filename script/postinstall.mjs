@@ -9,6 +9,17 @@ import { createRequire } from "module"
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const require = createRequire(import.meta.url)
 
+// Skip postinstall when running from source (dev/CI)
+function shouldSkipPostinstall() {
+  const packageRoot = path.join(__dirname, "..")
+  const srcDir = path.join(packageRoot, "src")
+  if (fs.existsSync(srcDir)) {
+    console.log("Skipping postinstall (running from source)")
+    return true
+  }
+  return false
+}
+
 function detectPlatformAndArch() {
   let platform
   switch (os.platform()) {
@@ -94,6 +105,10 @@ async function stopExistingDaemons() {
 }
 
 async function main() {
+  if (shouldSkipPostinstall()) {
+    return
+  }
+
   try {
     if (os.platform() === "win32") {
       if (process.env.npm_config_user_agent?.startsWith("npm")) {
