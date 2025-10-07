@@ -1,6 +1,6 @@
 {
   "name": "cli-lsp-client",
-  "version": "1.16.0",
+  "version": "1.17.0",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/eli0shin/cli-lsp-client.git"
