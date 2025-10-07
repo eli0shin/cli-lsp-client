@@ -1,6 +1,5 @@
 import type { Command } from '@commander-js/extra-typings';
 import { z } from 'zod';
-import { handleClaudeCodeHook } from '../cli.js';
 
 // Schema for Claude Code PostToolUse hook payload
 const HookDataSchema = z.object({
@@ -69,4 +68,84 @@ export function registerClaudeCodeHookCommand(program: Command) {
         process.exit(0);
       }
     });
+}
+
+export async function handleClaudeCodeHook(
+  filePath: string
+): Promise<{ hasIssues: boolean; output: string; daemonFailed?: boolean }> {
+  // Check if file exists
+  if (!(await Bun.file(filePath).exists())) {
+    return { hasIssues: false, output: '' };
+  }
+
+  // Filter supported file types
+  const supportedExts = [
+    '.ts',
+    '.tsx',
+    '.js',
+    '.jsx',
+    '.mjs',
+    '.cjs',
+    '.mts',
+    '.cts',
+    '.py',
+    '.pyi',
+    '.go',
+    '.json',
+    '.jsonc',
+    '.css',
+    '.scss',
+    '.sass',
+    '.less',
+    '.yaml',
+    '.yml',
+    '.sh',
+    '.bash',
+    '.zsh',
+    '.java',
+    '.lua',
+    '.graphql',
+    '.gql',
+    '.r',
+    '.R',
+    '.rmd',
+    '.Rmd',
+    '.cs',
+  ];
+  const ext = path.extname(filePath);
+  if (!supportedExts.includes(ext)) {
+    return { hasIssues: false, output: '' };
+  }
+
+  // Get diagnostics (suppress errors to stdout)
+  try {
+    // Ensure daemon is running
+    const daemonStarted = await ensureDaemonRunning();
+
+    if (!daemonStarted) {
+      // Failed to start daemon - return with flag so caller can handle
+      return {
+        hasIssues: false,
+        output:
+          'Failed to start LSP daemon. Please try running "cli-lsp-client stop" and retry.',
+        daemonFailed: true,
+      };
+    }
+
+    const result = await sendToExistingDaemon('diagnostics', [filePath]);
+
+    // The diagnostics command returns an array of diagnostics
+    if (!Array.isArray(result) || result.length === 0) {
+      return { hasIssues: false, output: '' };
+    }
+
+    const diagnostics = result as Diagnostic[];
+
+    // Format output for Claude Code hook (plain text, no ANSI codes)
+    const formatted = formatDiagnosticsPlain(filePath, diagnostics);
+    return { hasIssues: true, output: formatted || '' };
+  } catch (_error) {
+    // Silently fail - don't break Claude Code experience
+    return { hasIssues: false, output: '' };
+  }
 }

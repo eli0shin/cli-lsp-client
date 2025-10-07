@@ -6,7 +6,6 @@ import { z } from 'zod';
 import { SOCKET_PATH, type StatusResult } from './daemon.js';
 import { formatDiagnostics, formatHoverResults } from './lsp/formatter.js';
 import type { Diagnostic, HoverResult } from './lsp/types.js';
-import { HELP_MESSAGE } from './constants.js';
 import { ensureDaemonRunning } from './utils.js';
 
 // Zod schema for daemon responses
@@ -20,11 +19,6 @@ const DaemonResponseSchema = z.union([
     error: z.string(),
   }),
 ]);
-
-function showHelpForUnknownCommand(command: string): void {
-  process.stderr.write(`Unknown command: ${command}\n`);
-  process.stdout.write(HELP_MESSAGE);
-}
 
 export async function sendToExistingDaemon(
   command: string,
@@ -490,12 +484,6 @@ export async function runCommand(
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : 'Unknown error';
-
-      // Check if it's an unknown command error
-      if (errorMessage.startsWith('Unknown command:')) {
-        showHelpForUnknownCommand(command);
-        process.exit(1);
-      }
 
       process.stderr.write(`${errorMessage}\n`);
       process.exit(1);
