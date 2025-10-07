@@ -1,5 +1,10 @@
 import type { Command } from '@commander-js/extra-typings';
 import { z } from 'zod';
+import path from 'path';
+import { sendToExistingDaemon } from '../client.js';
+import { formatDiagnosticsPlain } from '../lsp/formatter.js';
+import type { Diagnostic } from '../lsp/types.js';
+import { ensureDaemonRunning } from '../utils.js';
 
 // Schema for Claude Code PostToolUse hook payload
 const HookDataSchema = z.object({
