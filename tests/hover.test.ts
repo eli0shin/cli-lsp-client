@@ -77,7 +77,7 @@ Greets a person by name
 
     expect(result.exitCode).toBe(1);
     const errorOutput = stripAnsi(result.stderr);
-    expect(errorOutput).toBe('hover command requires: hover <file> <symbol>');
+    expect(errorOutput).toBe("error: missing required argument 'symbol'");
   }, 10000);
 
   test('should validate required arguments - no arguments', async () => {
@@ -86,7 +86,7 @@ Greets a person by name
 
     expect(result.exitCode).toBe(1);
     const errorOutput = stripAnsi(result.stderr);
-    expect(errorOutput).toBe('hover command requires: hover <file> <symbol>');
+    expect(errorOutput).toBe("error: missing required argument 'file'");
   }, 10000);
 
   test('should get hover info for imported symbols', async () => {
