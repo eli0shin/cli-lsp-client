@@ -433,7 +433,8 @@ export async function listAllDaemons(): Promise<void> {
 export async function runCommand(
   command: string,
   commandArgs: string[],
-  configFile?: string
+  configFile?: string,
+  isHook = false
 ): Promise<void> {
   try {
     // Handle stop-all command without daemon communication
@@ -479,7 +480,10 @@ export async function runCommand(
         process.stdout.write(formatted + '\n');
         process.exit(0);
       } else {
-        process.stdout.write(`${result}\n`);
+        // Suppress output for start command when run as SessionStart hook
+        if (!(command === 'start' && isHook)) {
+          process.stdout.write(`${result}\n`);
+        }
       }
     } catch (error) {
       const errorMessage =

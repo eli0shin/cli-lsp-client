@@ -1,26 +1,9 @@
 import type { Command } from '@commander-js/extra-typings';
-import { z } from 'zod';
 import path from 'path';
 import { sendToExistingDaemon } from '../client.js';
 import { formatDiagnosticsPlain } from '../lsp/formatter.js';
 import type { Diagnostic } from '../lsp/types.js';
-import { ensureDaemonRunning } from '../utils.js';
-
-// Schema for Claude Code PostToolUse hook payload
-const HookDataSchema = z.object({
-  session_id: z.string().optional(),
-  transcript_path: z.string().optional(),
-  cwd: z.string().optional(),
-  hook_event_name: z.string().optional(),
-  tool_name: z.string().optional(),
-  tool_input: z
-    .object({
-      file_path: z.string().optional(),
-      content: z.string().optional(),
-    })
-    .optional(),
-  tool_response: z.any().optional(),
-});
+import { ensureDaemonRunning, readHookInput } from '../utils.js';
 
 export function registerClaudeCodeHookCommand(program: Command) {
   program
@@ -28,28 +11,11 @@ export function registerClaudeCodeHookCommand(program: Command) {
     .description('Internal command for Claude Code integration')
     .action(async () => {
       try {
-        // Read JSON from stdin
-        const stdinData = await new Promise<string>((resolve, reject) => {
-          let data = '';
-          process.stdin.on('data', (chunk) => {
-            data += chunk.toString();
-          });
-          process.stdin.on('end', () => {
-            resolve(data);
-          });
-          process.stdin.on('error', reject);
-        });
+        const hookData = await readHookInput();
 
-        if (!stdinData.trim()) {
-          process.exit(0); // No input, silently exit
+        if (!hookData) {
+          process.exit(0); // No input or invalid JSON, silently exit
         }
-
-        // Parse the JSON to get the file path
-        const parseResult = HookDataSchema.safeParse(JSON.parse(stdinData));
-        if (!parseResult.success) {
-          process.exit(0); // Invalid JSON format, silently exit
-        }
-        const hookData = parseResult.data;
         // Extract file_path from PostToolUse tool_input
         const filePath = hookData.tool_input?.file_path;
 
