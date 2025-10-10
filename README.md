@@ -39,6 +39,24 @@ CLI tool for getting LSP diagnostics. Uses a background daemon to keep LSP serve
 
 ## Claude Code Integration
 
+### Plugin Installation (Recommended)
+
+The easiest way to integrate with Claude Code is via the official plugin:
+
+```bash
+# Add the plugin marketplace
+/plugin marketplace add eli0shin/cli-lsp-client
+
+# Install the plugin
+/plugin install lsp-plugin-bun
+```
+
+This automatically configures:
+- **SessionStart hook**: Starts the LSP daemon when Claude Code starts
+- **PostToolUse hook**: Runs diagnostics after file edits (Edit, Write, MultiEdit)
+
+No manual configuration needed - the plugin handles everything!
+
 ### MCP Server
 
 Add as an MCP server to enable Claude to access symbol definitions and hover information:
@@ -47,13 +65,15 @@ Add as an MCP server to enable Claude to access symbol definitions and hover inf
 claude mcp add lsp --scope user -- bunx cli-lsp-client mcp-server
 ```
 
-### Real-time Diagnostics Hook
+### Manual Hook Configuration
+
+For advanced users who want to customize their hook setup, you can manually configure Claude Code to use the built-in hook commands.
 
 Get instant diagnostic feedback for TypeScript, Python, JSON, CSS, YAML, Bash, GraphQL, R, C#, Swift, Go, Java, and Lua files as you edit in Claude Code.
 
 #### Setup
 
-Configure Claude Code to use the built-in hook command:
+Add the following to your Claude Code settings.json:
 
 ```json
 {
@@ -65,7 +85,7 @@ Configure Claude Code to use the built-in hook command:
         "hooks": [
           {
             "type": "command",
-            "command": "npx -y cli-lsp-client start"
+            "command": "bunx cli-lsp-client start"
           }
         ]
       }
@@ -76,7 +96,7 @@ Configure Claude Code to use the built-in hook command:
         "hooks": [
           {
             "type": "command",
-            "command": "npx -y cli-lsp-client claude-code-hook"
+            "command": "bunx cli-lsp-client claude-code-hook"
           }
         ]
       }
@@ -100,7 +120,7 @@ When you save a file with errors, you'll see immediate feedback:
 
 ```
 Edit operation feedback:
-- [npx -y cli-lsp-client claude-code-hook]:
+- [bunx cli-lsp-client claude-code-hook]:
 ERROR at line 3, column 9:
   Type 'number' is not assignable to type 'string'.
   Source: typescript

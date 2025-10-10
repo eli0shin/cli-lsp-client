@@ -1,0 +1,11 @@
+{
+  "name": "CLI LSP Client Plugins",
+  "description": "Claude Code plugins for CLI LSP Client integration",
+  "plugins": [
+    {
+      "name": "lsp-plugin-bun",
+      "path": "claude-plugins/lsp-plugin-bun",
+      "description": "Integrates CLI LSP Client with Claude Code using hooks for real-time language server updates"
+    }
+  ]
+}
