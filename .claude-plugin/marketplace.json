@@ -1,10 +1,16 @@
 {
-  "name": "CLI LSP Client Plugins",
-  "description": "Claude Code plugins for CLI LSP Client integration",
+  "name": "cli-lsp-client-plugins",
+  "owner": {
+    "name": "Eli Oshinsky",
+    "email": "elimelech.oshinsky@gmail.com"
+  },
+  "metadata": {
+    "description": "Claude Code plugins for CLI LSP Client integration"
+  },
   "plugins": [
     {
       "name": "lsp-plugin-bun",
-      "path": "claude-plugins/lsp-plugin-bun",
+      "source": "./claude-plugins/lsp-plugin-bun",
       "description": "Integrates CLI LSP Client with Claude Code using hooks for real-time language server updates"
     }
   ]

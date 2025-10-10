@@ -51,6 +51,7 @@
     "format:fix": "prettier --write .",
     "test": "bun test",
     "test:watch": "bun test tests/ --watch",
+    "validate:plugin": "claude plugin validate .",
     "preinstall": "node ./script/preinstall.mjs",
     "postinstall": "node ./script/postinstall.mjs"
   },
