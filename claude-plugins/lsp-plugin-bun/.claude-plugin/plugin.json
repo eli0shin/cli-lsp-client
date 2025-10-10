@@ -2,5 +2,8 @@
   "name": "lsp-plugin-bun",
   "version": "1.0.0",
   "description": "Integrates CLI LSP Client with Claude Code using hooks for real-time language server updates",
-  "author": "Eli Oshinsky"
+  "author": {
+    "name": "Eli Oshinsky",
+    "email": "elimelech.oshinsky@gmail.com"
+  }
 }
