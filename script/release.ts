@@ -4,6 +4,7 @@
 import { Command } from "@commander-js/extra-typings"
 import { $ } from "bun"
 import pkg from "../package.json"
+import { binaries } from "./build.ts"
 
 type BumpType = "patch" | "minor" | "major"
 
@@ -148,8 +149,6 @@ async function buildBinaries(version: string) {
 async function publishPlatformPackages() {
   console.log("\n📤 Publishing platform-specific packages...")
 
-  const { binaries } = await import("./build.ts")
-
   for (const [name, version] of Object.entries(binaries)) {
     console.log(`  Publishing ${name}@${version}...`)
     try {
@@ -170,8 +169,6 @@ async function publishPlatformPackages() {
 
 async function publishMainPackage(version: string) {
   console.log("\n📤 Publishing main package...")
-
-  const { binaries } = await import("./build.ts")
 
   // Create main package directory
   await $`mkdir -p ./dist/${pkg.name}`
