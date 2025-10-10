@@ -11,31 +11,63 @@ export function registerClaudeCodeHookCommand(program: Command) {
     .description('Internal command for Claude Code integration')
     .action(async () => {
       try {
+        const isPluginMode = !!process.env.CLAUDE_PLUGIN_ROOT;
         const hookData = await readHookInput();
 
         if (!hookData) {
+          if (isPluginMode) {
+            process.stdout.write('{}');
+          }
           process.exit(0); // No input or invalid JSON, silently exit
         }
         // Extract file_path from PostToolUse tool_input
         const filePath = hookData.tool_input?.file_path;
 
         if (!filePath) {
+          if (isPluginMode) {
+            process.stdout.write('{}');
+          }
           process.exit(0); // No file path, silently exit
         }
 
         const result = await handleClaudeCodeHook(filePath);
-        if (result.daemonFailed) {
-          // Daemon failed to start - exit with status 1 to show error to user
-          process.stderr.write(result.output + '\n');
-          process.exit(1);
+
+        if (isPluginMode) {
+          // Plugin mode: output JSON to stdout and always exit 0
+          if (result.daemonFailed) {
+            process.stdout.write(JSON.stringify({
+              reason: result.output,
+              hookSpecificOutput: {
+                hookEventName: 'PostToolUse',
+                additionalContext: 'LSP diagnostics check exited with code 1'
+              }
+            }));
+          } else if (result.hasIssues) {
+            process.stdout.write(JSON.stringify({
+              decision: 'block',
+              reason: result.output
+            }));
+          } else {
+            process.stdout.write('{}');
+          }
+          process.exit(0);
+        } else {
+          // Non-plugin mode: use stderr and exit codes
+          if (result.daemonFailed) {
+            process.stderr.write(result.output + '\n');
+            process.exit(1);
+          }
+          if (result.hasIssues) {
+            process.stderr.write(result.output + '\n');
+            process.exit(2);
+          }
+          process.exit(0);
         }
-        if (result.hasIssues) {
-          process.stderr.write(result.output + '\n');
-          process.exit(2);
-        }
-        process.exit(0);
       } catch (_error) {
         // Silently fail for hook commands to not break Claude Code
+        if (process.env.CLAUDE_PLUGIN_ROOT) {
+          process.stdout.write('{}');
+        }
         process.exit(0);
       }
     });

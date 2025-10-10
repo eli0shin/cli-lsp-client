@@ -112,13 +112,13 @@ describe('Claude Code Hook', () => {
     ];
 
     // Filter out JSON files in CI environment due to timeout issues
-    const testFiles = process.env.CI === 'true' 
+    const testFiles = process.env.CI === 'true'
       ? allTestFiles.filter(file => !file.includes('/json/'))
       : allTestFiles;
 
     for (const filePath of testFiles) {
-      const input = JSON.stringify({ 
-        tool_input: { file_path: filePath } 
+      const input = JSON.stringify({
+        tool_input: { file_path: filePath }
       });
       const result = await runHookCommand(input);
 
@@ -126,4 +126,34 @@ describe('Claude Code Hook', () => {
       expect(result.exitCode).toBe(0);
     }
   }, 10000); // 10 second timeout for multiple file processing
+
+  test('should handle valid file in plugin mode', async () => {
+    const input = JSON.stringify({
+      tool_input: {
+        file_path: 'tests/fixtures/typescript/valid/simple-function.ts',
+      },
+    });
+    const result = await runHookCommand(input, { CLAUDE_PLUGIN_ROOT: '/tmp/plugin' });
+
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout).toBe('{}');
+  }, 10000); // 10 second timeout
+
+  test('should handle file with diagnostic errors in plugin mode', async () => {
+    const input = JSON.stringify({
+      tool_input: {
+        file_path: 'tests/fixtures/typescript/invalid/type-error.ts',
+      },
+    });
+    const result = await runHookCommand(input, { CLAUDE_PLUGIN_ROOT: '/tmp/plugin' });
+
+    expect(result.exitCode).toBe(0);
+    expect(JSON.parse(stripAnsi(result.stdout))).toEqual({
+      decision: 'block',
+      reason: `[typescript] ERROR at line 3, column 3: Type 'number' is not assignable to type 'string'. [2322]
+[typescript] ERROR at line 7, column 9: Type 'number' is not assignable to type 'string'. [2322]
+[typescript] HINT at line 1, column 27: 'name' is declared but its value is never read. [6133]
+[typescript] HINT at line 7, column 9: 'x' is declared but its value is never read. [6133]`
+    });
+  });
 });

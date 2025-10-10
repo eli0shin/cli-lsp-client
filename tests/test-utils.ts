@@ -62,11 +62,13 @@ export async function runCommandWithArgs(args: string[]) {
 }
 
 export async function runHookCommand(
-  input: string
+  input: string,
+  env?: Record<string, string>
 ): Promise<{ exitCode: number; stdout: string; stderr: string }> {
   return new Promise((resolve, reject) => {
     const proc = spawn(CLI_PATH, ['claude-code-hook'], {
       stdio: ['pipe', 'pipe', 'pipe'],
+      env: env ? { ...process.env, ...env } : process.env,
     });
 
     let stdout = '';
