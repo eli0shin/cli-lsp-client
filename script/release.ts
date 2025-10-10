@@ -4,7 +4,7 @@
 import { Command } from "@commander-js/extra-typings"
 import { $ } from "bun"
 import pkg from "../package.json"
-import { binaries } from "./build.ts"
+import { build } from "./build.ts"
 
 type BumpType = "patch" | "minor" | "major"
 
@@ -134,19 +134,20 @@ async function runTests() {
   }
 }
 
-async function buildBinaries(version: string) {
+async function buildBinaries(version: string): Promise<Record<string, string>> {
   console.log("\n🔨 Building platform binaries...")
 
   try {
-    await $`CLI_LSP_CLIENT_VERSION=${version} bun run build`
+    const binaries = await build(version)
     console.log("✅ Built all platform binaries")
+    return binaries
   } catch {
     console.error("❌ Error: Build failed")
     process.exit(1)
   }
 }
 
-async function publishPlatformPackages() {
+async function publishPlatformPackages(binaries: Record<string, string>) {
   console.log("\n📤 Publishing platform-specific packages...")
 
   for (const [name, version] of Object.entries(binaries)) {
@@ -167,7 +168,7 @@ async function publishPlatformPackages() {
   console.log("✅ All platform packages published")
 }
 
-async function publishMainPackage(version: string) {
+async function publishMainPackage(version: string, binaries: Record<string, string>) {
   console.log("\n📤 Publishing main package...")
 
   // Create main package directory
@@ -272,9 +273,9 @@ async function main() {
     await validateNpmAuth()
   }
   await runTests()
-  await buildBinaries(version)
-  await publishPlatformPackages()
-  await publishMainPackage(version)
+  const binaries = await buildBinaries(version)
+  await publishPlatformPackages(binaries)
+  await publishMainPackage(version, binaries)
   await updatePackageVersion(version)
   await createGitTag(version)
 
