@@ -9,8 +9,8 @@
   },
   "plugins": [
     {
-      "name": "lsp-plugin-bun",
-      "source": "./claude-plugins/lsp-plugin-bun",
+      "name": "lsp-plugin",
+      "source": "./claude-plugins/lsp-plugin",
       "description": "Integrates CLI LSP Client with Claude Code using hooks for real-time language server updates"
     },
     {

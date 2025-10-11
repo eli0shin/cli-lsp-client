@@ -30,8 +30,11 @@ if ! has_prettier_config "$PROJECT_DIR"; then
     output_json '{}'
 fi
 
+# Get the appropriate package runner
+PKG_RUNNER=$(get_package_runner)
+
 # Run prettier on the file
-PRETTIER_OUTPUT=$(cd "$PROJECT_DIR" && bunx prettier --write "$FILE_PATH" 2>&1)
+PRETTIER_OUTPUT=$(cd "$PROJECT_DIR" && $PKG_RUNNER prettier --write "$FILE_PATH" 2>&1)
 PRETTIER_EXIT_CODE=$?
 
 if [[ $PRETTIER_EXIT_CODE -eq 0 ]]; then

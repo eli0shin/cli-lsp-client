@@ -48,7 +48,7 @@ The easiest way to integrate with Claude Code is via the official plugin:
 /plugin marketplace add eli0shin/cli-lsp-client
 
 # Install the plugin
-/plugin install lsp-plugin-bun
+/plugin install lsp-plugin
 ```
 
 This automatically configures:

@@ -6,7 +6,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bunx cli-lsp-client claude-code-hook"
+            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/claude-code-hook.sh"
           }
         ]
       }
@@ -17,7 +17,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bunx cli-lsp-client start"
+            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/start.sh"
           }
         ]
       }

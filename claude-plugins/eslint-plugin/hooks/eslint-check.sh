@@ -35,8 +35,11 @@ if ! file_matches_extensions "$FILE_PATH" "js" "jsx" "ts" "tsx" "mjs" "cjs" "mts
     output_json '{}'
 fi
 
+# Get the appropriate package runner
+PKG_RUNNER=$(get_package_runner)
+
 # Run ESLint on the file and capture output
-ESLINT_OUTPUT=$(cd "$PROJECT_DIR" && bunx eslint "$FILE_PATH" 2>&1)
+ESLINT_OUTPUT=$(cd "$PROJECT_DIR" && $PKG_RUNNER eslint "$FILE_PATH" 2>&1)
 ESLINT_EXIT_CODE=$?
 
 if [[ $ESLINT_EXIT_CODE -eq 0 ]]; then

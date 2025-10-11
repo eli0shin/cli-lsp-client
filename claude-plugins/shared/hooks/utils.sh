@@ -2,6 +2,15 @@
 
 # Shared utility functions for Claude Code hooks
 
+# Get the appropriate package runner (bunx if Bun is available, otherwise npx)
+get_package_runner() {
+    if command -v bun >/dev/null 2>&1; then
+        echo "bunx"
+    else
+        echo "npx"
+    fi
+}
+
 # Parse JSON input from stdin and extract fields
 parse_hook_input() {
     local input="$1"
