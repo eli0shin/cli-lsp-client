@@ -12,6 +12,16 @@
       "name": "lsp-plugin-bun",
       "source": "./claude-plugins/lsp-plugin-bun",
       "description": "Integrates CLI LSP Client with Claude Code using hooks for real-time language server updates"
+    },
+    {
+      "name": "eslint-plugin",
+      "source": "./claude-plugins/eslint-plugin",
+      "description": "Automatically runs ESLint checks on JavaScript/TypeScript files after edits"
+    },
+    {
+      "name": "prettier-plugin",
+      "source": "./claude-plugins/prettier-plugin",
+      "description": "Automatically formats files with Prettier after edits"
     }
   ]
 }

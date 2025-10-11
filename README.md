@@ -52,10 +52,16 @@ The easiest way to integrate with Claude Code is via the official plugin:
 ```
 
 This automatically configures:
+
 - **SessionStart hook**: Starts the LSP daemon when Claude Code starts
 - **PostToolUse hook**: Runs diagnostics after file edits (Edit, Write, MultiEdit)
 
 No manual configuration needed - the plugin handles everything!
+
+**Additional plugins available:**
+
+- `eslint-plugin`: Automatically runs ESLint checks on file edits and blocks on linting errors
+- `prettier-plugin`: Automatically formats files with Prettier after edits
 
 ### MCP Server
 
