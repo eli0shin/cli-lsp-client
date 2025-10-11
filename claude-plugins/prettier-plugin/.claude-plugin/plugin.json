@@ -1,6 +1,6 @@
 {
   "name": "prettier-plugin",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Automatically formats files with Prettier after edits",
   "author": {
     "name": "Eli Oshinsky",
