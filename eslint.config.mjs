@@ -35,6 +35,17 @@ export default tseslint.config(
     },
   },
 
+  // Script files - add Node.js globals
+  {
+    name: 'script-files',
+    files: ['script/**/*.mjs', 'script/**/*.js'],
+    languageOptions: {
+      globals: {
+        ...globals.node,
+      },
+    },
+  },
+
   // TypeScript configuration for .ts files
   {
     name: 'typescript-files',
