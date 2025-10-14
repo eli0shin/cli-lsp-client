@@ -30,17 +30,17 @@ if ! has_eslint_config "$PROJECT_DIR"; then
     output_json '{}'
 fi
 
-# Check if file matches supported extensions
-if ! file_matches_extensions "$FILE_PATH" "js" "jsx" "ts" "tsx" "mjs" "cjs" "mts" "cts"; then
-    output_json '{}'
-fi
-
 # Get the appropriate package runner
 PKG_RUNNER=$(get_package_runner)
 
 # Run ESLint on the file and capture output
 ESLINT_OUTPUT=$(cd "$PROJECT_DIR" && $PKG_RUNNER eslint "$FILE_PATH" 2>&1)
 ESLINT_EXIT_CODE=$?
+
+# Filter out "File ignored" errors from ESLint output
+if echo "$ESLINT_OUTPUT" | grep -q "File ignored"; then
+    output_json '{}'
+fi
 
 if [[ $ESLINT_EXIT_CODE -eq 0 ]]; then
     # Success - no errors found

@@ -69,19 +69,19 @@ has_prettier_config() {
 # Check if eslint is configured in the project
 has_eslint_config() {
     local project_dir="$1"
-    
-    # Check for any file with "eslint" in the name
-    if ls "$project_dir"/*eslint* >/dev/null 2>&1; then
+
+    # Check for any file with "eslint" in the name (including hidden files)
+    if find "$project_dir" -maxdepth 1 -name "*eslint*" -print -quit | grep -q .; then
         return 0
     fi
-    
+
     # Check for eslintConfig field in package.json
     if [[ -f "$project_dir/package.json" ]]; then
         if jq -e ".eslintConfig" "$project_dir/package.json" >/dev/null 2>&1; then
             return 0
         fi
     fi
-    
+
     return 1
 }
 
