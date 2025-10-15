@@ -1,6 +1,6 @@
 {
   "name": "eslint-plugin",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Automatically runs ESLint checks on JavaScript/TypeScript files after edits",
   "author": {
     "name": "Eli Oshinsky",

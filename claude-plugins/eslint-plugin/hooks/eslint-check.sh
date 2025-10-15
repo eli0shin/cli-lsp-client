@@ -42,6 +42,11 @@ if echo "$ESLINT_OUTPUT" | grep -q "File ignored"; then
     output_json '{}'
 fi
 
+# Filter out "couldn't find an eslint" errors (no config file found)
+if echo "$ESLINT_OUTPUT" | grep -iq "couldn't find an eslint"; then
+    output_json '{}'
+fi
+
 if [[ $ESLINT_EXIT_CODE -eq 0 ]]; then
     # Success - no errors found
     output_json '{}'
