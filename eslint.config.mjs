@@ -2,9 +2,12 @@
 import eslint from '@eslint/js';
 import tseslint from 'typescript-eslint';
 import importX from 'eslint-plugin-import-x';
+import esPlugin from 'eslint-plugin-es';
+import importPlugin from 'eslint-plugin-import';
 import unusedImports from 'eslint-plugin-unused-imports';
 import globals from 'globals';
 import prettierConfig from 'eslint-config-prettier';
+import forAiPlugin from 'eslint-for-ai';
 
 export default tseslint.config(
   // Global ignores
@@ -69,6 +72,9 @@ export default tseslint.config(
     plugins: {
       'import-x': importX,
       'unused-imports': unusedImports,
+      'for-ai': forAiPlugin,
+      'es': esPlugin,
+      import: importPlugin,
     },
     settings: {
       'import-x/resolver': {
@@ -86,6 +92,9 @@ export default tseslint.config(
       'import-x/core-modules': ['bun', 'bun:test', 'bun:jsc'],
     },
     rules: {
+      // eslint-for-ai recommended rules
+      ...forAiPlugin.configs.recommended.rules,
+
       // TypeScript strict rules - BAN EXPLICIT ANY
       '@typescript-eslint/no-explicit-any': [
         'error',
@@ -137,6 +146,8 @@ export default tseslint.config(
       'import-x/no-duplicates': 'error',
       'import-x/newline-after-import': ['error', { count: 1 }],
       'import-x/order': 'off', // User preference - disabled
+      'es/no-dynamic-import': 'error',
+      'import/no-dynamic-require': 'error',
 
       // Additional best practices
       'no-console': 'error', // Force use of process.stdout/stderr.write for CLI output

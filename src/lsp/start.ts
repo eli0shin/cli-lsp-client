@@ -1,8 +1,19 @@
 import type { LSPServer } from './types.js';
-import { getServerById, spawnServer, getProjectRoot, getConfigLanguageExtensions } from './servers.js';
+import {
+  getServerById,
+  spawnServer,
+  getProjectRoot,
+  getConfigLanguageExtensions,
+} from './servers.js';
 import { createLSPClient } from './client.js';
 import { log } from '../logger.js';
-import { lspManager } from './manager.js';
+import {
+  getClient,
+  isInitializing,
+  waitForInitialization,
+  setClient,
+  setInitializing,
+} from './manager.js';
 
 function expandDepthLimitedPattern(pattern: string, maxDepth = 3): string[] {
   // If pattern doesn't contain **/, return as-is
@@ -30,7 +41,6 @@ async function hasAnyFile(
   directory: string,
   patterns: string[]
 ): Promise<boolean> {
-
   try {
     // Check if we're in a git repository
     const isGitRepo = await Bun.file(`${directory}/.git/HEAD`).exists();
@@ -67,16 +77,19 @@ async function hasAnyFile(
         }
 
         // Execute single git ls-files with all patterns
-        const proc = Bun.spawn([
-          'git',
-          'ls-files',
-          '-z', // Use null terminator for safety
-          ...expandedPatterns
-        ], {
-          cwd: directory,
-          stdout: 'pipe',
-          stderr: 'pipe'
-        });
+        const proc = Bun.spawn(
+          [
+            'git',
+            'ls-files',
+            '-z', // Use null terminator for safety
+            ...expandedPatterns,
+          ],
+          {
+            cwd: directory,
+            stdout: 'pipe',
+            stderr: 'pipe',
+          }
+        );
 
         // Read just enough to know if any files exist
         const reader = proc.stdout.getReader();
@@ -124,7 +137,9 @@ async function hasAnyFile(
   }
 }
 
-async function detectAllFileTypesOptimized(directory: string): Promise<Set<string>> {
+async function detectAllFileTypesOptimized(
+  directory: string
+): Promise<Set<string>> {
   const detectedTypes = new Set<string>();
 
   try {
@@ -143,9 +158,14 @@ async function detectAllFileTypesOptimized(directory: string): Promise<Set<strin
       go: ['go.mod'],
       java: ['pom.xml', 'build.gradle', 'build.gradle.kts'],
       lua: ['.luarc.json', '.luarc.jsonc'],
-      graphql: ['.graphqlrc', '.graphqlrc.yml', '.graphqlrc.yaml', '.graphqlrc.json'],
+      graphql: [
+        '.graphqlrc',
+        '.graphqlrc.yml',
+        '.graphqlrc.yaml',
+        '.graphqlrc.json',
+      ],
       r: ['DESCRIPTION', 'NAMESPACE', '.Rproj', 'renv.lock'],
-      csharp: ['project.json', 'global.json']
+      csharp: ['project.json', 'global.json'],
     };
 
     // Check exact files directly
@@ -162,28 +182,43 @@ async function detectAllFileTypesOptimized(directory: string): Promise<Set<strin
     // Use a targeted approach: check for source files with specific extensions
     // This limits the output size while still being efficient
     const sourcePatterns = [
-      '*.ts', '*.tsx', '*.js', '*.jsx', '*.mjs', '*.cjs',  // JS/TS
-      '*.py', '*.pyi',                                      // Python
-      '*.go',                                                // Go
-      '*.java',                                              // Java
-      '*.lua',                                               // Lua
-      '*.graphql', '*.gql',                                  // GraphQL
-      '*.yml', '*.yaml',                                     // YAML
-      '*.sh', '*.bash', '*.zsh',                           // Bash
-      '*.json', '*.jsonc',                                   // JSON
-      '*.css', '*.scss', '*.sass', '*.less',               // CSS
-      '*.r', '*.R', '*.rmd', '*.Rmd',                      // R
-      '*.cs', '*.sln', '*.csproj'                          // C#
+      '*.ts',
+      '*.tsx',
+      '*.js',
+      '*.jsx',
+      '*.mjs',
+      '*.cjs', // JS/TS
+      '*.py',
+      '*.pyi', // Python
+      '*.go', // Go
+      '*.java', // Java
+      '*.lua', // Lua
+      '*.graphql',
+      '*.gql', // GraphQL
+      '*.yml',
+      '*.yaml', // YAML
+      '*.sh',
+      '*.bash',
+      '*.zsh', // Bash
+      '*.json',
+      '*.jsonc', // JSON
+      '*.css',
+      '*.scss',
+      '*.sass',
+      '*.less', // CSS
+      '*.r',
+      '*.R',
+      '*.rmd',
+      '*.Rmd', // R
+      '*.cs',
+      '*.sln',
+      '*.csproj', // C#
     ];
 
-    const proc = Bun.spawn([
-      'git',
-      'ls-files',
-      ...sourcePatterns
-    ], {
+    const proc = Bun.spawn(['git', 'ls-files', ...sourcePatterns], {
       cwd: directory,
       stdout: 'pipe',
-      stderr: 'pipe'
+      stderr: 'pipe',
     });
 
     const output = await new Response(proc.stdout).text();
@@ -198,9 +233,14 @@ async function detectAllFileTypesOptimized(directory: string): Promise<Set<strin
         const lowerFile = fileName.toLowerCase();
 
         // Since we already filtered by extension, just categorize
-        if (lowerFile.endsWith('.ts') || lowerFile.endsWith('.tsx') ||
-            lowerFile.endsWith('.js') || lowerFile.endsWith('.jsx') ||
-            lowerFile.endsWith('.mjs') || lowerFile.endsWith('.cjs')) {
+        if (
+          lowerFile.endsWith('.ts') ||
+          lowerFile.endsWith('.tsx') ||
+          lowerFile.endsWith('.js') ||
+          lowerFile.endsWith('.jsx') ||
+          lowerFile.endsWith('.mjs') ||
+          lowerFile.endsWith('.cjs')
+        ) {
           detectedTypes.add('typescript');
         }
         if (lowerFile.endsWith('.py') || lowerFile.endsWith('.pyi')) {
@@ -221,21 +261,37 @@ async function detectAllFileTypesOptimized(directory: string): Promise<Set<strin
         if (lowerFile.endsWith('.yml') || lowerFile.endsWith('.yaml')) {
           detectedTypes.add('yaml');
         }
-        if (lowerFile.endsWith('.sh') || lowerFile.endsWith('.bash') || lowerFile.endsWith('.zsh')) {
+        if (
+          lowerFile.endsWith('.sh') ||
+          lowerFile.endsWith('.bash') ||
+          lowerFile.endsWith('.zsh')
+        ) {
           detectedTypes.add('bash');
         }
         if (lowerFile.endsWith('.json') || lowerFile.endsWith('.jsonc')) {
           detectedTypes.add('json');
         }
-        if (lowerFile.endsWith('.css') || lowerFile.endsWith('.scss') ||
-            lowerFile.endsWith('.sass') || lowerFile.endsWith('.less')) {
+        if (
+          lowerFile.endsWith('.css') ||
+          lowerFile.endsWith('.scss') ||
+          lowerFile.endsWith('.sass') ||
+          lowerFile.endsWith('.less')
+        ) {
           detectedTypes.add('css');
         }
-        if (lowerFile.endsWith('.r') || lowerFile === 'description' ||
-            lowerFile === 'namespace' || lowerFile.endsWith('.rmd')) {
+        if (
+          lowerFile.endsWith('.r') ||
+          lowerFile === 'description' ||
+          lowerFile === 'namespace' ||
+          lowerFile.endsWith('.rmd')
+        ) {
           detectedTypes.add('r');
         }
-        if (lowerFile.endsWith('.cs') || lowerFile.endsWith('.sln') || lowerFile.endsWith('.csproj')) {
+        if (
+          lowerFile.endsWith('.cs') ||
+          lowerFile.endsWith('.sln') ||
+          lowerFile.endsWith('.csproj')
+        ) {
           detectedTypes.add('csharp');
         }
 
@@ -276,7 +332,7 @@ export async function detectProjectTypes(
       json: 'json',
       css: 'css',
       r: 'r_language_server',
-      csharp: 'omnisharp'
+      csharp: 'omnisharp',
     };
 
     for (const language of optimizedTypes) {
@@ -506,18 +562,18 @@ export async function initializeDetectedServers(
   const serverPromises = projectServers.map(async (server) => {
     const root = await getProjectRoot(targetDir, server);
     const clientKey = `${server.id}:${root}`;
-    
+
     // Check if client already exists or is initializing
-    const existingClient = lspManager.getClient(server.id, root);
+    const existingClient = getClient(server.id, root);
     if (existingClient) {
       log(`Client already exists for ${clientKey}, skipping start`);
       log(`✓ ${server.id} already started`);
       return { success: true, serverId: server.id };
     }
-    
-    if (lspManager.isInitializing(server.id, root)) {
+
+    if (isInitializing(server.id, root)) {
       log(`Client is already initializing for ${clientKey}, waiting...`);
-      const client = await lspManager.waitForInitialization(server.id, root);
+      const client = await waitForInitialization(server.id, root);
       return { success: !!client, serverId: server.id };
     }
 
@@ -539,11 +595,16 @@ export async function initializeDetectedServers(
         log(`Server spawned: ${server.id}`);
         log(`About to call createLSPClient for ${server.id} with root ${root}`);
         log(`ServerHandle process PID: ${serverHandle.process.pid}`);
-        const client = await createLSPClient(server.id, serverHandle, root, getConfigLanguageExtensions() || undefined);
+        const client = await createLSPClient(
+          server.id,
+          serverHandle,
+          root,
+          getConfigLanguageExtensions() || undefined
+        );
         log(`Client created for: ${server.id}`);
 
         // Store client in manager immediately
-        lspManager.setClient(server.id, root, client);
+        setClient(server.id, root, client);
         log(`Stored client in manager with key: ${clientKey}`);
         log(`✓ ${server.id} ready`);
         return client;
@@ -559,15 +620,15 @@ export async function initializeDetectedServers(
     })();
 
     // Track the initialization promise
-    lspManager.setInitializing(server.id, root, initPromise);
-    
+    setInitializing(server.id, root, initPromise);
+
     const client = await initPromise;
     return { success: !!client, serverId: server.id };
   });
 
   // Wait for all servers to complete initialization
   const results = await Promise.allSettled(serverPromises);
-  
+
   // Collect successfully started servers
   const startedServers: string[] = [];
   for (const result of results) {
@@ -580,4 +641,3 @@ export async function initializeDetectedServers(
   log('Start complete');
   return startedServers;
 }
-

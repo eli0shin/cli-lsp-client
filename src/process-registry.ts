@@ -1,30 +1,35 @@
-import type { ChildProcessWithoutNullStreams } from 'child_process';
+import { exec, type ChildProcessWithoutNullStreams } from 'child_process';
 import { log } from './logger.js';
 
 // Global registry of all spawned LSP processes
 const lspProcesses = new Set<ChildProcessWithoutNullStreams>();
 
-export function registerLSPProcess(process: ChildProcessWithoutNullStreams): void {
+export function registerLSPProcess(
+  process: ChildProcessWithoutNullStreams
+): void {
   lspProcesses.add(process);
-  log(`Registered LSP process ${process.pid} for cleanup (total: ${lspProcesses.size})`);
-  
+  log(
+    `Registered LSP process ${process.pid} for cleanup (total: ${lspProcesses.size})`
+  );
+
   // Remove from registry when process exits
   process.on('exit', () => {
     lspProcesses.delete(process);
-    log(`LSP process ${process.pid} exited, removed from registry (remaining: ${lspProcesses.size})`);
+    log(
+      `LSP process ${process.pid} exited, removed from registry (remaining: ${lspProcesses.size})`
+    );
   });
 }
 
 // Kill all registered LSP processes
 export async function killAllLSPProcesses(): Promise<void> {
   log(`Killing ${lspProcesses.size} registered LSP processes`);
-  
+
   const killPromises = Array.from(lspProcesses).map(async (proc) => {
     if (!proc.killed) {
       try {
         if (process.platform === 'win32') {
           // On Windows, use taskkill to kill the process tree
-          const { exec } = await import('child_process');
           await new Promise<void>((resolve) => {
             exec(`taskkill /pid ${proc.pid} /T /F`, (error) => {
               if (error) {
@@ -49,7 +54,7 @@ export async function killAllLSPProcesses(): Promise<void> {
       }
     }
   });
-  
+
   await Promise.all(killPromises);
   lspProcesses.clear();
   log('All LSP processes killed and registry cleared');
