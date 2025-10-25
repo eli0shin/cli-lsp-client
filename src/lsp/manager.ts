@@ -307,18 +307,22 @@ async function retryWithConnectionCheck<T>(
   serverName: string,
   maxRetries = 2,
   delayMs = 100
-): Promise<T | null> {
+): Promise<T> {
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    // eslint-disable-next-line for-ai/no-code-after-try-catch
     try {
       return await operation();
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : String(error);
 
-      if (
-        errorMessage.includes('Connection is disposed') &&
-        attempt < maxRetries
-      ) {
+      // If this is the last attempt, always re-throw
+      if (attempt === maxRetries) {
+        throw error;
+      }
+
+      // If it's a retryable error and not the last attempt, retry
+      if (errorMessage.includes('Connection is disposed')) {
         log(
           `${serverName} connection disposed on attempt ${attempt}, retrying in ${delayMs}ms...`
         );
@@ -326,10 +330,12 @@ async function retryWithConnectionCheck<T>(
         continue;
       }
 
-      // Re-throw if not a retryable error or max retries exceeded
+      // Otherwise, re-throw non-retryable errors immediately
       throw error;
     }
   }
+  // Unreachable: all paths above return or throw
+  throw new Error('Unexpected: retry loop completed without returning');
 }
 
 export async function getHover(
