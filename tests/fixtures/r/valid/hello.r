@@ -1,7 +1,7 @@
 # Valid R script
 hello_world <- function(name = "World") {
-  message <- paste("Hello", name, "!")
-  return(message)
+  greeting <- paste("Hello", name, "!")
+  return(greeting)
 }
 
 # Call the function
