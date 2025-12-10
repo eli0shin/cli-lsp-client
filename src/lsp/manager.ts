@@ -376,11 +376,10 @@ export async function getHover(
 
     try {
       // Get document symbols to identify symbol types and precise positions
-      const documentSymbols =
-        (await retryWithConnectionCheck(
-          () => client.getDocumentSymbols(absolutePath),
-          server.id
-        )) || [];
+      const documentSymbols = await retryWithConnectionCheck(
+        () => client.getDocumentSymbols(absolutePath),
+        server.id
+      );
       log(`Got ${documentSymbols.length} document symbols`);
 
       // For GraphQL files, always use text search since document symbols are unreliable
@@ -466,9 +465,7 @@ export async function getHover(
               } else if ('targetUri' in firstTypeDef) {
                 const locationLink = firstTypeDef;
                 typeDefFile = urlToFilePath(locationLink.targetUri);
-                typeDefLocation =
-                  locationLink.targetSelectionRange?.start ||
-                  locationLink.targetRange.start;
+                typeDefLocation = locationLink.targetSelectionRange.start;
               } else {
                 typeDefFile = '';
                 typeDefLocation = { line: 0, character: 0 };
@@ -527,7 +524,7 @@ export async function getHover(
               `Got ${location.description.toLowerCase()} hover info for ${languageId} symbol: ${symbolKind}`
             );
 
-            if (signatureResult?.signatures?.length) {
+            if (signatureResult?.signatures.length) {
               log(
                 `Also got signature help with ${signatureResult.signatures.length} signature(s)`
               );
@@ -537,7 +534,7 @@ export async function getHover(
             const key = `${location.file}:${location.position.line}:${location.position.character}`;
             if (!seen.has(key)) {
               seen.add(key);
-              const resultItem: HoverResult = {
+              const resultItem = {
                 symbol: symbolName,
                 hover: hoverResult,
                 signature: signatureResult || undefined,
@@ -595,10 +592,7 @@ function collectSymbolPositionsByName(
       for (const sym of syms) {
         if (sym.name === symbolName) {
           // Prefer the selectionRange (identifier) when available
-          const symWithSelection = sym as DocumentSymbol & {
-            selectionRange?: { start: Position };
-          };
-          const pos = symWithSelection.selectionRange?.start || sym.range.start;
+          const pos = sym.selectionRange.start;
           positions.push(pos);
         }
         if (sym.children && sym.children.length > 0) {

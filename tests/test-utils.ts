@@ -1,6 +1,7 @@
 import { spawn, execSync } from 'child_process';
 
-export const CLI_PATH = process.env.CLI_LSP_CLIENT_BIN_PATH || './bin/cli-lsp-client';
+export const CLI_PATH =
+  process.env.CLI_LSP_CLIENT_BIN_PATH || './bin/cli-lsp-client';
 
 // Get the log file path using the CLI's logs command
 export function getLogPath(): string {
@@ -12,12 +13,14 @@ export function getLogPath(): string {
 }
 
 export function stripAnsi(str: string): string {
-  return str
-    // eslint-disable-next-line no-control-regex
-    .replace(/\u001b\[[0-9;]*m/g, '')
-    .replace(/^\n/, '')
-    .replace(/\xa0/g, ' ')
-    .trimEnd();
+  return (
+    str
+      // eslint-disable-next-line no-control-regex
+      .replace(/\u001b\[[0-9;]*m/g, '')
+      .replace(/^\n/, '')
+      .replace(/\xa0/g, ' ')
+      .trimEnd()
+  );
 }
 
 async function runCommand(
@@ -31,15 +34,15 @@ async function runCommand(
     let stdout = '';
     let stderr = '';
 
-    proc.stdout?.on('data', (data: Buffer) => {
+    proc.stdout.on('data', (data: Buffer) => {
       stdout += data.toString();
     });
 
-    proc.stderr?.on('data', (data: Buffer) => {
+    proc.stderr.on('data', (data: Buffer) => {
       stderr += data.toString();
     });
 
-    proc.stdin?.end();
+    proc.stdin.end();
 
     proc.on('error', reject);
 
@@ -74,16 +77,16 @@ export async function runHookCommand(
     let stdout = '';
     let stderr = '';
 
-    proc.stdout?.on('data', (data: Buffer) => {
+    proc.stdout.on('data', (data: Buffer) => {
       stdout += data.toString();
     });
 
-    proc.stderr?.on('data', (data: Buffer) => {
+    proc.stderr.on('data', (data: Buffer) => {
       stderr += data.toString();
     });
 
-    proc.stdin?.write(input);
-    proc.stdin?.end();
+    proc.stdin.write(input);
+    proc.stdin.end();
 
     proc.on('error', reject);
 

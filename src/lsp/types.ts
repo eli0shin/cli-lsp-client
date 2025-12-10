@@ -240,10 +240,60 @@ export const InitializationResultSchema = z
   })
   .passthrough();
 
+// Position schema (line and character)
+export const PositionSchema = z.object({
+  line: z.number(),
+  character: z.number(),
+});
+
+// Range schema (start and end positions)
+export const RangeSchema = z.object({
+  start: PositionSchema,
+  end: PositionSchema,
+});
+
+// DiagnosticSeverity: 1 = Error, 2 = Warning, 3 = Information, 4 = Hint
+export const DiagnosticSeveritySchema = z.union([
+  z.literal(1),
+  z.literal(2),
+  z.literal(3),
+  z.literal(4),
+]);
+
+// DiagnosticTag: 1 = Unnecessary, 2 = Deprecated
+export const DiagnosticTagSchema = z.union([z.literal(1), z.literal(2)]);
+
+// CodeDescription
+export const CodeDescriptionSchema = z.object({
+  href: z.string(),
+});
+
+// DiagnosticRelatedInformation
+export const DiagnosticRelatedInformationSchema = z.object({
+  location: z.object({
+    uri: z.string(),
+    range: RangeSchema,
+  }),
+  message: z.string(),
+});
+
+// Main Diagnostic schema
+export const DiagnosticSchema = z.object({
+  range: RangeSchema,
+  severity: DiagnosticSeveritySchema.optional(),
+  code: z.union([z.number(), z.string()]).optional(),
+  codeDescription: CodeDescriptionSchema.optional(),
+  source: z.string().optional(),
+  message: z.string(),
+  tags: z.array(DiagnosticTagSchema).optional(),
+  relatedInformation: z.array(DiagnosticRelatedInformationSchema).optional(),
+  data: z.unknown().optional(),
+});
+
 export const DiagnosticReportSchema = z.union([
   z.object({
     kind: z.literal('full'),
-    items: z.array(z.unknown()).optional(),
+    items: z.array(DiagnosticSchema).optional(),
   }),
   z.object({
     kind: z.literal('unchanged'),
@@ -252,7 +302,7 @@ export const DiagnosticReportSchema = z.union([
 
 export const PublishDiagnosticsSchema = z.object({
   uri: z.string(),
-  diagnostics: z.array(z.unknown()).optional(),
+  diagnostics: z.array(DiagnosticSchema).optional(),
 });
 
 // Inferred TypeScript types from Zod schemas

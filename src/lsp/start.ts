@@ -320,6 +320,7 @@ export async function detectProjectTypes(
 
   if (optimizedTypes.size > 0) {
     // Use optimized results
+    // eslint-disable-next-line no-restricted-syntax
     const languageToServerId: Record<string, string> = {
       typescript: 'typescript',
       python: 'pyright',

@@ -73,7 +73,7 @@ export default tseslint.config(
       'import-x': importX,
       'unused-imports': unusedImports,
       'for-ai': forAiPlugin,
-      'es': esPlugin,
+      es: esPlugin,
       import: importPlugin,
     },
     settings: {
@@ -124,6 +124,13 @@ export default tseslint.config(
       '@typescript-eslint/prefer-nullish-coalescing': 'off',
       '@typescript-eslint/prefer-optional-chain': 'error',
       '@typescript-eslint/no-unnecessary-type-assertion': 'error',
+      '@typescript-eslint/no-unnecessary-condition': [
+        'error',
+        {
+          checkTypePredicates: true,
+          allowConstantLoopConditions: true,
+        },
+      ],
       '@typescript-eslint/prefer-readonly': 'error',
       '@typescript-eslint/no-non-null-assertion': 'off',
       'no-useless-constructor': 'off',
@@ -178,6 +185,49 @@ export default tseslint.config(
     files: ['src/cli.ts', 'src/index.ts'],
     rules: {
       // Keep no-console error to enforce proper CLI output methods
+    },
+  },
+
+  /**
+   * Ban left-side type annotations when there is an initializer,
+   * encourage `... satisfies Type`, and catch trivial primitives.
+   */
+  {
+    name: 'typescript-ban-left-annotation',
+    files: ['**/*.ts', '**/*.tsx'],
+    rules: {
+      // Catch trivial cases like: const n: number = 1
+      '@typescript-eslint/no-inferrable-types': 'error',
+
+      // Default ban: only when the initializer is an object literal.
+      // Hits:    const user: User = { id: 1 }
+      // Does NOT hit: const id: UserId = makeId()
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector:
+            "VariableDeclarator[init.type='ObjectExpression'] > Identifier[typeAnnotation]",
+          message:
+            "Don't annotate initialized variables. Prefer inference instead, typescript can understand the type from the declaration.",
+        },
+
+        // --- Stricter alternative ---
+        // Uncomment this block to ban annotations on ANY initialized variable:
+        // {
+        //   selector: "VariableDeclarator[init] > Identifier[typeAnnotation]",
+        //   message:
+        //     "Don't annotate initialized variables; rely on inference or use `satisfies`.",
+        // },
+      ],
+    },
+  },
+
+  {
+    name: 'typescript-rule-exclusions',
+    files: ['**/*.d.ts', '**/dist/**', '**/build/**'],
+    rules: {
+      'no-restricted-syntax': 'off',
+      '@typescript-eslint/no-inferrable-types': 'off',
     },
   }
 );

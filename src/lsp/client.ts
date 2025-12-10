@@ -65,8 +65,8 @@ export async function createLSPClient(
     );
 
     const filePath = urlToFilePath(uri);
-    // Cast to Diagnostic[] since we know the structure from LSP protocol
-    diagnostics.set(filePath, (rawDiagnostics as Diagnostic[]) || []);
+    // Schema validation ensures diagnostics match Diagnostic[] structure
+    diagnostics.set(filePath, rawDiagnostics ?? []);
   });
   log('publishDiagnostics handler REGISTERED');
 
@@ -593,7 +593,7 @@ export async function createLSPClient(
     }
   }
 
-  const client: LSPClient = {
+  const client = {
     serverID,
     root,
     createdAt: Date.now(),
@@ -785,7 +785,7 @@ export async function createLSPClient(
             },
           }
         );
-        return (result as DocumentSymbol[] | SymbolInformation[]) || [];
+        return result as DocumentSymbol[] | SymbolInformation[];
       } catch (error) {
         log(`documentSymbol not supported or failed: ${error}`);
         return [];
@@ -996,12 +996,11 @@ export async function createLSPClient(
 
         const diagnosticReport = parseResult.data;
         if (diagnosticReport.kind === 'full') {
-          return (diagnosticReport.items as Diagnostic[]) || [];
-        } else if (diagnosticReport.kind === 'unchanged') {
+          return (diagnosticReport.items ?? []) as Diagnostic[];
+        } else {
           // Return previously cached diagnostics
           return this.getDiagnostics(absolutePath);
         }
-        return [];
       } catch (error) {
         log(`textDocument/diagnostic not supported or failed: ${error}`);
         throw error;
@@ -1020,7 +1019,7 @@ export async function createLSPClient(
 
       // Kill the process and all its children
       const proc = serverHandle.process;
-      if (proc && !proc.killed) {
+      if (!proc.killed) {
         try {
           if (process.platform === 'win32') {
             // On Windows, use taskkill to kill the process tree
@@ -1055,7 +1054,7 @@ export async function createLSPClient(
             await new Promise((resolve) => setTimeout(resolve, 2000));
 
             // Force kill if still alive
-            if (!proc.killed) {
+            {
               try {
                 if (proc.pid) {
                   process.kill(-proc.pid, 'SIGKILL');
