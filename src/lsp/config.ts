@@ -6,9 +6,15 @@ import type { LSPServer } from './types.js';
 // Users can work around this by including full command with args
 export const ConfigLSPServerSchema = z.object({
   id: z.string().min(1, 'Server ID is required'),
-  extensions: z.array(z.string().min(1)).min(1, 'At least one extension is required'),
-  rootPatterns: z.array(z.string().min(1)).min(1, 'At least one root pattern is required'),
-  command: z.array(z.string().min(1)).min(1, 'Command must have at least one element'),
+  extensions: z
+    .array(z.string().min(1))
+    .min(1, 'At least one extension is required'),
+  rootPatterns: z
+    .array(z.string().min(1))
+    .min(1, 'At least one root pattern is required'),
+  command: z
+    .array(z.string().min(1))
+    .min(1, 'Command must have at least one element'),
   packageName: z.string().optional(), // Optional: npm package name when it differs from command
   env: z.record(z.string(), z.string()).optional(),
   initialization: z.record(z.string(), z.unknown()).optional(),
@@ -28,11 +34,15 @@ export const ConfigFileSchema = z.object({
 
 // TypeScript types inferred from schemas
 export type ConfigLSPServer = z.infer<typeof ConfigLSPServerSchema>;
-export type LanguageExtensionMapping = z.infer<typeof LanguageExtensionMappingSchema>;
+export type LanguageExtensionMapping = z.infer<
+  typeof LanguageExtensionMappingSchema
+>;
 export type ConfigFile = z.infer<typeof ConfigFileSchema>;
 
 // Function to convert config server to LSPServer type
-export function configServerToLSPServer(configServer: ConfigLSPServer): LSPServer {
+export function configServerToLSPServer(
+  configServer: ConfigLSPServer
+): LSPServer {
   return {
     id: configServer.id,
     extensions: configServer.extensions,
@@ -51,10 +61,13 @@ export function validateConfigFile(data: unknown): ConfigFile {
     return ConfigFileSchema.parse(data);
   } catch (error) {
     if (error instanceof z.ZodError) {
-      const issues = error.issues.map(issue => {
-        const path = issue.path.length > 0 ? ` at ${issue.path.join('.')}` : '';
-        return `${issue.message}${path}`;
-      }).join('\n');
+      const issues = error.issues
+        .map((issue) => {
+          const path =
+            issue.path.length > 0 ? ` at ${issue.path.join('.')}` : '';
+          return `${issue.message}${path}`;
+        })
+        .join('\n');
       throw new Error(`Config file validation failed:\n${issues}`);
     }
     throw error;
@@ -74,20 +87,23 @@ function resolveConfigPath(configPath: string): string {
 }
 
 // Function to load config file from filesystem
-export async function loadConfigFile(configPath?: string): Promise<ConfigFile | null> {
+export async function loadConfigFile(
+  configPath?: string
+): Promise<ConfigFile | null> {
   // Use provided path, or environment variable, or default path
-  const actualConfigPath = configPath || process.env.LSPCLI_CONFIG_FILE || DEFAULT_CONFIG_PATH;
+  const actualConfigPath =
+    configPath || process.env.LSPCLI_CONFIG_FILE || DEFAULT_CONFIG_PATH;
   try {
     const resolvedPath = resolveConfigPath(actualConfigPath);
     const configFile = Bun.file(resolvedPath);
-    
+
     if (!(await configFile.exists())) {
       return null; // Config file doesn't exist, use defaults
     }
-    
+
     const configText = await configFile.text();
     const configData: unknown = JSON.parse(configText);
-    
+
     return validateConfigFile(configData);
   } catch (error) {
     if (error instanceof SyntaxError) {
@@ -98,10 +114,12 @@ export async function loadConfigFile(configPath?: string): Promise<ConfigFile | 
 }
 
 // Function to create config directory if it doesn't exist
-export async function ensureConfigDirectory(configPath: string = DEFAULT_CONFIG_PATH): Promise<void> {
+export async function ensureConfigDirectory(
+  configPath: string = DEFAULT_CONFIG_PATH
+): Promise<void> {
   const resolvedPath = resolveConfigPath(configPath);
   const configDir = resolvedPath.substring(0, resolvedPath.lastIndexOf('/'));
-  
+
   try {
     await Bun.write(Bun.file(configDir + '/.keep'), '');
   } catch (error) {
@@ -112,7 +130,7 @@ export async function ensureConfigDirectory(configPath: string = DEFAULT_CONFIG_
 }
 
 // Example config file content for documentation
-export const EXAMPLE_CONFIG: ConfigFile = {
+export const EXAMPLE_CONFIG = {
   servers: [
     {
       id: 'custom-typescript',
@@ -120,13 +138,13 @@ export const EXAMPLE_CONFIG: ConfigFile = {
       rootPatterns: ['tsconfig.json', 'package.json'],
       command: ['bunx', 'typescript-language-server', '--stdio'],
       env: {
-        'NODE_ENV': 'development'
+        NODE_ENV: 'development',
       },
       initialization: {
         preferences: {
-          includeCompletionsForModuleExports: true
-        }
-      }
+          includeCompletionsForModuleExports: true,
+        },
+      },
     },
     {
       id: 'rust-analyzer',
@@ -134,12 +152,12 @@ export const EXAMPLE_CONFIG: ConfigFile = {
       rootPatterns: ['Cargo.toml', 'Cargo.lock'],
       command: ['rust-analyzer'],
       env: {
-        'RUST_LOG': 'error'
-      }
-    }
+        RUST_LOG: 'error',
+      },
+    },
   ],
   languageExtensions: {
     '.rs': 'rust',
-    '.toml': 'toml'
-  }
+    '.toml': 'toml',
+  },
 };

@@ -126,13 +126,15 @@ export async function formatHoverResults(
 
   // Group results by identical hover content
   const contentGroups = new Map<string, HoverResult[]>();
-  
-  results.forEach(result => {
+
+  results.forEach((result) => {
     // Create a content key from hover contents and signature
     const hoverContent = JSON.stringify(result.hover.contents);
-    const signatureContent = result.signature ? JSON.stringify(result.signature) : '';
+    const signatureContent = result.signature
+      ? JSON.stringify(result.signature)
+      : '';
     const contentKey = `${hoverContent}|${signatureContent}`;
-    
+
     if (!contentGroups.has(contentKey)) {
       contentGroups.set(contentKey, []);
     }
@@ -142,33 +144,36 @@ export async function formatHoverResults(
   const output: string[] = [];
   let groupIndex = 0;
 
-  contentGroups.forEach(group => {
+  contentGroups.forEach((group) => {
     // Sort locations within each group for consistent ordering
     group.sort((a, b) => {
       const fileCompare = a.location.file.localeCompare(b.location.file);
       if (fileCompare !== 0) return fileCompare;
-      if (a.location.line !== b.location.line) return a.location.line - b.location.line;
+      if (a.location.line !== b.location.line)
+        return a.location.line - b.location.line;
       return a.location.column - b.location.column;
     });
 
     // Format hover content once per group
     const content = formatHoverContent(group[0].hover).replace(/^\n+/, '');
-    
+
     // Build locations list with labels based on description field
-    const locations = group.map(result => {
-      return `${CYAN}${result.description}:${RESET_COLOR} ${result.location.file}:${result.location.line + 1}:${result.location.column + 1}`;
-    }).join('\n');
-    
+    const locations = group
+      .map((result) => {
+        return `${CYAN}${result.description}:${RESET_COLOR} ${result.location.file}:${result.location.line + 1}:${result.location.column + 1}`;
+      })
+      .join('\n');
+
     let resultContent = `${locations}\n${content}`;
-    
+
     // Add enhanced signature information if available (Phase 2 enhancement)
-    if (group[0].signature?.signatures?.length) {
+    if (group[0].signature?.signatures.length) {
       const signatureInfo = formatSignatureHelp(group[0].signature);
       if (signatureInfo) {
         resultContent += `\n\n${GRAY}${BOLD}Signature Details:${RESET_COLOR}\n${signatureInfo}`;
       }
     }
-    
+
     output.push(resultContent);
 
     // Add a blank line between groups, but not after the last one
@@ -208,7 +213,7 @@ function formatHoverContent(hover: Hover): string {
   content = content
     // Remove markdown horizontal rules (---) that gopls adds
     .split('\n')
-    .filter(line => line.trim() !== '---')
+    .filter((line) => line.trim() !== '---')
     .join('\n')
     // Clean up any resulting triple blank lines
     .replace(/\n\n\n+/g, '\n\n')
@@ -246,49 +251,50 @@ function formatHoverContent(hover: Hover): string {
 }
 
 function formatSignatureHelp(signatureHelp: SignatureHelp): string {
-  if (!signatureHelp.signatures?.length) {
+  if (!signatureHelp.signatures.length) {
     return '';
   }
 
   const signature = signatureHelp.signatures[0]; // Use the first signature
-  if (!signature) {
-    return '';
-  }
 
   let result = '';
-  
+
   // Format the signature label
   if (signature.label) {
     result += `${GREEN}${signature.label}${RESET_COLOR}`;
   }
-  
+
   // Add signature documentation if available
   if (signature.documentation) {
-    const doc = typeof signature.documentation === 'string' 
-      ? signature.documentation 
-      : signature.documentation.value;
+    const doc =
+      typeof signature.documentation === 'string'
+        ? signature.documentation
+        : signature.documentation.value;
     if (doc.trim()) {
       result += `\n${doc.trim()}`;
     }
   }
-  
+
   // Add parameter information
   if (signature.parameters?.length) {
-    result += '\n\n' + signature.parameters
-      .map(param => {
-        let paramLine = `${CYAN}${param.label}${RESET_COLOR}`;
-        if (param.documentation) {
-          const paramDoc = typeof param.documentation === 'string' 
-            ? param.documentation 
-            : param.documentation.value;
-          if (paramDoc.trim()) {
-            paramLine += ` — ${paramDoc.trim()}`;
+    result +=
+      '\n\n' +
+      signature.parameters
+        .map((param) => {
+          let paramLine = `${CYAN}${param.label}${RESET_COLOR}`;
+          if (param.documentation) {
+            const paramDoc =
+              typeof param.documentation === 'string'
+                ? param.documentation
+                : param.documentation.value;
+            if (paramDoc.trim()) {
+              paramLine += ` — ${paramDoc.trim()}`;
+            }
           }
-        }
-        return paramLine;
-      })
-      .join('\n');
+          return paramLine;
+        })
+        .join('\n');
   }
-  
+
   return result.trim();
 }

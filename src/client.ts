@@ -138,17 +138,18 @@ async function sendStopCommandToSocket(socketPath: string): Promise<void> {
   });
 }
 
-export async function stopAllDaemons(): Promise<void> {
-  const tempDir = os.tmpdir();
-
-  // Read all files from temp directory using Node.js fs API
-  let allFiles: string[] = [];
+async function readTmpDirectoryFiles(): Promise<string[]> {
   try {
-    allFiles = await readdir(tempDir);
+    return await readdir(os.tmpdir());
   } catch (error) {
     process.stderr.write(`Error reading temp directory: ${error}\n`);
-    return;
+    return [];
   }
+}
+
+export async function stopAllDaemons(): Promise<void> {
+  const tempDir = os.tmpdir();
+  const allFiles = await readTmpDirectoryFiles();
 
   // Filter for our daemon files
   const socketFiles = allFiles
@@ -304,15 +305,7 @@ async function sendCommandToSocket(
 
 export async function listAllDaemons(): Promise<void> {
   const tempDir = os.tmpdir();
-
-  // Read all files from temp directory using Node.js fs API
-  let allFiles: string[] = [];
-  try {
-    allFiles = await readdir(tempDir);
-  } catch (error) {
-    process.stderr.write(`Error reading temp directory: ${error}\n`);
-    return;
-  }
+  const allFiles = await readTmpDirectoryFiles();
 
   // Filter for socket files and only include those that also have corresponding PID files
   const socketFiles = allFiles

@@ -36,11 +36,7 @@ function formatHoverResultsPlain(hoverResults: HoverResult[]): string {
         content = contents
           .map((c) => (typeof c === 'string' ? c : 'value' in c ? c.value : ''))
           .join('\n');
-      } else if (
-        contents &&
-        typeof contents === 'object' &&
-        'value' in contents
-      ) {
+      } else if (typeof contents === 'object' && 'value' in contents) {
         content = contents.value;
       }
 

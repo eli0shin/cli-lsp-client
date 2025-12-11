@@ -4,7 +4,7 @@
 # Checks files with ESLint after edits and outputs JSON format
 
 # Source utilities
-source "$(dirname "$0")/../../shared/hooks/utils.sh"
+source "$(dirname "$0")/utils.sh"
 
 # Helper function to output JSON and exit
 output_json() {

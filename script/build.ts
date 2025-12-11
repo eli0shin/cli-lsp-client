@@ -15,7 +15,7 @@ const targets = [
 export async function build(version: string): Promise<Record<string, string>> {
   await $`rm -rf dist`;
 
-  const binaries: Record<string, string> = {};
+  const binaries = {} as Record<string, string>;
 
   for (const [os, arch] of targets) {
     process.stdout.write(`Building ${os}-${arch}\n`);

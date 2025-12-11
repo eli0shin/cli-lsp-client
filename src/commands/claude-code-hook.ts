@@ -35,18 +35,22 @@ export function registerClaudeCodeHookCommand(program: Command) {
         if (isPluginMode) {
           // Plugin mode: output JSON to stdout and always exit 0
           if (result.daemonFailed) {
-            process.stdout.write(JSON.stringify({
-              reason: result.output,
-              hookSpecificOutput: {
-                hookEventName: 'PostToolUse',
-                additionalContext: 'LSP diagnostics check exited with code 1'
-              }
-            }));
+            process.stdout.write(
+              JSON.stringify({
+                reason: result.output,
+                hookSpecificOutput: {
+                  hookEventName: 'PostToolUse',
+                  additionalContext: 'LSP diagnostics check exited with code 1',
+                },
+              })
+            );
           } else if (result.hasIssues) {
-            process.stdout.write(JSON.stringify({
-              decision: 'block',
-              reason: result.output
-            }));
+            process.stdout.write(
+              JSON.stringify({
+                decision: 'block',
+                reason: result.output,
+              })
+            );
           } else {
             process.stdout.write('{}');
           }

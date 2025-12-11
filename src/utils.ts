@@ -127,6 +127,7 @@ export async function ensureDaemonRunning(
   }
 
   // Spawn a new daemon process
+  // eslint-disable-next-line no-restricted-syntax
   const env: Record<string, string> = {
     ...process.env,
     LSPCLI_DAEMON_MODE: '1',

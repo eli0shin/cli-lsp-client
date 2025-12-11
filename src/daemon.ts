@@ -2,10 +2,16 @@ import net from 'net';
 import os from 'os';
 import path from 'path';
 import { z } from 'zod';
-import { lspManager } from './lsp/manager.js';
+import {
+  closeAllFiles,
+  getRunningServers,
+  getDiagnostics,
+  getHover,
+  shutdown as shutdownLSPManager,
+} from './lsp/manager.js';
 import { detectProjectTypes, initializeDetectedServers } from './lsp/start.js';
 import { initializeServers } from './lsp/servers.js';
-import { log } from './logger.js';
+import { log, LOG_PATH } from './logger.js';
 import { hashPath } from './utils.js';
 import { killAllLSPProcesses } from './process-registry.js';
 
@@ -20,7 +26,11 @@ function getDaemonPaths() {
   };
 }
 
-export const { socketPath: SOCKET_PATH, pidFile: PID_FILE, configFile: CONFIG_METADATA_FILE } = getDaemonPaths();
+export const {
+  socketPath: SOCKET_PATH,
+  pidFile: PID_FILE,
+  configFile: CONFIG_METADATA_FILE,
+} = getDaemonPaths();
 
 const RequestSchema = z.object({
   command: z.string(),
@@ -44,7 +54,9 @@ export async function saveCurrentConfig(configPath?: string): Promise<void> {
     };
     await Bun.write(CONFIG_METADATA_FILE, JSON.stringify(metadata));
   } catch (error) {
-    log(`Error saving config metadata: ${error instanceof Error ? error.message : String(error)}`);
+    log(
+      `Error saving config metadata: ${error instanceof Error ? error.message : String(error)}`
+    );
   }
 }
 
@@ -56,8 +68,12 @@ export async function getCurrentConfig(): Promise<string | null> {
     }
     const metadataText = await Bun.file(CONFIG_METADATA_FILE).text();
     const metadata: unknown = JSON.parse(metadataText);
-    
-    if (typeof metadata === 'object' && metadata !== null && 'configPath' in metadata) {
+
+    if (
+      typeof metadata === 'object' &&
+      metadata !== null &&
+      'configPath' in metadata
+    ) {
       const configPath = (metadata as { configPath: unknown }).configPath;
       return typeof configPath === 'string' ? configPath : null;
     }
@@ -76,11 +92,13 @@ export function configPathsEqual(path1?: string, path2?: string): boolean {
   return path.resolve(path1) === path.resolve(path2);
 }
 
-export async function hasConfigConflict(requestedConfigPath?: string): Promise<boolean> {
+export async function hasConfigConflict(
+  requestedConfigPath?: string
+): Promise<boolean> {
   if (!(await isDaemonRunning())) {
     return false; // No daemon running, no conflict
   }
-  
+
   const currentConfigPath = await getCurrentConfig();
   return !configPathsEqual(currentConfigPath || undefined, requestedConfigPath);
 }
@@ -148,12 +166,12 @@ export async function handleRequestWithLifecycle(
     const result = await handleRequest(request);
 
     // Close all open files after command completes
-    await lspManager.closeAllFiles();
+    await closeAllFiles();
 
     return result;
   } catch (error) {
     // Ensure files are closed even on error
-    await lspManager.closeAllFiles();
+    await closeAllFiles();
     throw error;
   }
 }
@@ -165,7 +183,7 @@ export async function handleRequest(
 
   switch (command) {
     case 'status': {
-      const runningServers = lspManager.getRunningServers();
+      const runningServers = getRunningServers();
       const daemonUptimeMs = process.uptime() * 1000;
 
       let output = 'LSP Daemon Status\n';
@@ -191,7 +209,7 @@ export async function handleRequest(
       if (!args[0]) {
         throw new Error('diagnostics command requires a file path');
       }
-      return await lspManager.getDiagnostics(args[0]);
+      return await getDiagnostics(args[0]);
     }
 
     case 'start': {
@@ -199,24 +217,26 @@ export async function handleRequest(
       const targetDir = directory || process.cwd();
       log(`=== DAEMON START - PID: ${process.pid} ===`);
       log(`Starting LSP servers for directory: ${targetDir}`);
-      
+
       // Detect which servers are needed (fast operation)
       const detectedServers = await detectProjectTypes(targetDir);
-      const serverNames = detectedServers.map(s => s.id);
-      
+      const serverNames = detectedServers.map((s) => s.id);
+
       // Start LSP servers asynchronously in the background
       initializeDetectedServers(detectedServers, targetDir)
         .then((startedServers: string[]) => {
           log('=== DAEMON START SUCCESS ===');
           if (startedServers.length > 0) {
-            log(`Successfully started LSP servers: ${startedServers.join(',')}`);
+            log(
+              `Successfully started LSP servers: ${startedServers.join(',')}`
+            );
           }
         })
         .catch((error: unknown) => {
           log(`=== DAEMON START ERROR: ${error} ===`);
           log(`LSP server initialization failed: ${error}`);
         });
-      
+
       // Return immediately with the list of servers that will be started
       if (serverNames.length === 0) {
         return '';
@@ -225,7 +245,6 @@ export async function handleRequest(
     }
 
     case 'logs': {
-      const { LOG_PATH } = await import('./logger.js');
       return LOG_PATH;
     }
 
@@ -242,7 +261,7 @@ export async function handleRequest(
       const targetFile = args[0];
       const targetSymbol = args[1];
 
-      const hoverResults = await lspManager.getHover(targetSymbol, targetFile);
+      const hoverResults = await getHover(targetSymbol, targetFile);
       return hoverResults;
     }
 
@@ -261,9 +280,8 @@ let server: net.Server | null = null;
 export async function startDaemon(): Promise<void> {
   // Set environment variable to indicate we're running as daemon
   process.env.LSPCLI_DAEMON = 'true';
-  
+
   process.stdout.write('Starting daemon…\n');
-  const { LOG_PATH } = await import('./logger.js');
   process.stdout.write(`Daemon log: ${LOG_PATH}\n`);
   log(`Daemon starting... PID: ${process.pid}`);
 
@@ -272,7 +290,7 @@ export async function startDaemon(): Promise<void> {
 
   // Get config file from environment variable
   const configPath = process.env.LSPCLI_CONFIG_FILE;
-  
+
   // Save current config metadata
   await saveCurrentConfig(configPath);
 
@@ -415,26 +433,34 @@ export async function cleanup(): Promise<void> {
   }
 }
 
-export async function shutdown(): Promise<void> {
-  process.stdout.write('Shutting down daemon…\n');
-  log(`=== DAEMON SHUTDOWN START - PID: ${process.pid} ===`);
-
-  // Shutdown LSP manager first (this should handle most processes)
+async function bestEffortShutdownLSPManager(): Promise<void> {
   try {
-    await lspManager.shutdown();
+    await shutdownLSPManager();
     log('LSP manager shutdown completed');
   } catch (error) {
     process.stderr.write(`Error shutting down LSP manager: ${error}\n`);
     log(`LSP manager shutdown error: ${error}`);
   }
-  
-  // Kill any remaining LSP processes that might have escaped
+}
+
+async function bestEffortKillAllLSPProcesses(): Promise<void> {
   try {
     await killAllLSPProcesses();
     log('All LSP processes terminated');
   } catch (error) {
     log(`Error killing remaining LSP processes: ${error}`);
   }
+}
+
+export async function shutdown(): Promise<void> {
+  process.stdout.write('Shutting down daemon…\n');
+  log(`=== DAEMON SHUTDOWN START - PID: ${process.pid} ===`);
+
+  // Shutdown LSP manager first (this should handle most processes)
+  await bestEffortShutdownLSPManager();
+
+  // Kill any remaining LSP processes that might have escaped
+  await bestEffortKillAllLSPProcesses();
 
   if (server) {
     server.close();

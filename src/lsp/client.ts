@@ -1,4 +1,5 @@
 import path from 'path';
+import { exec } from 'child_process';
 import {
   createMessageConnection,
   StreamMessageReader,
@@ -64,8 +65,8 @@ export async function createLSPClient(
     );
 
     const filePath = urlToFilePath(uri);
-    // Cast to Diagnostic[] since we know the structure from LSP protocol
-    diagnostics.set(filePath, (rawDiagnostics as Diagnostic[]) || []);
+    // Schema validation ensures diagnostics match Diagnostic[] structure
+    diagnostics.set(filePath, rawDiagnostics ?? []);
   });
   log('publishDiagnostics handler REGISTERED');
 
@@ -100,29 +101,29 @@ export async function createLSPClient(
           verbosityLevel: 2,
           displayPartsForJSDoc: true,
           generateReturnInDocTemplate: true,
-          useLabelDetailsInCompletionEntries: true
+          useLabelDetailsInCompletionEntries: true,
         },
         // Advanced verbose/debug options
         logVerbosity: 'verbose',
-        trace: 'verbose', 
+        trace: 'verbose',
         maxTsServerMemory: 4096,
         useSyntaxServer: 'auto',
         // Enable TypeScript 5.8+ expandable hover if available
         experimentalDecorators: true,
         typescript: {
           experimental: {
-            expandableHover: true
+            expandableHover: true,
           },
           preferences: {
-            includeInlayParameterNameHints: "none",
+            includeInlayParameterNameHints: 'none',
             includeInlayParameterNameHintsWhenArgumentMatchesName: false,
             includeInlayFunctionParameterTypeHints: false,
             includeInlayVariableTypeHints: false,
             includeInlayPropertyDeclarationTypeHints: false,
             includeInlayFunctionLikeReturnTypeHints: false,
-            includeInlayEnumMemberValueHints: false
-          }
-        }
+            includeInlayEnumMemberValueHints: false,
+          },
+        },
       }),
       // Rust Analyzer hover enhancements
       ...(serverID === 'rust-analyzer' && {
@@ -130,22 +131,22 @@ export async function createLSPClient(
           documentation: {
             enable: true,
             keywords: { enable: true },
-            links: { enable: true }
+            links: { enable: true },
           },
           maxSubstitutionLength: 50,
           show: {
             enumVariants: 10,
             fields: 8,
-            traitAssocItems: 5
+            traitAssocItems: 5,
           },
           dropGlue: { enable: true },
-          memoryLayout: { enable: true }
-        }
+          memoryLayout: { enable: true },
+        },
       }),
       // Go (gopls) hover enhancements
       ...(serverID === 'gopls' && {
-        hoverKind: "FullDocumentation",
-        linkTarget: "pkg.go.dev", 
+        hoverKind: 'FullDocumentation',
+        linkTarget: 'pkg.go.dev',
         linksInHover: true,
         // Advanced verbose options
         verboseWorkDoneProgress: true,
@@ -155,35 +156,35 @@ export async function createLSPClient(
         semanticTokens: true,
         inlayHints: true,
         codelenses: {
-          'generate': true,
-          'test': true,
-          'tidy': true
+          generate: true,
+          test: true,
+          tidy: true,
         },
         analyses: {
-          'unreachable': true,
-          'unusedparams': true,
-          'shadow': true,
-          'simplifycompositelit': true
+          unreachable: true,
+          unusedparams: true,
+          shadow: true,
+          simplifycompositelit: true,
         },
-        completionBudget: '100ms'
+        completionBudget: '100ms',
       }),
       // Lua Language Server hover enhancements
       ...(serverID === 'lua_ls' && {
         Lua: {
           runtime: {
             version: 'Lua 5.4',
-            path: ['?.lua', '?/init.lua']
+            path: ['?.lua', '?/init.lua'],
           },
           workspace: {
             library: [],
             ignoreDir: ['.vscode'],
             maxPreload: 5000,
-            preloadFileSize: 500
+            preloadFileSize: 500,
           },
           diagnostics: {
             enable: true,
             globals: ['vim'],
-            severity: {}
+            severity: {},
           },
           completion: {
             enable: true,
@@ -191,7 +192,7 @@ export async function createLSPClient(
             keywordSnippet: 'Both',
             displayContext: 6,
             workspaceWord: true,
-            postfix: '@'
+            postfix: '@',
           },
           hover: {
             enable: true,
@@ -201,7 +202,7 @@ export async function createLSPClient(
             previewFields: 50,
             enumsLimit: 100,
             expandAlias: true,
-            fieldInfer: 1000
+            fieldInfer: 1000,
           },
           hint: {
             enable: true,
@@ -209,19 +210,19 @@ export async function createLSPClient(
             setType: false,
             paramName: 'All',
             semicolon: 'SameLine',
-            arrayIndex: 'Auto'
+            arrayIndex: 'Auto',
           },
           semantic: {
             enable: true,
             variable: true,
             annotation: true,
-            keyword: false
-          }
-        }
+            keyword: false,
+          },
+        },
       }),
       // Bash Language Server hover enhancements (requires explainshell service)
       ...(serverID === 'bash' && {
-        explainshellEndpoint: "",  // Empty string disables by default, user can configure
+        explainshellEndpoint: '', // Empty string disables by default, user can configure
         // Advanced analysis options
         backgroundAnalysisMaxFiles: 500,
         enableSourceErrorDiagnostics: false,
@@ -238,7 +239,7 @@ export async function createLSPClient(
         'shfmt.caseIndent': false,
         'shfmt.funcNextLine': false,
         'shfmt.spaceRedirects': false,
-        logLevel: 'info'
+        logLevel: 'info',
       }),
       // JDTLS (Java) hover and verbosity enhancements
       ...(serverID === 'jdtls' && {
@@ -246,77 +247,77 @@ export async function createLSPClient(
           java: {
             signatureHelp: {
               enabled: true,
-              description: { enabled: true }
+              description: { enabled: true },
             },
             completion: {
               maxResults: 50,
               favoriteStaticMembers: [
-                "org.junit.Assert.*",
-                "org.junit.jupiter.api.Assertions.*", 
-                "org.mockito.Mockito.*",
-                "java.util.Objects.*"
+                'org.junit.Assert.*',
+                'org.junit.jupiter.api.Assertions.*',
+                'org.mockito.Mockito.*',
+                'java.util.Objects.*',
               ],
               filteredTypes: [],
               includeDecompiledSources: true,
-              importOrder: ['java', 'javax', 'com', 'org']
+              importOrder: ['java', 'javax', 'com', 'org'],
             },
             references: {
-              includeDecompiledSources: true
+              includeDecompiledSources: true,
             },
             implementationsCodeLens: {
-              enabled: true
+              enabled: true,
             },
             referencesCodeLens: {
-              enabled: true
+              enabled: true,
             },
             format: {
               enabled: true,
               settings: {
-                url: null
-              }
+                url: null,
+              },
             },
             saveActions: {
-              organizeImports: true
+              organizeImports: true,
             },
             contentProvider: {
-              preferred: "fernflower"  // Enhanced decompilation for better hover info
+              preferred: 'fernflower', // Enhanced decompilation for better hover info
             },
             symbols: {
-              includeSourceMethodDeclarations: true
+              includeSourceMethodDeclarations: true,
             },
             configuration: {
-              updateBuildConfiguration: "automatic"
+              updateBuildConfiguration: 'automatic',
             },
-            validateAllOpenBuffersOnChanges: true
-          }
+            validateAllOpenBuffersOnChanges: true,
+          },
         },
         // Enable verbose server logging for debugging
         trace: {
-          server: "verbose"
-        }
+          server: 'verbose',
+        },
       }),
       // Pyright (Python) hover enhancements - limited options
       ...(serverID === 'pyright' && {
         python: {
           analysis: {
-            logLevel: "Trace",  // Enhanced from Information
-            typeCheckingMode: "strict",  // Enhanced from basic
+            logLevel: 'Trace', // Enhanced from Information
+            typeCheckingMode: 'strict', // Enhanced from basic
             autoImportCompletions: true,
-            diagnosticMode: "workspace",
+            diagnosticMode: 'workspace',
             useLibraryCodeForTypes: true,
             autoSearchPaths: true,
             diagnosticSeverityOverrides: {},
             // Enhanced verbosity options
-            stubPath: "",
-            venvPath: "",
-            pythonPath: ""
-          }
+            stubPath: '',
+            venvPath: '',
+            pythonPath: '',
+          },
         },
         // Enable trace logging
         'basedpyright.analysis.logLevel': 'Trace',
         'basedpyright.disableLanguageServices': false,
         'basedpyright.disableOrganizeImports': false,
-        'basedpyright.disableTaggedHints': false
+        'basedpyright.disableTaggedHints': false,
       }),
       // JSON Language Server enhancements
       ...(serverID === 'json' && {
@@ -325,65 +326,65 @@ export async function createLSPClient(
           format: { enable: true },
           keepLines: { enable: true },
           schemas: [],
-          resultLimit: 5000,  // Increased from 1000
+          resultLimit: 5000, // Increased from 1000
           maxItemsComputed: 5000,
           jsonFoldingLimit: 1000,
-          jsoncFoldingLimit: 1000
+          jsoncFoldingLimit: 1000,
         },
         http: {
           proxy: '',
-          proxyStrictSSL: true
+          proxyStrictSSL: true,
         },
         // Enable formatter and schema protocols
         provideFormatter: true,
         handledSchemaProtocols: ['file', 'http', 'https'],
         customCapabilities: {
           rangeFormatting: {
-            editLimit: 1000
-          }
-        }
+            editLimit: 1000,
+          },
+        },
       }),
-      // CSS Language Server enhancements  
+      // CSS Language Server enhancements
       ...(serverID === 'css' && {
         css: {
           validate: true,
           hover: {
             documentation: true,
-            references: true
+            references: true,
           },
           completion: {
             completePropertyWithSemicolon: true,
-            triggerPropertyValueCompletion: true
+            triggerPropertyValueCompletion: true,
           },
           lint: {
-            compatibleVendorPrefixes: "warning",
-            vendorPrefix: "warning",
-            duplicateProperties: "warning",
-            emptyRules: "warning",
-            propertyIgnoredDueToDisplay: "warning",
-            important: "ignore",
-            float: "ignore",
-            idSelector: "ignore"
-          }
+            compatibleVendorPrefixes: 'warning',
+            vendorPrefix: 'warning',
+            duplicateProperties: 'warning',
+            emptyRules: 'warning',
+            propertyIgnoredDueToDisplay: 'warning',
+            important: 'ignore',
+            float: 'ignore',
+            idSelector: 'ignore',
+          },
         },
         scss: {
           validate: true,
           lint: {
-            compatibleVendorPrefixes: "warning",
-            vendorPrefix: "warning",
-            duplicateProperties: "warning",
-            emptyRules: "warning"
-          }
+            compatibleVendorPrefixes: 'warning',
+            vendorPrefix: 'warning',
+            duplicateProperties: 'warning',
+            emptyRules: 'warning',
+          },
         },
         less: {
           validate: true,
           lint: {
-            compatibleVendorPrefixes: "warning",
-            vendorPrefix: "warning",
-            duplicateProperties: "warning", 
-            emptyRules: "warning"
-          }
-        }
+            compatibleVendorPrefixes: 'warning',
+            vendorPrefix: 'warning',
+            duplicateProperties: 'warning',
+            emptyRules: 'warning',
+          },
+        },
       }),
       // YAML Language Server enhancements
       ...(serverID === 'yaml' && {
@@ -396,12 +397,12 @@ export async function createLSPClient(
             singleQuote: false,
             bracketSpacing: true,
             proseWrap: 'preserve',
-            printWidth: 80
+            printWidth: 80,
           },
           schemas: {},
           schemaStore: {
             enable: true,
-            url: 'https://www.schemastore.org/api/json/catalog.json'
+            url: 'https://www.schemastore.org/api/json/catalog.json',
           },
           maxItemsComputed: 5000,
           customTags: [],
@@ -410,14 +411,14 @@ export async function createLSPClient(
           disableDefaultProperties: false,
           style: {
             flowMapping: 'allow',
-            flowSequence: 'allow'
-          }
+            flowSequence: 'allow',
+          },
         },
         redhat: {
           telemetry: {
-            enabled: false
-          }
-        }
+            enabled: false,
+          },
+        },
       }),
       // GraphQL Language Server enhancements
       ...(serverID === 'graphql' && {
@@ -433,26 +434,26 @@ export async function createLSPClient(
           customDirectives: [],
           fileExtensions: ['.js', '.ts', '.tsx', '.jsx', '.graphql', '.gql'],
           fillLeafsOnComplete: true,
-          extensions: []
-        }
+          extensions: [],
+        },
       }),
       // R Language Server enhancements
       ...(serverID === 'r' && {
         r: {
           lsp: {
-            debug: true,  // Enhanced from false
+            debug: true, // Enhanced from false
             log_file: null,
             diagnostics: true,
             rich_documentation: true,
             snippet_support: true,
             max_completions: 200,
-            lint_cache: false,  // Enhanced for fresh results
+            lint_cache: false, // Enhanced for fresh results
             link_file_size_limit: 16384,
             server_capabilities: {},
             args: [],
-            path: null
-          }
-        }
+            path: null,
+          },
+        },
       }),
       // OmniSharp (C#) enhancements
       ...(serverID === 'omnisharp' && {
@@ -460,12 +461,12 @@ export async function createLSPClient(
         loggingLevel: 'verbose',
         FormattingOptions: {
           EnableEditorConfigSupport: true,
-          OrganizeImports: true
+          OrganizeImports: true,
         },
         MsBuild: {
           EnablePackageRestore: true,
           ToolsVersion: null,
-          LoadProjectsOnDemand: false
+          LoadProjectsOnDemand: false,
         },
         RoslynExtensionsOptions: {
           EnableAnalyzersSupport: true,
@@ -481,17 +482,21 @@ export async function createLSPClient(
             ForOtherParameters: true,
             SuppressForParametersThatDifferOnlyBySuffix: true,
             SuppressForParametersThatMatchMethodIntent: true,
-            SuppressForParametersThatMatchArgumentName: true
-          }
+            SuppressForParametersThatMatchArgumentName: true,
+          },
         },
         FileOptions: {
-          SystemExcludeSearchPatterns: ['**/node_modules/**/*', '**/bin/**/*', '**/obj/**/*'],
-          ExcludeSearchPatterns: []
+          SystemExcludeSearchPatterns: [
+            '**/node_modules/**/*',
+            '**/bin/**/*',
+            '**/obj/**/*',
+          ],
+          ExcludeSearchPatterns: [],
         },
         Sdk: {
-          IncludePrereleases: true
-        }
-      })
+          IncludePrereleases: true,
+        },
+      }),
     },
     capabilities: {
       window: {
@@ -559,16 +564,7 @@ export async function createLSPClient(
     `Raw initialization result for ${serverID}: ${JSON.stringify(initResult)}`
   );
 
-  let parseResult;
-  try {
-    parseResult = InitializationResultSchema.safeParse(initResult);
-  } catch (error) {
-    log(
-      `Zod parse error for ${serverID}: ${error instanceof Error ? error.message : String(error)}`
-    );
-    log(`Full error details: ${JSON.stringify(error)}`);
-    throw new Error(`Failed to parse initialization result for ${serverID}`);
-  }
+  const parseResult = InitializationResultSchema.safeParse(initResult);
 
   if (!parseResult.success) {
     log(
@@ -588,7 +584,16 @@ export async function createLSPClient(
   await connection.sendNotification('initialized', {});
   log(`LSP server ${serverID} initialized`);
 
-  const client: LSPClient = {
+  async function attemptGracefulShutdown(): Promise<void> {
+    try {
+      await connection.sendRequest('shutdown');
+      await connection.sendNotification('exit');
+    } catch (error) {
+      log(`Error during graceful shutdown of ${serverID}: ${error}`);
+    }
+  }
+
+  const client = {
     serverID,
     root,
     createdAt: Date.now(),
@@ -618,9 +623,10 @@ export async function createLSPClient(
       const text = await file.text();
       const extension = path.extname(absolutePath);
       // Use config language extensions if available, otherwise fall back to defaults
-      const languageId = configLanguageExtensions?.[extension] || 
-                        LANGUAGE_EXTENSIONS[extension] || 
-                        'plaintext';
+      const languageId =
+        configLanguageExtensions?.[extension] ||
+        LANGUAGE_EXTENSIONS[extension] ||
+        'plaintext';
 
       log(`Sending didOpen for ${absolutePath} (${languageId})`);
       // Always use version 0 for didOpen
@@ -665,9 +671,7 @@ export async function createLSPClient(
 
     async closeAllFiles(): Promise<void> {
       log(`Closing all open files: ${client.openFiles.size} files`);
-      const closePromises = Array.from(client.openFiles).map(file =>
-        client.closeFile(file)
-      );
+      const closePromises = Array.from(client.openFiles).map(client.closeFile);
       await Promise.all(closePromises);
       log('All files closed');
     },
@@ -781,7 +785,7 @@ export async function createLSPClient(
             },
           }
         );
-        return (result as DocumentSymbol[] | SymbolInformation[]) || [];
+        return result as DocumentSymbol[] | SymbolInformation[];
       } catch (error) {
         log(`documentSymbol not supported or failed: ${error}`);
         return [];
@@ -918,12 +922,15 @@ export async function createLSPClient(
       await this.openFile(absolutePath);
 
       try {
-        const result = await connection.sendRequest('textDocument/signatureHelp', {
-          textDocument: {
-            uri: `file://${absolutePath}`,
-          },
-          position: position,
-        });
+        const result = await connection.sendRequest(
+          'textDocument/signatureHelp',
+          {
+            textDocument: {
+              uri: `file://${absolutePath}`,
+            },
+            position: position,
+          }
+        );
         return result as SignatureHelp | null;
       } catch (error) {
         log(`signatureHelp request failed: ${error}`);
@@ -946,12 +953,15 @@ export async function createLSPClient(
       await this.openFile(absolutePath);
 
       try {
-        const result = await connection.sendRequest('textDocument/declaration', {
-          textDocument: {
-            uri: `file://${absolutePath}`,
-          },
-          position: position,
-        });
+        const result = await connection.sendRequest(
+          'textDocument/declaration',
+          {
+            textDocument: {
+              uri: `file://${absolutePath}`,
+            },
+            position: position,
+          }
+        );
         return result as Declaration | DeclarationLink[] | null;
       } catch (error) {
         log(`declaration request failed: ${error}`);
@@ -986,12 +996,11 @@ export async function createLSPClient(
 
         const diagnosticReport = parseResult.data;
         if (diagnosticReport.kind === 'full') {
-          return (diagnosticReport.items as Diagnostic[]) || [];
-        } else if (diagnosticReport.kind === 'unchanged') {
+          return (diagnosticReport.items ?? []) as Diagnostic[];
+        } else {
           // Return previously cached diagnostics
           return this.getDiagnostics(absolutePath);
         }
-        return [];
       } catch (error) {
         log(`textDocument/diagnostic not supported or failed: ${error}`);
         throw error;
@@ -1000,26 +1009,20 @@ export async function createLSPClient(
 
     async shutdown(): Promise<void> {
       log(`Shutting down LSP client ${serverID}`);
-      
+
       // Try to gracefully shut down the LSP server first
-      try {
-        await connection.sendRequest('shutdown');
-        await connection.sendNotification('exit');
-      } catch (error) {
-        log(`Error during graceful shutdown of ${serverID}: ${error}`);
-      }
-      
+      await attemptGracefulShutdown();
+
       // Close the connection
       connection.end();
       connection.dispose();
-      
+
       // Kill the process and all its children
       const proc = serverHandle.process;
-      if (proc && !proc.killed) {
+      if (!proc.killed) {
         try {
           if (process.platform === 'win32') {
             // On Windows, use taskkill to kill the process tree
-            const { exec } = await import('child_process');
             await new Promise<void>((resolve) => {
               if (proc.pid) {
                 exec(`taskkill /pid ${proc.pid} /T /F`, (error) => {
@@ -1046,12 +1049,12 @@ export async function createLSPClient(
               // If process group doesn't exist, kill individual process
               proc.kill('SIGTERM');
             }
-            
+
             // Wait a bit for graceful shutdown
-            await new Promise(resolve => setTimeout(resolve, 2000));
-            
+            await new Promise((resolve) => setTimeout(resolve, 2000));
+
             // Force kill if still alive
-            if (!proc.killed) {
+            {
               try {
                 if (proc.pid) {
                   process.kill(-proc.pid, 'SIGKILL');
