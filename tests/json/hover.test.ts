@@ -67,7 +67,7 @@ See more: https://www.typescriptlang.org/tsconfig#target`);
     const output = stripAnsi(result.stdout.toString());
     expect(output)
       .toBe(`Location: tests/fixtures/json/valid/tsconfig-with-schema.json:7:5
-Enable all strict type checking options.
+Enable all strict type-checking options.
 
 See more: https://www.typescriptlang.org/tsconfig#strict`);
   }, 10000);
