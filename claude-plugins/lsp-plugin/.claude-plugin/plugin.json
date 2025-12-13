@@ -1,6 +1,6 @@
 {
   "name": "lsp-plugin",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Integrates CLI LSP Client with Claude Code using hooks for real-time language server updates",
   "author": {
     "name": "Eli Oshinsky",
