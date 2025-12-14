@@ -2,6 +2,10 @@ import { test, describe, expect } from 'bun:test';
 import { spawn } from 'child_process';
 import { CLI_PATH } from './test-utils.js';
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
 async function runMcpServer(
   requests: Record<string, unknown>[]
 ): Promise<Record<string, unknown>[]> {
@@ -24,8 +28,11 @@ async function runMcpServer(
         if (line && !line.startsWith('Starting LSPs')) {
           // Filter out daemon startup messages
           try {
-            const response = JSON.parse(line) as Record<string, unknown>;
-            responses.push(response);
+            const parsed = JSON.parse(line);
+            // Validate the response is a record before adding to responses
+            if (isRecord(parsed)) {
+              responses.push(parsed);
+            }
 
             // Send next request after receiving response
             if (
@@ -334,13 +341,18 @@ Adds two numbers together
       },
     ]);
 
-    expect(responses[1]).toEqual({
-      jsonrpc: '2.0',
-      id: 2,
-      error: {
-        code: -32602,
-        message: expect.stringContaining('symbol') as unknown,
-      },
-    });
+    // Check error response structure
+    const errorResponse = responses[1];
+    expect(errorResponse.jsonrpc).toBe('2.0');
+    expect(errorResponse.id).toBe(2);
+    expect(errorResponse.error).toBeDefined();
+    const errorObj = errorResponse.error;
+    if (typeof errorObj === 'object' && errorObj !== null && 'code' in errorObj && 'message' in errorObj) {
+      expect(errorObj.code).toBe(-32602);
+      expect(typeof errorObj.message).toBe('string');
+      expect(String(errorObj.message)).toContain('symbol');
+    } else {
+      throw new Error('Expected error object with code and message');
+    }
   }, 15000);
 });

@@ -134,10 +134,10 @@ type HoverResult = {
     const output = stripAnsi(result.stdout);
     // When hovering over an import, we get deduplicated results showing multiple locations for same content
     expect(output).toBe(`Location: src/lsp/formatter.ts:2:15
-Location: src/lsp/formatter.ts:20:39
-Location: src/lsp/formatter.ts:20:54
-Location: src/lsp/formatter.ts:50:16
-Location: src/lsp/formatter.ts:83:16
+Location: src/lsp/formatter.ts:21:39
+Location: src/lsp/formatter.ts:21:54
+Location: src/lsp/formatter.ts:51:16
+Location: src/lsp/formatter.ts:86:16
 \`\`\`typescript
 (alias) type Diagnostic = Diagnostic
 import Diagnostic

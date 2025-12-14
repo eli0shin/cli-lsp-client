@@ -30,6 +30,14 @@ import { LANGUAGE_EXTENSIONS } from './language.js';
 import { log } from '../logger.js';
 import { urlToFilePath } from '../utils.js';
 import type { LanguageExtensionMapping } from './config.js';
+import {
+  assertDocumentSymbolResult,
+  assertLocationResult,
+  assertHoverResult,
+  assertCompletionResult,
+  assertSignatureHelpResult,
+  assertDeclarationResult,
+} from '../type-guards.js';
 
 export async function createLSPClient(
   serverID: string,
@@ -785,7 +793,8 @@ export async function createLSPClient(
             },
           }
         );
-        return result as DocumentSymbol[] | SymbolInformation[];
+        assertDocumentSymbolResult(result);
+        return result;
       } catch (error) {
         log(`documentSymbol not supported or failed: ${error}`);
         return [];
@@ -813,7 +822,8 @@ export async function createLSPClient(
           },
           position: position,
         });
-        return result as Location[] | LocationLink[] | null;
+        assertLocationResult(result);
+        return result;
       } catch (error) {
         log(`definition request failed: ${error}`);
         return null;
@@ -844,7 +854,8 @@ export async function createLSPClient(
             position: position,
           }
         );
-        return result as Location[] | LocationLink[] | null;
+        assertLocationResult(result);
+        return result;
       } catch (error) {
         log(`typeDefinition request failed: ${error}`);
         return null;
@@ -872,7 +883,8 @@ export async function createLSPClient(
           },
           position: position,
         });
-        return result as Hover | null;
+        assertHoverResult(result);
+        return result;
       } catch (error) {
         log(`hover request failed: ${error}`);
         return null;
@@ -900,7 +912,8 @@ export async function createLSPClient(
           },
           position: position,
         });
-        return result as CompletionItem[] | CompletionList | null;
+        assertCompletionResult(result);
+        return result;
       } catch (error) {
         log(`completion request failed: ${error}`);
         return null;
@@ -931,7 +944,8 @@ export async function createLSPClient(
             position: position,
           }
         );
-        return result as SignatureHelp | null;
+        assertSignatureHelpResult(result);
+        return result;
       } catch (error) {
         log(`signatureHelp request failed: ${error}`);
         return null;
@@ -962,7 +976,8 @@ export async function createLSPClient(
             position: position,
           }
         );
-        return result as Declaration | DeclarationLink[] | null;
+        assertDeclarationResult(result);
+        return result;
       } catch (error) {
         log(`declaration request failed: ${error}`);
         return null;
@@ -996,7 +1011,7 @@ export async function createLSPClient(
 
         const diagnosticReport = parseResult.data;
         if (diagnosticReport.kind === 'full') {
-          return (diagnosticReport.items ?? []) as Diagnostic[];
+          return diagnosticReport.items ?? [];
         } else {
           // Return previously cached diagnostics
           return this.getDiagnostics(absolutePath);

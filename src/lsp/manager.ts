@@ -19,6 +19,7 @@ import {
 import { log } from '../logger.js';
 import { urlToFilePath } from '../utils.js';
 import { LANGUAGE_EXTENSIONS } from './language.js';
+import { isDocumentSymbolArray } from '../type-guards.js';
 
 // SymbolKind enum values from LSP spec
 const SymbolKind = {
@@ -238,7 +239,19 @@ export async function getDiagnostics(filePath: string): Promise<Diagnostic[]> {
       // Get diagnostics using pull or push approach based on server capabilities
       let diagnostics: Diagnostic[] = [];
 
-      if (client.serverCapabilities?.diagnosticProvider) {
+      // Check if file was pre-opened by PreToolUse hook
+      const fileAlreadyOpen = client.openFiles.has(absolutePath);
+
+      if (fileAlreadyOpen) {
+        // File was prepared by PreToolUse - clear stale pre-edit diagnostics
+        // and request fresh post-edit diagnostics
+        log(`File already open (PreToolUse), clearing stale diagnostics and refreshing`);
+        client.diagnostics.delete(absolutePath);
+        await client.sendChangeNotification(absolutePath);
+        await client.waitForDiagnostics(absolutePath, 3000);
+        diagnostics = client.getDiagnostics(absolutePath);
+        log(`Retrieved ${diagnostics.length} fresh diagnostics from ${server.id}`);
+      } else if (client.serverCapabilities?.diagnosticProvider) {
         // Use pull diagnostics (request/response pattern - no timeout issues!)
         try {
           log(`Using pull diagnostics for: ${absolutePath}`);
@@ -299,6 +312,92 @@ export async function getDiagnostics(filePath: string): Promise<Diagnostic[]> {
     `=== DIAGNOSTICS REQUEST COMPLETE - Total: ${allDiagnostics.length} diagnostics ===`
   );
   return allDiagnostics;
+}
+
+/**
+ * Opens a file and waits for initial diagnostics to settle.
+ * Used by PreToolUse hook to prepare files before Claude's edit.
+ * Does NOT close the file - leaves it open for PostToolUse to handle.
+ */
+export async function openFile(filePath: string): Promise<void> {
+  log(`=== OPEN FILE REQUEST START ===`);
+
+  const absolutePath = path.isAbsolute(filePath)
+    ? filePath
+    : path.resolve(process.cwd(), filePath);
+  log(`Opening file: ${absolutePath}`);
+
+  // Check if file exists
+  if (!(await Bun.file(absolutePath).exists())) {
+    log(`File does not exist, skipping: ${absolutePath}`);
+    return;
+  }
+
+  const applicableServers = await getApplicableServers(absolutePath);
+  log(
+    `Found ${applicableServers.length} applicable servers: ${applicableServers.map((s) => s.id).join(', ')}`
+  );
+
+  if (applicableServers.length === 0) {
+    log(`No LSP servers for file type`);
+    return;
+  }
+
+  for (const server of applicableServers) {
+    let root;
+    try {
+      root = await getProjectRoot(absolutePath, server);
+    } catch (error) {
+      log(
+        `Error getting project root for ${server.id}: ${error instanceof Error ? error.message : String(error)}`
+      );
+      continue;
+    }
+
+    const clientKey = getClientKey(server.id, root);
+
+    // Skip if this server/root combo is known to be broken
+    if (broken.has(clientKey)) {
+      log(`Skipping broken server: ${clientKey}`);
+      continue;
+    }
+
+    try {
+      const client = await getOrCreateClient(server, root);
+      if (!client) continue;
+
+      // Open file (this triggers initial diagnostics via didOpen)
+      await client.openFile(absolutePath);
+
+      // Wait 1 second for initial diagnostics to settle
+      // We don't care about these diagnostics - they're pre-edit
+      await client.waitForDiagnostics(absolutePath, 1000);
+
+      log(`File opened and initial diagnostics received: ${absolutePath}`);
+    } catch (error) {
+      log(
+        `Error opening file with ${server.id}: ${error instanceof Error ? error.message : String(error)}`
+      );
+    }
+  }
+
+  log(`=== OPEN FILE REQUEST COMPLETE ===`);
+}
+
+/**
+ * Checks if a file is currently open in any LSP client.
+ */
+export function isFileOpen(filePath: string): boolean {
+  const absolutePath = path.isAbsolute(filePath)
+    ? filePath
+    : path.resolve(process.cwd(), filePath);
+
+  for (const client of clients.values()) {
+    if (client.openFiles.has(absolutePath)) {
+      return true;
+    }
+  }
+  return false;
 }
 
 // Internal helper function to retry operations that might fail due to connection issues
@@ -587,7 +686,7 @@ function collectSymbolPositionsByName(
   if (symbols.length === 0) return positions;
 
   // Hierarchical DocumentSymbol format
-  if ('children' in symbols[0]) {
+  if (isDocumentSymbolArray(symbols)) {
     const walk = (syms: DocumentSymbol[]) => {
       for (const sym of syms) {
         if (sym.name === symbolName) {
@@ -600,13 +699,12 @@ function collectSymbolPositionsByName(
         }
       }
     };
-    walk(symbols as DocumentSymbol[]);
+    walk(symbols);
     return positions;
   }
 
   // Flat SymbolInformation format
-  const infos = symbols as SymbolInformation[];
-  for (const info of infos) {
+  for (const info of symbols) {
     if (info.name === symbolName) {
       // Without async file IO here, use the start of the symbol range
       positions.push(info.location.range.start);
@@ -622,7 +720,7 @@ function findSymbolAtPosition(
   position: Position
 ): DocumentSymbol | SymbolInformation | undefined {
   // Handle DocumentSymbol format (hierarchical)
-  if (symbols.length > 0 && 'children' in symbols[0]) {
+  if (isDocumentSymbolArray(symbols)) {
     const findInDocumentSymbols = (
       syms: DocumentSymbol[]
     ): DocumentSymbol | undefined => {
@@ -638,12 +736,11 @@ function findSymbolAtPosition(
       }
       return undefined;
     };
-    return findInDocumentSymbols(symbols as DocumentSymbol[]);
+    return findInDocumentSymbols(symbols);
   }
 
   // Handle SymbolInformation format (flat list)
-  const symbolInfos = symbols as SymbolInformation[];
-  return symbolInfos.find(
+  return symbols.find(
     (sym) =>
       sym.name === symbolName && positionInRange(position, sym.location.range)
   );

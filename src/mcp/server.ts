@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { sendToExistingDaemon } from '../client.js';
 import { ensureDaemonRunning } from '../utils.js';
 import type { HoverResult } from '../lsp/types.js';
+import { isHoverResultArray } from '../type-guards.js';
 
 const server = new McpServer({
   name: 'lsp-code-intelligence',
@@ -106,8 +107,10 @@ Try using a more specific symbol name or verifying the file path.`,
       }
 
       // Format the hover results as plain text (no ANSI codes)
-      const hoverResults = result as HoverResult[];
-      const formatted = formatHoverResultsPlain(hoverResults);
+      if (!isHoverResultArray(result)) {
+        throw new Error('Unexpected result type from daemon');
+      }
+      const formatted = formatHoverResultsPlain(result);
 
       return {
         content: [

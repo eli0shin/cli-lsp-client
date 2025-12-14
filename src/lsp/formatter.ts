@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import type { Diagnostic, HoverResult, Hover, SignatureHelp } from './types.js';
+import { isValidSeverityKey } from '../type-guards.js';
 
 const SEVERITY_NAMES = {
   1: 'ERROR',
@@ -58,10 +59,12 @@ export function formatDiagnostics(
 
   for (const diagnostic of sortedDiagnostics) {
     const severity = diagnostic.severity || 1;
-    const severityName =
-      SEVERITY_NAMES[severity as keyof typeof SEVERITY_NAMES] || 'UNKNOWN';
-    const color =
-      SEVERITY_COLORS[severity as keyof typeof SEVERITY_COLORS] || '';
+    const severityName = isValidSeverityKey(severity, SEVERITY_NAMES)
+      ? SEVERITY_NAMES[severity]
+      : 'UNKNOWN';
+    const color = isValidSeverityKey(severity, SEVERITY_COLORS)
+      ? SEVERITY_COLORS[severity]
+      : '';
 
     const line = diagnostic.range.start.line + 1; // LSP is 0-based, display is 1-based
     const col = diagnostic.range.start.character + 1;
@@ -91,8 +94,9 @@ export function formatDiagnosticsPlain(
 
   for (const diagnostic of sortedDiagnostics) {
     const severity = diagnostic.severity || 1;
-    const severityName =
-      SEVERITY_NAMES[severity as keyof typeof SEVERITY_NAMES] || 'UNKNOWN';
+    const severityName = isValidSeverityKey(severity, SEVERITY_NAMES)
+      ? SEVERITY_NAMES[severity]
+      : 'UNKNOWN';
 
     const line = diagnostic.range.start.line + 1; // LSP is 0-based, display is 1-based
     const col = diagnostic.range.start.character + 1;

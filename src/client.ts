@@ -3,16 +3,23 @@ import os from 'os';
 import path from 'path';
 import { readdir } from 'node:fs/promises';
 import { z } from 'zod';
-import { SOCKET_PATH, type StatusResult } from './daemon.js';
+import { SOCKET_PATH } from './daemon.js';
 import { formatDiagnostics, formatHoverResults } from './lsp/formatter.js';
-import type { Diagnostic, HoverResult } from './lsp/types.js';
+import { DiagnosticSchema, HoverResultSchema } from './lsp/types.js';
 import { ensureDaemonRunning } from './utils.js';
+import { isDiagnosticsArray, isHoverResultArray } from './type-guards.js';
 
-// Zod schema for daemon responses
+// Zod schema for daemon responses with proper result typing
+const DaemonResultSchema = z.union([
+  z.string(),
+  z.array(DiagnosticSchema),
+  z.array(HoverResultSchema),
+]);
+
 const DaemonResponseSchema = z.union([
   z.object({
     success: z.literal(true),
-    result: z.unknown(),
+    result: DaemonResultSchema,
   }),
   z.object({
     success: z.literal(false),
@@ -20,10 +27,13 @@ const DaemonResponseSchema = z.union([
   }),
 ]);
 
+// Infer the result type from schema
+type DaemonResult = z.infer<typeof DaemonResultSchema>;
+
 export async function sendToExistingDaemon(
   command: string,
   args: string[]
-): Promise<string | number | StatusResult> {
+): Promise<DaemonResult> {
   return new Promise((resolve, reject) => {
     const client = net.createConnection(SOCKET_PATH);
     let buffer = '';
@@ -46,7 +56,7 @@ export async function sendToExistingDaemon(
 
       const response = parseResult.data;
       if (response.success) {
-        resolve(response.result as string | number | StatusResult);
+        resolve(response.result);
       } else {
         reject(new Error(response.error));
       }
@@ -62,7 +72,7 @@ export async function sendToExistingDaemon(
       buffer += data.toString();
 
       try {
-        const rawResponse = JSON.parse(buffer) as unknown;
+        const rawResponse = JSON.parse(buffer);
         handleResponse(rawResponse);
       } catch (_error) {
         // JSON is incomplete, continue buffering
@@ -75,7 +85,7 @@ export async function sendToExistingDaemon(
       // If connection ends without successful parse, try one final parse
       if (buffer) {
         try {
-          const rawResponse = JSON.parse(buffer) as unknown;
+          const rawResponse = JSON.parse(buffer);
           handleResponse(rawResponse);
         } catch (_error) {
           resolved = true;
@@ -261,7 +271,7 @@ async function sendCommandToSocket(
       buffer += data.toString();
 
       try {
-        const rawResponse = JSON.parse(buffer) as unknown;
+        const rawResponse = JSON.parse(buffer);
         handleResponse(rawResponse);
       } catch (_error) {
         // JSON is incomplete, continue buffering
@@ -274,7 +284,7 @@ async function sendCommandToSocket(
       // If connection ends without successful parse, try one final parse
       if (buffer) {
         try {
-          const rawResponse = JSON.parse(buffer) as unknown;
+          const rawResponse = JSON.parse(buffer);
           handleResponse(rawResponse);
         } catch (_error) {
           resolved = true;
@@ -354,10 +364,8 @@ export async function listAllDaemons(): Promise<void> {
 
           // Get working directory from daemon
           try {
-            workingDir = (await sendCommandToSocket(
-              socketPath,
-              'pwd'
-            )) as string;
+            const pwdResult = await sendCommandToSocket(socketPath, 'pwd');
+            workingDir = typeof pwdResult === 'string' ? pwdResult : 'Unknown';
           } catch (_error) {
             workingDir = 'Unresponsive';
             status = 'Unresponsive';
@@ -455,10 +463,9 @@ export async function runCommand(
       const result = await sendToExistingDaemon(command, commandArgs);
 
       // Special formatting for diagnostics command
-      if (command === 'diagnostics' && Array.isArray(result)) {
-        const diagnostics = result as Diagnostic[];
+      if (command === 'diagnostics' && isDiagnosticsArray(result)) {
         const filePath = commandArgs[0] || 'unknown';
-        const output = formatDiagnostics(filePath, diagnostics);
+        const output = formatDiagnostics(filePath, result);
 
         if (output) {
           process.stderr.write(output + '\n');
@@ -466,10 +473,9 @@ export async function runCommand(
         } else {
           process.exit(0); // Exit with success code when no diagnostics
         }
-      } else if (command === 'hover' && Array.isArray(result)) {
+      } else if (command === 'hover' && isHoverResultArray(result)) {
         // Special formatting for hover command
-        const hoverResults = result as HoverResult[];
-        const formatted = await formatHoverResults(hoverResults);
+        const formatted = await formatHoverResults(result);
         process.stdout.write(formatted + '\n');
         process.exit(0);
       } else {

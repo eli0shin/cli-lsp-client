@@ -2,6 +2,12 @@ import type { Subprocess } from 'bun';
 import path from 'path';
 import { existsSync } from 'fs';
 import { execSync } from 'child_process';
+import { z } from 'zod';
+
+const PackageJsonSchema = z.object({
+  dependencies: z.record(z.string()).optional(),
+  devDependencies: z.record(z.string()).optional(),
+});
 
 /**
  * Returns the path to the current executable.
@@ -63,10 +69,9 @@ export async function ensurePackageInstalled(packageName: string): Promise<boole
     }
     
     // Check if package is already installed
-    const packageJson = await Bun.file(packageJsonPath).json() as {
-      dependencies?: Record<string, string>;
-      devDependencies?: Record<string, string>;
-    };
+    const packageJson = PackageJsonSchema.parse(
+      await Bun.file(packageJsonPath).json()
+    );
     if (packageJson.dependencies?.[packageName] || packageJson.devDependencies?.[packageName]) {
       return true;
     }

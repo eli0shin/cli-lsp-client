@@ -2,11 +2,13 @@ import net from 'net';
 import os from 'os';
 import path from 'path';
 import { z } from 'zod';
+import { hasProperty } from './type-guards.js';
 import {
   closeAllFiles,
   getRunningServers,
   getDiagnostics,
   getHover,
+  openFile,
   shutdown as shutdownLSPManager,
 } from './lsp/manager.js';
 import { detectProjectTypes, initializeDetectedServers } from './lsp/start.js';
@@ -69,12 +71,8 @@ export async function getCurrentConfig(): Promise<string | null> {
     const metadataText = await Bun.file(CONFIG_METADATA_FILE).text();
     const metadata: unknown = JSON.parse(metadataText);
 
-    if (
-      typeof metadata === 'object' &&
-      metadata !== null &&
-      'configPath' in metadata
-    ) {
-      const configPath = (metadata as { configPath: unknown }).configPath;
+    if (hasProperty(metadata, 'configPath')) {
+      const configPath = metadata.configPath;
       return typeof configPath === 'string' ? configPath : null;
     }
     return null;
@@ -265,6 +263,17 @@ export async function handleRequest(
       return hoverResults;
     }
 
+    case 'open-file': {
+      // Open file(s) for PreToolUse hook - keeps files open for PostToolUse
+      if (args.length === 0) {
+        throw new Error('open-file command requires file path(s)');
+      }
+      for (const filePath of args) {
+        await openFile(filePath);
+      }
+      return 'ok';
+    }
+
     case 'stop': {
       setTimeout(async () => await shutdown(), 100);
       return 'Daemon stopping...';
@@ -302,7 +311,7 @@ export async function startDaemon(): Promise<void> {
 
     socket.on('data', async (data) => {
       try {
-        const rawRequest = JSON.parse(data.toString()) as unknown;
+        const rawRequest = JSON.parse(data.toString());
         const parseResult = RequestSchema.safeParse(rawRequest);
 
         if (!parseResult.success) {
@@ -319,7 +328,14 @@ export async function startDaemon(): Promise<void> {
         const request = parseResult.data;
         log(`Received request: ${JSON.stringify(request)}`);
 
-        const result = await handleRequestWithLifecycle(request);
+        // Special handling for open-file - skip file closing lifecycle
+        // This keeps files open between PreToolUse and PostToolUse hooks
+        let result;
+        if (request.command === 'open-file') {
+          result = await handleRequest(request);
+        } else {
+          result = await handleRequestWithLifecycle(request);
+        }
 
         socket.write(
           JSON.stringify({

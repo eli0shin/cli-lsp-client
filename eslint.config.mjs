@@ -132,6 +132,12 @@ export default tseslint.config(
         },
       ],
       '@typescript-eslint/prefer-readonly': 'error',
+      '@typescript-eslint/consistent-type-assertions': [
+        'error',
+        {
+          assertionStyle: 'never',
+        },
+      ],
       '@typescript-eslint/no-non-null-assertion': 'off',
       'no-useless-constructor': 'off',
       '@typescript-eslint/no-useless-constructor': 'error',
