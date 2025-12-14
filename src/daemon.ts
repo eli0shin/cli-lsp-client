@@ -2,6 +2,7 @@ import net from 'net';
 import os from 'os';
 import path from 'path';
 import { z } from 'zod';
+import { hasProperty } from './type-guards.js';
 import {
   closeAllFiles,
   getRunningServers,
@@ -70,12 +71,8 @@ export async function getCurrentConfig(): Promise<string | null> {
     const metadataText = await Bun.file(CONFIG_METADATA_FILE).text();
     const metadata: unknown = JSON.parse(metadataText);
 
-    if (
-      typeof metadata === 'object' &&
-      metadata !== null &&
-      'configPath' in metadata
-    ) {
-      const configPath = (metadata as { configPath: unknown }).configPath;
+    if (hasProperty(metadata, 'configPath')) {
+      const configPath = metadata.configPath;
       return typeof configPath === 'string' ? configPath : null;
     }
     return null;
@@ -314,7 +311,7 @@ export async function startDaemon(): Promise<void> {
 
     socket.on('data', async (data) => {
       try {
-        const rawRequest = JSON.parse(data.toString()) as unknown;
+        const rawRequest = JSON.parse(data.toString());
         const parseResult = RequestSchema.safeParse(rawRequest);
 
         if (!parseResult.success) {

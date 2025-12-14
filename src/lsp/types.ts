@@ -305,6 +305,19 @@ export const PublishDiagnosticsSchema = z.object({
   diagnostics: z.array(DiagnosticSchema).optional(),
 });
 
+// HoverResult schema - validates structure, allows complex LSP types to pass through
+export const HoverResultSchema = z.object({
+  symbol: z.string(),
+  hover: z.unknown(), // Hover from LSP is complex, defer to runtime
+  signature: z.unknown().optional(), // SignatureHelp is complex
+  location: z.object({
+    file: z.string(),
+    line: z.number(),
+    column: z.number(),
+  }),
+  description: z.string(),
+});
+
 // Inferred TypeScript types from Zod schemas
 export type DiagnosticOptions = z.infer<typeof DiagnosticOptionsSchema>;
 export type DiagnosticProvider = z.infer<typeof DiagnosticProviderSchema>;

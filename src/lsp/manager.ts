@@ -19,6 +19,7 @@ import {
 import { log } from '../logger.js';
 import { urlToFilePath } from '../utils.js';
 import { LANGUAGE_EXTENSIONS } from './language.js';
+import { isDocumentSymbolArray } from '../type-guards.js';
 
 // SymbolKind enum values from LSP spec
 const SymbolKind = {
@@ -685,7 +686,7 @@ function collectSymbolPositionsByName(
   if (symbols.length === 0) return positions;
 
   // Hierarchical DocumentSymbol format
-  if ('children' in symbols[0]) {
+  if (isDocumentSymbolArray(symbols)) {
     const walk = (syms: DocumentSymbol[]) => {
       for (const sym of syms) {
         if (sym.name === symbolName) {
@@ -698,13 +699,12 @@ function collectSymbolPositionsByName(
         }
       }
     };
-    walk(symbols as DocumentSymbol[]);
+    walk(symbols);
     return positions;
   }
 
   // Flat SymbolInformation format
-  const infos = symbols as SymbolInformation[];
-  for (const info of infos) {
+  for (const info of symbols) {
     if (info.name === symbolName) {
       // Without async file IO here, use the start of the symbol range
       positions.push(info.location.range.start);
@@ -720,7 +720,7 @@ function findSymbolAtPosition(
   position: Position
 ): DocumentSymbol | SymbolInformation | undefined {
   // Handle DocumentSymbol format (hierarchical)
-  if (symbols.length > 0 && 'children' in symbols[0]) {
+  if (isDocumentSymbolArray(symbols)) {
     const findInDocumentSymbols = (
       syms: DocumentSymbol[]
     ): DocumentSymbol | undefined => {
@@ -736,12 +736,11 @@ function findSymbolAtPosition(
       }
       return undefined;
     };
-    return findInDocumentSymbols(symbols as DocumentSymbol[]);
+    return findInDocumentSymbols(symbols);
   }
 
   // Handle SymbolInformation format (flat list)
-  const symbolInfos = symbols as SymbolInformation[];
-  return symbolInfos.find(
+  return symbols.find(
     (sym) =>
       sym.name === symbolName && positionInRange(position, sym.location.range)
   );

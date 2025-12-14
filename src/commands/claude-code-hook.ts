@@ -2,8 +2,8 @@ import type { Command } from '@commander-js/extra-typings';
 import path from 'path';
 import { sendToExistingDaemon } from '../client.js';
 import { formatDiagnosticsPlain } from '../lsp/formatter.js';
-import type { Diagnostic } from '../lsp/types.js';
 import { ensureDaemonRunning, readHookInput } from '../utils.js';
+import { isDiagnosticsArray } from '../type-guards.js';
 
 type HookData = {
   hook_event_name?: string;
@@ -186,14 +186,12 @@ export async function handleClaudeCodeHook(
     const result = await sendToExistingDaemon('diagnostics', [filePath]);
 
     // The diagnostics command returns an array of diagnostics
-    if (!Array.isArray(result) || result.length === 0) {
+    if (!isDiagnosticsArray(result) || result.length === 0) {
       return { hasIssues: false, output: '' };
     }
 
-    const diagnostics = result as Diagnostic[];
-
     // Format output for Claude Code hook (plain text, no ANSI codes)
-    const formatted = formatDiagnosticsPlain(filePath, diagnostics);
+    const formatted = formatDiagnosticsPlain(filePath, result);
     return { hasIssues: true, output: formatted || '' };
   } catch (_error) {
     // Silently fail - don't break Claude Code experience

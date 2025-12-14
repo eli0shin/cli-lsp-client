@@ -8,15 +8,19 @@ import { build } from "./build.ts"
 
 type BumpType = "patch" | "minor" | "major"
 
+function isBumpType(value: string): value is BumpType {
+  return value === "patch" || value === "minor" || value === "major"
+}
+
 const program = new Command()
   .name("release")
   .description("Release a new version of cli-lsp-client")
   .version(pkg.version)
   .argument("[bump]", "version bump type (patch, minor, major)", (value) => {
-    if (value && !["patch", "minor", "major"].includes(value)) {
+    if (value && !isBumpType(value)) {
       throw new Error(`Invalid bump type: ${value}. Must be patch, minor, or major.`)
     }
-    return value as BumpType | undefined
+    return value
   })
   .option("--skip-tests", "skip running tests")
   .option("--dry-run", "perform a dry run without publishing")
@@ -43,8 +47,8 @@ async function determineVersion(): Promise<string> {
   console.log(`Current version: ${currentVersion}`)
 
   // If bump type provided, use it
-  if (bumpType) {
-    const newVersion = bumpVersion(currentVersion, bumpType as BumpType)
+  if (bumpType && isBumpType(bumpType)) {
+    const newVersion = bumpVersion(currentVersion, bumpType)
     console.log(`📦 Bumping ${bumpType}: ${currentVersion} → ${newVersion}`)
     return newVersion
   }
