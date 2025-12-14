@@ -156,4 +156,57 @@ describe('Claude Code Hook', () => {
 [typescript] HINT at line 7, column 9: 'x' is declared but its value is never read. [6133]`
     });
   });
+
+  test('should handle PreToolUse event and return empty output', async () => {
+    const input = JSON.stringify({
+      hook_event_name: 'PreToolUse',
+      tool_input: {
+        file_path: 'tests/fixtures/typescript/valid/simple-function.ts',
+      },
+    });
+    const result = await runHookCommand(input, { CLAUDE_PLUGIN_ROOT: '/tmp/plugin' });
+
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout).toBe('{}');
+  }, 10000);
+
+  test('should handle PreToolUse with MultiEdit file extraction', async () => {
+    const input = JSON.stringify({
+      hook_event_name: 'PreToolUse',
+      tool_input: {
+        edits: [
+          { file_path: 'tests/fixtures/typescript/valid/simple-function.ts' },
+          { file_path: 'tests/fixtures/javascript/valid/simple-module.js' },
+        ],
+      },
+    });
+    const result = await runHookCommand(input, { CLAUDE_PLUGIN_ROOT: '/tmp/plugin' });
+
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout).toBe('{}');
+  }, 10000);
+
+  test('should handle PreToolUse in non-plugin mode', async () => {
+    const input = JSON.stringify({
+      hook_event_name: 'PreToolUse',
+      tool_input: {
+        file_path: 'tests/fixtures/typescript/valid/simple-function.ts',
+      },
+    });
+    const result = await runHookCommand(input);
+
+    expect(result.exitCode).toBe(0);
+    expect(result.stderr).toBe('');
+  }, 10000);
+
+  test('should handle PreToolUse with no file path', async () => {
+    const input = JSON.stringify({
+      hook_event_name: 'PreToolUse',
+      tool_input: {},
+    });
+    const result = await runHookCommand(input, { CLAUDE_PLUGIN_ROOT: '/tmp/plugin' });
+
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout).toBe('{}');
+  });
 });

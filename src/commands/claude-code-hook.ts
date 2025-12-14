@@ -5,6 +5,31 @@ import { formatDiagnosticsPlain } from '../lsp/formatter.js';
 import type { Diagnostic } from '../lsp/types.js';
 import { ensureDaemonRunning, readHookInput } from '../utils.js';
 
+type HookData = {
+  hook_event_name?: string;
+  tool_input?: {
+    file_path?: string;
+    edits?: Array<{ file_path?: string }>;
+  };
+};
+
+/**
+ * Extracts file paths from hook data, handling Edit, Write, and MultiEdit tools.
+ */
+function extractFilePaths(hookData: HookData): string[] {
+  // For Edit/Write: tool_input.file_path
+  if (hookData.tool_input?.file_path) {
+    return [hookData.tool_input.file_path];
+  }
+  // For MultiEdit: tool_input.edits[].file_path
+  if (hookData.tool_input?.edits && Array.isArray(hookData.tool_input.edits)) {
+    return hookData.tool_input.edits
+      .map((edit) => edit.file_path)
+      .filter((fp): fp is string => !!fp);
+  }
+  return [];
+}
+
 export function registerClaudeCodeHookCommand(program: Command) {
   program
     .command('claude-code-hook')
@@ -12,7 +37,7 @@ export function registerClaudeCodeHookCommand(program: Command) {
     .action(async () => {
       try {
         const isPluginMode = !!process.env.CLAUDE_PLUGIN_ROOT;
-        const hookData = await readHookInput();
+        const hookData = (await readHookInput()) as HookData | null;
 
         if (!hookData) {
           if (isPluginMode) {
@@ -20,7 +45,26 @@ export function registerClaudeCodeHookCommand(program: Command) {
           }
           process.exit(0); // No input or invalid JSON, silently exit
         }
-        // Extract file_path from PostToolUse tool_input
+
+        const hookEventName = hookData.hook_event_name;
+
+        // Handle PreToolUse: open file(s) to prepare for edit
+        if (hookEventName === 'PreToolUse') {
+          const filePaths = extractFilePaths(hookData);
+          if (filePaths.length > 0) {
+            const daemonStarted = await ensureDaemonRunning();
+            if (daemonStarted) {
+              await sendToExistingDaemon('open-file', filePaths);
+            }
+          }
+          // Always exit 0 with empty output for PreToolUse
+          if (isPluginMode) {
+            process.stdout.write('{}');
+          }
+          process.exit(0);
+        }
+
+        // Handle PostToolUse: get diagnostics after edit
         const filePath = hookData.tool_input?.file_path;
 
         if (!filePath) {
