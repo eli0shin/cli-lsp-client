@@ -96,6 +96,17 @@ Add the following to your Claude Code settings.json:
         ]
       }
     ],
+    "PreToolUse": [
+      {
+        "matcher": "Edit|MultiEdit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bunx cli-lsp-client claude-code-hook"
+          }
+        ]
+      }
+    ],
     "PostToolUse": [
       {
         "matcher": "Edit|MultiEdit|Write",
@@ -114,6 +125,7 @@ Add the following to your Claude Code settings.json:
 #### How It Works
 
 - **SessionStart**: Automatically starts LSP servers when Claude Code starts for faster initial diagnostics
+- **PreToolUse**: Opens the file in the LSP (like an IDE would) to improve diagnostic accuracy
 - **PostToolUse**: Runs diagnostics after each file edit (Edit, MultiEdit, Write tools)
 - Built-in file filtering for all supported languages (16 file types)
 - Shows errors, warnings, and hints inline
