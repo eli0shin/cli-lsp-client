@@ -9,7 +9,7 @@ type HookData = {
   hook_event_name?: string;
   tool_input?: {
     file_path?: string;
-    edits?: Array<{ file_path?: string }>;
+    edits?: { file_path?: string }[];
   };
 };
 
@@ -25,7 +25,7 @@ function extractFilePaths(hookData: HookData): string[] {
   if (hookData.tool_input?.edits && Array.isArray(hookData.tool_input.edits)) {
     return hookData.tool_input.edits
       .map((edit) => edit.file_path)
-      .filter((fp): fp is string => !!fp);
+      .filter((fp) => typeof fp === 'string');
   }
   return [];
 }
@@ -37,7 +37,7 @@ export function registerClaudeCodeHookCommand(program: Command) {
     .action(async () => {
       try {
         const isPluginMode = !!process.env.CLAUDE_PLUGIN_ROOT;
-        const hookData = (await readHookInput()) as HookData | null;
+        const hookData = await readHookInput();
 
         if (!hookData) {
           if (isPluginMode) {
