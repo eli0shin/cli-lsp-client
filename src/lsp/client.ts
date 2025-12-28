@@ -1060,7 +1060,7 @@ export async function createLSPClient(
               } else {
                 proc.kill('SIGTERM');
               }
-            } catch (e) {
+            } catch (_e) {
               // If process group doesn't exist, kill individual process
               proc.kill('SIGTERM');
             }
@@ -1076,7 +1076,7 @@ export async function createLSPClient(
                 } else {
                   proc.kill('SIGKILL');
                 }
-              } catch (e) {
+              } catch (_e) {
                 // If process group doesn't exist, kill individual process
                 proc.kill('SIGKILL');
               }

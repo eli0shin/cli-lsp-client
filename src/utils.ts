@@ -79,7 +79,7 @@ export function urlToFilePath(url: string): string {
   try {
     const urlObj = new URL(url);
     return decodeURIComponent(urlObj.pathname);
-  } catch (error) {
+  } catch (_error) {
     // Fallback to undecoded pathname if decodeURIComponent fails
     try {
       return new URL(url).pathname;

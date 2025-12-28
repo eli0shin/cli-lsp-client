@@ -40,13 +40,19 @@ export async function killAllLSPProcesses(): Promise<void> {
           });
         } else {
           // On Unix-like systems, kill the process group
+          const pid = proc.pid;
           try {
-            process.kill(-proc.pid!, 'SIGKILL');
-            log(`Killed process group -${proc.pid}`);
-          } catch (e) {
+            if (pid) {
+              process.kill(-pid, 'SIGKILL');
+              log(`Killed process group -${pid}`);
+            } else {
+              proc.kill('SIGKILL');
+              log(`Killed individual process (no pid)`);
+            }
+          } catch (_e) {
             // If process group doesn't exist, kill individual process
             proc.kill('SIGKILL');
-            log(`Killed individual process ${proc.pid}`);
+            log(`Killed individual process ${pid}`);
           }
         }
       } catch (error) {
