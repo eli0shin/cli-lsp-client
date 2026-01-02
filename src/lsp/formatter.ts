@@ -139,10 +139,12 @@ export async function formatHoverResults(
       : '';
     const contentKey = `${hoverContent}|${signatureContent}`;
 
-    if (!contentGroups.has(contentKey)) {
-      contentGroups.set(contentKey, []);
+    let group = contentGroups.get(contentKey);
+    if (!group) {
+      group = [];
+      contentGroups.set(contentKey, group);
     }
-    contentGroups.get(contentKey)!.push(result);
+    group.push(result);
   });
 
   const output: string[] = [];

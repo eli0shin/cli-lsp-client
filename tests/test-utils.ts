@@ -15,7 +15,6 @@ export function getLogPath(): string {
 export function stripAnsi(str: string): string {
   return (
     str
-      // eslint-disable-next-line no-control-regex
       .replace(/\u001b\[[0-9;]*m/g, '')
       .replace(/^\n/, '')
       .replace(/\xa0/g, ' ')

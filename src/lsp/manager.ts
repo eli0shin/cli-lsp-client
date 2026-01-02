@@ -910,23 +910,29 @@ export async function shutdown(): Promise<void> {
       );
 
       // Force kill if graceful shutdown fails
-      if (client.process && !client.process.killed) {
+      const proc = client.process;
+      if (proc && !proc.killed) {
         try {
+          const pid = proc.pid;
           if (process.platform === 'win32') {
             await new Promise<void>((resolve) => {
-              exec(`taskkill /pid ${client.process!.pid} /T /F`, () => {
+              exec(`taskkill /pid ${pid} /T /F`, () => {
                 resolve();
               });
             });
           } else {
             // Kill process group forcefully
             try {
-              process.kill(-client.process.pid!, 'SIGKILL');
-            } catch (e) {
-              client.process.kill('SIGKILL');
+              if (pid) {
+                process.kill(-pid, 'SIGKILL');
+              } else {
+                proc.kill('SIGKILL');
+              }
+            } catch (_e) {
+              proc.kill('SIGKILL');
             }
           }
-          log(`Force killed ${client.serverID} process ${client.process.pid}`);
+          log(`Force killed ${client.serverID} process ${pid}`);
         } catch (killError) {
           log(`Failed to force kill ${client.serverID}: ${killError}`);
         }

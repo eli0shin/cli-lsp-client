@@ -49,7 +49,7 @@ async function runMcpServer(
                 proc.kill();
               }, 100);
             }
-          } catch (e) {
+          } catch (_e) {
             // Invalid JSON, ignore
           }
         }

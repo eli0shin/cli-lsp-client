@@ -122,7 +122,7 @@ export async function ensureConfigDirectory(
 
   try {
     await Bun.write(Bun.file(configDir + '/.keep'), '');
-  } catch (error) {
+  } catch (_error) {
     // Directory creation via write will create parent directories
     // If it fails, the directory might already exist, which is fine
     // We only care if we can't write to the directory when needed

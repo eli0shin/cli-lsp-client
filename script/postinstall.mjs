@@ -97,9 +97,8 @@ async function regenerateWindowsCmdWrappers() {
 async function stopExistingDaemons() {
   try {
     const { spawn } = require("child_process")
-    const child = spawn("cli-lsp-client", ["stop-all"], { stdio: "inherit" })
-    child.on("error", () => {})
-  } catch (error) {
+    spawn("cli-lsp-client", ["stop-all"], { stdio: "ignore" })
+  } catch {
     // Ignore errors - daemon might not be running
   }
 }
