@@ -36,7 +36,8 @@
   "files": [
     "bin/",
     "script/preinstall.mjs",
-    "script/postinstall.mjs"
+    "script/postinstall.mjs",
+    "README.md"
   ],
   "homepage": "https://github.com/eli0shin/cli-lsp-client#readme",
   "license": "MIT",
