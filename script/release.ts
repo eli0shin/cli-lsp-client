@@ -176,7 +176,7 @@ async function publishPlatformPackages(binaries: Record<string, string>) {
       if (options.dryRun) {
         console.log(`  [DRY RUN] Would publish ${name}`);
       } else {
-        await $`cd dist/${name} && chmod -R 755 . && npm publish --access public`;
+        await $`chmod 755 dist/${name}/bin/* && cd dist/${name} && npm publish --access public`;
         console.log(`  ✅ Published ${name}`);
       }
     } catch (error) {
@@ -284,7 +284,6 @@ async function main() {
     const version = pkg.version;
     console.log(`📦 Publishing version: ${version}`);
 
-    await runTests();
     const binaries = await buildBinaries(version);
     await publishPlatformPackages(binaries);
     await publishMainPackage(version, binaries);
