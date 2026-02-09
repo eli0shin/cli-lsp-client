@@ -46,7 +46,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '22'
+          node-version: '24'
 
       - name: Setup Go for gopls
         uses: actions/setup-go@v4
@@ -68,7 +68,7 @@ jobs:
         run: |
           # Install Lua dependencies (these are small and quick)
           sudo apt-get install -y lua5.4 lua5.4-dev
-          
+
           # Check if lua-language-server is already installed (from cache)
           if [ ! -f "${{ github.workspace }}/.local/lua-language-server/bin/lua-language-server" ]; then
             echo "Installing Lua language server to user directory..."
@@ -85,7 +85,7 @@ jobs:
           else
             echo "Lua language server found in cache, skipping installation"
           fi
-          
+
           # Create wrapper script in local bin
           mkdir -p "${{ github.workspace }}/.local/bin"
           cat > "${{ github.workspace }}/.local/bin/lua-language-server" << 'EOF'
@@ -93,7 +93,7 @@ jobs:
           "${{ github.workspace }}/.local/lua-language-server/bin/lua-language-server" "$@"
           EOF
           chmod +x "${{ github.workspace }}/.local/bin/lua-language-server"
-          
+
           # Add to PATH for all subsequent steps
           echo "${{ github.workspace }}/.local/bin" >> $GITHUB_PATH
 
@@ -106,7 +106,7 @@ jobs:
           echo "Installing R system packages..."
           sudo apt-get update
           sudo apt-get install -y r-base r-base-dev libcurl4-openssl-dev libssl-dev libxml2-dev
-          
+
           # Check if languageserver package is installed in user library
           if [ ! -d "${{ github.workspace }}/.R/library/languageserver" ]; then
             echo "Installing R languageserver package to user library..."
@@ -114,7 +114,7 @@ jobs:
           else
             echo "R languageserver found in cache, skipping installation"
           fi
-          
+
           # Verify R and languageserver installation
           R --version
           R --slave -e 'packageVersion("languageserver")'
@@ -143,13 +143,13 @@ jobs:
           else
             echo ".NET SDK found in cache, skipping installation"
           fi
-          
+
           # Add .NET to PATH for all subsequent steps
           echo "${{ github.workspace }}/.dotnet" >> $GITHUB_PATH
-          
+
           # Verify .NET installation
           dotnet --version
-          
+
           # Check if OmniSharp is already installed (from cache)
           if [ ! -f "${{ github.workspace }}/.local/bin/omnisharp" ]; then
             echo "Installing OmniSharp to user directory..."
@@ -165,7 +165,7 @@ jobs:
           else
             echo "OmniSharp found in cache, skipping installation"
           fi
-          
+
           # PATH already added by Lua setup, verify OmniSharp installation
           omnisharp --help
 
@@ -201,7 +201,7 @@ jobs:
           find tests -name "*.test.ts" -not -path "*/java/*" -not -path "*/json/*" -not -path "*/bash/hover.test.ts" | xargs bun test --timeout 120000
 
       - name: Collect debug information
-        if: always()  # Run even if tests fail
+        if: always() # Run even if tests fail
         env:
           CLI_LSP_CLIENT_BIN_PATH: ./dist/cli-lsp-client-linux-x64/bin/cli-lsp-client
         run: |
@@ -225,7 +225,7 @@ jobs:
           fi
 
       - name: Upload LSP daemon logs
-        if: always()  # This ensures artifacts are uploaded even if tests fail or are cancelled
+        if: always() # This ensures artifacts are uploaded even if tests fail or are cancelled
         env:
           CLI_LSP_CLIENT_BIN_PATH: ./dist/cli-lsp-client-linux-x64/bin/cli-lsp-client
         run: |
