@@ -1,6 +1,5 @@
 #!/bin/bash
 
-# Utility functions for LSP plugin hooks
 
 NATIVE_BINARY="$HOME/.local/bin/cli-lsp-client"
 REPO="eli0shin/cli-lsp-client"
