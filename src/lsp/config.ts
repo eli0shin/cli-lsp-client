@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import type { LSPServer } from './types.js';
+import type { UpdateBehavior } from '../update-types.js';
 
 // Zod schema for user-defined LSP server configuration
 // Note: dynamicArgs is excluded from config file format for simplicity
@@ -30,6 +31,7 @@ export const LanguageExtensionMappingSchema = z.record(
 export const ConfigFileSchema = z.object({
   servers: z.array(ConfigLSPServerSchema).default([]),
   languageExtensions: LanguageExtensionMappingSchema.optional(),
+  updateBehavior: z.enum(['auto', 'off']).optional(),
 });
 
 // TypeScript types inferred from schemas
@@ -38,6 +40,11 @@ export type LanguageExtensionMapping = z.infer<
   typeof LanguageExtensionMappingSchema
 >;
 export type ConfigFile = z.infer<typeof ConfigFileSchema>;
+
+// Extract update behavior from config, defaulting to 'auto'
+export function getUpdateBehavior(config: ConfigFile | null): UpdateBehavior {
+  return config?.updateBehavior ?? 'auto';
+}
 
 // Function to convert config server to LSPServer type
 export function configServerToLSPServer(

@@ -37,3 +37,40 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NPM_CONFIG_PROVENANCE: true
+
+      - name: Check if release needs binaries
+        id: check-release
+        run: |
+          VERSION="v$(jq -r .version package.json)"
+          if gh release view "$VERSION" &>/dev/null; then
+            ASSET_COUNT=$(gh release view "$VERSION" --json assets --jq '.assets | length')
+            if [ "$ASSET_COUNT" -eq 0 ]; then
+              echo "Release exists with no binaries, will upload"
+              echo "needs_binaries=true" >> $GITHUB_OUTPUT
+              echo "version=$VERSION" >> $GITHUB_OUTPUT
+            else
+              echo "Release already has $ASSET_COUNT assets, skipping"
+              echo "needs_binaries=false" >> $GITHUB_OUTPUT
+            fi
+          else
+            echo "No release found for $VERSION"
+            echo "needs_binaries=false" >> $GITHUB_OUTPUT
+          fi
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload binaries to release
+        if: steps.check-release.outputs.needs_binaries == 'true'
+        run: |
+          cp dist/cli-lsp-client-linux-x64/bin/cli-lsp-client cli-lsp-client-linux-x64
+          cp dist/cli-lsp-client-linux-arm64/bin/cli-lsp-client cli-lsp-client-linux-arm64
+          cp dist/cli-lsp-client-darwin-x64/bin/cli-lsp-client cli-lsp-client-darwin-x64
+          cp dist/cli-lsp-client-darwin-arm64/bin/cli-lsp-client cli-lsp-client-darwin-arm64
+          gh release upload "${{ steps.check-release.outputs.version }}" \
+            cli-lsp-client-linux-x64 \
+            cli-lsp-client-linux-arm64 \
+            cli-lsp-client-darwin-x64 \
+            cli-lsp-client-darwin-arm64 \
+            --clobber
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
