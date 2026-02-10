@@ -1,5 +1,11 @@
 # cli-lsp-client
 
+## 1.21.1
+
+### Patch Changes
+
+- [`18d3495`](https://github.com/eli0shin/cli-lsp-client/commit/18d34954e271c24e4ea3ca9d72f9053383f83984) Thanks [@eli0shin](https://github.com/eli0shin)! - Fix mac arm build publishing by configuring trusted publishing for the darwin-arm64 platform package
+
 ## 1.21.0
 
 ### Minor Changes
