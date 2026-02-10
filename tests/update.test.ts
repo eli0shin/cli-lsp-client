@@ -45,6 +45,18 @@ describe('isPrerelease', () => {
   test('returns true for rc version', () => {
     expect(isPrerelease('2.0.0-rc.1')).toBe(true);
   });
+
+  test('returns true for alpha version', () => {
+    expect(isPrerelease('1.0.0-alpha.0')).toBe(true);
+  });
+
+  test('returns false for garbage input', () => {
+    expect(isPrerelease('garbage')).toBe(false);
+  });
+
+  test('returns false for empty string', () => {
+    expect(isPrerelease('')).toBe(false);
+  });
 });
 
 describe('isNewerVersion', () => {
@@ -70,6 +82,38 @@ describe('isNewerVersion', () => {
 
   test('returns false when current minor is higher', () => {
     expect(isNewerVersion('1.5.0', '1.4.0')).toBe(false);
+  });
+
+  test('returns true when latest is prerelease of higher patch', () => {
+    expect(isNewerVersion('1.0.0', '1.0.1-beta.1')).toBe(true);
+  });
+
+  test('returns false when latest is prerelease of same version', () => {
+    expect(isNewerVersion('1.0.1', '1.0.1-beta.1')).toBe(false);
+  });
+
+  test('returns true when comparing prerelease to its release', () => {
+    expect(isNewerVersion('2.0.0-beta.1', '2.0.0')).toBe(true);
+  });
+
+  test('returns true for higher prerelease number', () => {
+    expect(isNewerVersion('2.0.0-beta.1', '2.0.0-beta.2')).toBe(true);
+  });
+
+  test('returns false when current is garbage', () => {
+    expect(isNewerVersion('garbage', '1.0.0')).toBe(false);
+  });
+
+  test('returns false when latest is garbage', () => {
+    expect(isNewerVersion('1.0.0', 'garbage')).toBe(false);
+  });
+
+  test('returns false when both are empty strings', () => {
+    expect(isNewerVersion('', '')).toBe(false);
+  });
+
+  test('returns false when both are garbage', () => {
+    expect(isNewerVersion('garbage', 'garbage')).toBe(false);
   });
 });
 

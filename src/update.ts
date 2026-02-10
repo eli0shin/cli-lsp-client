@@ -1,6 +1,7 @@
 import { platform, arch } from 'node:os';
 import { join } from 'node:path';
 import { chmod, rename, unlink } from 'node:fs/promises';
+import { valid, gt, prerelease } from 'semver';
 import type {
   OperationResult,
   Platform,
@@ -24,19 +25,12 @@ export function getBinaryName(p: Platform, a: Architecture): string {
 }
 
 export function isPrerelease(version: string): boolean {
-  return version.includes('-');
+  return prerelease(version) !== null;
 }
 
 export function isNewerVersion(current: string, latest: string): boolean {
-  const parse = (v: string) => v.split('.').map(Number);
-  const [curMajor, curMinor, curPatch] = parse(current);
-  const [latMajor, latMinor, latPatch] = parse(latest);
-
-  if (latMajor > curMajor) return true;
-  if (latMajor < curMajor) return false;
-  if (latMinor > curMinor) return true;
-  if (latMinor < curMinor) return false;
-  return latPatch > curPatch;
+  if (!valid(current) || !valid(latest)) return false;
+  return gt(latest, current);
 }
 
 export function getPlatform(): OperationResult<Platform> {
