@@ -1,5 +1,11 @@
 # cli-lsp-client
 
+## 1.22.0
+
+### Minor Changes
+
+- [#43](https://github.com/eli0shin/cli-lsp-client/pull/43) [`48a3b6d`](https://github.com/eli0shin/cli-lsp-client/commit/48a3b6d59f1807cd48a0ddee6851a4e1dd3ea46e) Thanks [@eli0shin](https://github.com/eli0shin)! - Add GitHub Releases binary publishing, install script for direct binary installation via curl, and auto-update system that checks for new versions in the background and stops all daemons after updating
+
 ## 1.21.1
 
 ### Patch Changes
