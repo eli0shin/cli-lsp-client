@@ -288,6 +288,13 @@ async function main() {
     await publishPlatformPackages(binaries);
     await publishMainPackage(version, binaries);
 
+    if (!options.dryRun) {
+      // Create git tags and output "New tag:" for changesets/action to detect.
+      // The action parses stdout for this pattern, then pushes the tag and creates
+      // the GitHub release. See: https://github.com/changesets/action/blob/main/src/run.ts
+      await $`bunx changeset tag`;
+    }
+
     if (options.dryRun) {
       console.log(`\n✅ Dry run completed for ${pkg.name}@${version}`);
     } else {
