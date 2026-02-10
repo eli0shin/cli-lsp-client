@@ -36,6 +36,7 @@ async function buildTarget(
         version,
         os: [os === 'windows' ? 'win32' : os],
         cpu: [arch],
+        repository: pkg.repository,
       },
       null,
       2
