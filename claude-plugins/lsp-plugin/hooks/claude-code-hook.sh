@@ -1,12 +1,9 @@
 #!/bin/bash
 
-# LSP Client hook for Claude Code PostToolUse events
+# LSP Client hook for Claude Code PreToolUse/PostToolUse events
 
 # Source shared utilities
 source "$(dirname "$0")/utils.sh"
 
-# Get the appropriate package runner
-PKG_RUNNER=$(get_package_runner)
-
 # Run cli-lsp-client claude-code-hook with stdin
-exec $PKG_RUNNER cli-lsp-client claude-code-hook
+exec $(get_cli_command) claude-code-hook

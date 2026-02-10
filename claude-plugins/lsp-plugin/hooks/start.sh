@@ -5,8 +5,8 @@
 # Source shared utilities
 source "$(dirname "$0")/utils.sh"
 
-# Get the appropriate package runner
-PKG_RUNNER=$(get_package_runner)
+# Install native binary if possible (no-op if already present)
+ensure_native_binary
 
-# Run cli-lsp-client start
-exec $PKG_RUNNER cli-lsp-client start
+# Start the LSP client
+exec $(get_cli_command) start
