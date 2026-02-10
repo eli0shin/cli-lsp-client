@@ -52,6 +52,10 @@ coverage/
 tmp/
 temp/
 
+# Plans
+plans/
+.opencode/plans/
+
 # .NET build artifacts
 **/obj/
 **/bin/

@@ -37,6 +37,20 @@ CLI tool for getting LSP diagnostics. Uses a background daemon to keep LSP serve
 - Finds project roots using config files (tsconfig.json, etc.)
 - Servers stay running for subsequent requests
 
+## Installation
+
+**Install native binary (recommended):**
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/eli0shin/cli-lsp-client/main/install.sh | bash
+```
+
+**Or install via npm:**
+
+```bash
+npm install -g cli-lsp-client
+```
+
 ## Claude Code Integration
 
 ### Plugin Installation (Recommended)
