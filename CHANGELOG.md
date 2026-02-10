@@ -1,5 +1,11 @@
 # cli-lsp-client
 
+## 1.22.1
+
+### Patch Changes
+
+- [#46](https://github.com/eli0shin/cli-lsp-client/pull/46) [`2baa612`](https://github.com/eli0shin/cli-lsp-client/commit/2baa612bb3ae8ca367815faa3f225cdeddd4bce9) Thanks [@eli0shin](https://github.com/eli0shin)! - Fix GitHub releases not being created by running `changeset tag` after npm publish to create git tags and output the `New tag:` marker that changesets/action requires to trigger release creation
+
 ## 1.22.0
 
 ### Minor Changes
