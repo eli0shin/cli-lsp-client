@@ -450,6 +450,23 @@ export async function runCommand(
       return;
     }
 
+    // Handle statusline command — stdout is ONLY the server list, errors to stderr, always exit 0
+    if (command === 'statusline') {
+      try {
+        const result = await sendToExistingDaemon('statusline', []);
+        if (typeof result === 'string' && result.length > 0) {
+          process.stdout.write(result + '\n');
+        }
+      } catch (error) {
+        // Connection errors (no daemon) — silent
+        // Unexpected errors — report to stderr only, never pollute stdout
+        if (error instanceof Error && !('code' in error)) {
+          process.stderr.write(`${error.message}\n`);
+        }
+      }
+      return;
+    }
+
     // For all other commands: check if daemon running, start if needed, send command, exit
     const daemonStarted = await ensureDaemonRunning(configFile);
 
