@@ -1,5 +1,15 @@
 # cli-lsp-client
 
+## 1.23.0
+
+### Minor Changes
+
+- [#45](https://github.com/eli0shin/cli-lsp-client/pull/45) [`71ca109`](https://github.com/eli0shin/cli-lsp-client/commit/71ca10919803b132b483b60de50874654ae0f9d2) Thanks [@eli0shin](https://github.com/eli0shin)! - LSP plugin hooks now install the native binary from GitHub Releases on macOS and Linux instead of using bunx/npx, with automatic fallback to bunx/npx on Windows or if the download fails
+
+### Patch Changes
+
+- [#49](https://github.com/eli0shin/cli-lsp-client/pull/49) [`56e255f`](https://github.com/eli0shin/cli-lsp-client/commit/56e255fd37d3e621ec7dcdadcbebaa5e1addad91) Thanks [@eli0shin](https://github.com/eli0shin)! - Automate plugin version bumps in the release workflow — plugin.json versions are now patch-bumped when their files change since the last release tag. Use a package.json version script to avoid changesets/action argument parsing issue.
+
 ## 1.22.1
 
 ### Patch Changes
