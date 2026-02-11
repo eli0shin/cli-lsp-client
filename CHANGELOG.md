@@ -1,5 +1,11 @@
 # cli-lsp-client
 
+## 1.24.0
+
+### Minor Changes
+
+- [#52](https://github.com/eli0shin/cli-lsp-client/pull/52) [`0785868`](https://github.com/eli0shin/cli-lsp-client/commit/07858687db723e247a5094a3e114316b188c09b9) Thanks [@eli0shin](https://github.com/eli0shin)! - Add `statusline` command that returns active LSP server names as a deduplicated, sorted, comma-separated string for use in Claude Code statusline display.
+
 ## 1.23.0
 
 ### Minor Changes
