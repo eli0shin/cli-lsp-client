@@ -203,6 +203,12 @@ export async function handleRequest(
       return output;
     }
 
+    case 'statusline': {
+      const runningServers = getRunningServers();
+      const serverIDs = [...new Set(runningServers.map(s => s.serverID))].sort();
+      return serverIDs.join(', ');
+    }
+
     case 'diagnostics': {
       if (!args[0]) {
         throw new Error('diagnostics command requires a file path');
