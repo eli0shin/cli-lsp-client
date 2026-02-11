@@ -15,6 +15,7 @@ import { registerStopAllCommand } from './commands/stop-all.js';
 import { registerMcpServerCommand } from './commands/mcp-server.js';
 import { registerClaudeCodeHookCommand } from './commands/claude-code-hook.js';
 import { registerUpdateCommand } from './commands/update.js';
+import { registerStatuslineCommand } from './commands/statusline.js';
 import { runUpdaterWorker } from './updater-worker.js';
 import { handleAutoUpdate } from './auto-update.js';
 import { loadConfigFile, getUpdateBehavior } from './lsp/config.js';
@@ -77,6 +78,7 @@ Use 'cli-lsp-client logs' to find the log file for debugging.
   registerMcpServerCommand(program);
   registerClaudeCodeHookCommand(program);
   registerUpdateCommand(program);
+  registerStatuslineCommand(program);
 
   // Set default command to status
   if (process.argv.length === 2) {
