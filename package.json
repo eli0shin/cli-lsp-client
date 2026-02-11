@@ -55,6 +55,7 @@
     "format": "prettier --check .",
     "format:fix": "prettier --write .",
     "test": "bun test",
+    "version": "bunx changeset version && bun run script/bump-plugin-versions.ts",
     "test:watch": "bun test tests/ --watch",
     "validate:plugin": "claude plugin validate .",
     "preinstall": "node ./script/preinstall.mjs",
