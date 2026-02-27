@@ -51,8 +51,18 @@ if [[ $ESLINT_EXIT_CODE -eq 0 ]]; then
     # Success - no errors found
     output_json '{}'
 elif [[ $ESLINT_EXIT_CODE -eq 1 ]]; then
-    # Rule violations - block the agent as they are actionable
-    # Escape the output for JSON
+    # ESLint exit code 1 means linting issues were found.
+    # However, configuration/parsing failures (e.g. unsupported file types like .md)
+    # also produce exit code 1 with errors at line 0:0 — these are NOT actionable code issues.
+    # Real rule violations appear at actual line numbers (>0) in the file.
+    REAL_CODE_ERRORS=$(echo "$ESLINT_OUTPUT" | grep -E "[1-9][0-9]*:[0-9]+[[:space:]]+(error|warning)" || true)
+
+    if [[ -z "$REAL_CODE_ERRORS" ]]; then
+        # Only configuration/setup errors (at line 0) - silently ignore as ESLint isn't configured for this file type
+        output_json '{}'
+    fi
+
+    # Real rule violations - block the agent as they are actionable
     ESCAPED_OUTPUT=$(echo "$ESLINT_OUTPUT" | jq -Rs .)
     output_json "{\"decision\": \"block\", \"reason\": $ESCAPED_OUTPUT}"
 elif [[ $ESLINT_EXIT_CODE -eq 2 ]]; then
