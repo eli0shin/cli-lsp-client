@@ -51,6 +51,16 @@ if [[ $ESLINT_EXIT_CODE -eq 0 ]]; then
     # Success - no errors found
     output_json '{}'
 elif [[ $ESLINT_EXIT_CODE -eq 1 ]]; then
+    # ESLint exits with code 1 for both rule violations AND configuration/parsing failures.
+    # Configuration failures (e.g. unsupported file types like .md) always appear at line 0:0.
+    # Only block the agent for real code errors at non-zero line numbers.
+    REAL_CODE_ERRORS=$(echo "$ESLINT_OUTPUT" | grep -E "[1-9][0-9]*:[0-9]+[[:space:]]+(error|warning)" || true)
+
+    if [[ -z "$REAL_CODE_ERRORS" ]]; then
+        # Only configuration/setup errors (at line 0:0) - silently ignore
+        output_json '{}'
+    fi
+
     # Rule violations - block the agent as they are actionable
     # Escape the output for JSON
     ESCAPED_OUTPUT=$(echo "$ESLINT_OUTPUT" | jq -Rs .)
